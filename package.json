@@ -1,0 +1,8 @@
+{
+  "name": "clinic-project",
+  "private": true,
+  "workspaces": [
+    "infra",
+    "api"
+  ]
+}
