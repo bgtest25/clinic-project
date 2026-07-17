@@ -1,0 +1,158 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum UserRole {
+  ADMIN
+  CLINICIAN
+}
+
+enum EncounterStatus {
+  RECORDING
+  TRANSCRIBING
+  DRAFTING
+  IN_REVIEW
+  SIGNED
+}
+
+enum NoteStatus {
+  DRAFT
+  SIGNED
+  AMENDED
+}
+
+model Clinic {
+  id        String   @id @default(uuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users    User[]
+  patients Patient[]
+
+  @@map("clinics")
+}
+
+model User {
+  id         String   @id @default(uuid())
+  cognitoSub String   @unique
+  email      String   @unique
+  name       String
+  role       UserRole @default(CLINICIAN)
+  clinicId   String
+  clinic     Clinic   @relation(fields: [clinicId], references: [id])
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  encounters   Encounter[]    @relation("ClinicianEncounters")
+  signedNotes  ClinicalNote[] @relation("SignedByUser")
+  auditEntries AuditLog[]
+
+  @@index([clinicId])
+  @@map("users")
+}
+
+model Patient {
+  id          String   @id @default(uuid())
+  clinicId    String
+  clinic      Clinic   @relation(fields: [clinicId], references: [id])
+  name        String
+  dateOfBirth DateTime
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  encounters Encounter[]
+
+  @@index([clinicId])
+  @@map("patients")
+}
+
+model Encounter {
+  id                String          @id @default(uuid())
+  patientId         String
+  patient           Patient         @relation(fields: [patientId], references: [id])
+  clinicianId       String
+  clinician         User            @relation("ClinicianEncounters", fields: [clinicianId], references: [id])
+  visitDate         DateTime        @default(now())
+  status            EncounterStatus @default(RECORDING)
+  consentCapturedAt DateTime?
+  consentCapturedBy String?
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+
+  audioRecording AudioRecording?
+  transcript     Transcript?
+  clinicalNotes  ClinicalNote[]
+  auditLogs      AuditLog[]
+
+  @@index([patientId])
+  @@index([clinicianId])
+  @@map("encounters")
+}
+
+model AudioRecording {
+  id          String    @id @default(uuid())
+  encounterId String    @unique
+  encounter   Encounter @relation(fields: [encounterId], references: [id])
+  s3Key       String
+  durationSec Int?
+  uploadedAt  DateTime  @default(now())
+
+  @@map("audio_recordings")
+}
+
+model Transcript {
+  id               String    @id @default(uuid())
+  encounterId      String    @unique
+  encounter        Encounter @relation(fields: [encounterId], references: [id])
+  rawText          String
+  diarizedSegments Json?
+  sttProvider      String    @default("aws-transcribe-medical")
+  createdAt        DateTime  @default(now())
+
+  @@map("transcripts")
+}
+
+model ClinicalNote {
+  id             String     @id @default(uuid())
+  encounterId    String
+  encounter      Encounter  @relation(fields: [encounterId], references: [id])
+  version        Int        @default(1)
+  subjective     String?
+  objective      String?
+  assessment     String?
+  plan           String?
+  suggestedCodes Json?
+  status         NoteStatus @default(DRAFT)
+  signedById     String?
+  signedBy       User?      @relation("SignedByUser", fields: [signedById], references: [id])
+  signedAt       DateTime?
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
+
+  @@index([encounterId])
+  @@map("clinical_notes")
+}
+
+model AuditLog {
+  id           String    @id @default(uuid())
+  encounterId  String
+  encounter    Encounter @relation(fields: [encounterId], references: [id])
+  actorId      String
+  actor        User      @relation(fields: [actorId], references: [id])
+  action       String
+  fieldChanged String?
+  oldValue     String?
+  newValue     String?
+  createdAt    DateTime  @default(now())
+
+  @@index([encounterId])
+  @@map("audit_logs")
+}
