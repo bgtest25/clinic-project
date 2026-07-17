@@ -84,11 +84,17 @@ jobs:
             exit 1
           fi
 
+      - name: Install workspace dependencies
+        # Installing from the repo root (not `cd infra && npm ci`) matters here —
+        # infra is an npm workspace member, and installing from inside a member
+        # subdirectory reinstalls a smaller, incompletely-hoisted local copy
+        # instead of resolving through the root lockfile the way root-level
+        # installs (and the API's own Dockerfile build) correctly do.
+        run: npm ci
+
       - name: Deploy the compute stack with the new image
         working-directory: infra
         env:
           CDK_DEFAULT_ACCOUNT: ${{ env.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
-        run: |
-          npm ci
-          npx cdk deploy ClinicComputeStack --require-approval never -c apiImageTag=${{ steps.vars.outputs.image_tag }}
+        run: npx cdk deploy ClinicComputeStack --require-approval never -c apiImageTag=${{ steps.vars.outputs.image_tag }}
