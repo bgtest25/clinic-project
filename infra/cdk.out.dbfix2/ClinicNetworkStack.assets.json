@@ -1,0 +1,36 @@
+{
+  "version": "54.0.0",
+  "files": {
+    "02b51ab524e7bcf8f477de3e71e5f9a72e448301b26ba62e9e75a14f9c55a093": {
+      "displayName": "ClinicNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider Code",
+      "source": {
+        "path": "asset.02b51ab524e7bcf8f477de3e71e5f9a72e448301b26ba62e9e75a14f9c55a093",
+        "packaging": "zip"
+      },
+      "destinations": {
+        "501264525435-us-east-1-743da6e8": {
+          "bucketName": "cdk-hnb659fds-assets-501264525435-us-east-1",
+          "objectKey": "02b51ab524e7bcf8f477de3e71e5f9a72e448301b26ba62e9e75a14f9c55a093.zip",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::501264525435:role/cdk-hnb659fds-file-publishing-role-501264525435-us-east-1"
+        }
+      }
+    },
+    "ddb9c08719bdab11e956ee595842ac74109de141b466caa608242fdc6aaf2988": {
+      "displayName": "ClinicNetworkStack Template",
+      "source": {
+        "path": "ClinicNetworkStack.template.json",
+        "packaging": "file"
+      },
+      "destinations": {
+        "501264525435-us-east-1-ff24f0c2": {
+          "bucketName": "cdk-hnb659fds-assets-501264525435-us-east-1",
+          "objectKey": "ddb9c08719bdab11e956ee595842ac74109de141b466caa608242fdc6aaf2988.json",
+          "region": "us-east-1",
+          "assumeRoleArn": "arn:${AWS::Partition}:iam::501264525435:role/cdk-hnb659fds-file-publishing-role-501264525435-us-east-1"
+        }
+      }
+    }
+  },
+  "dockerImages": {}
+}

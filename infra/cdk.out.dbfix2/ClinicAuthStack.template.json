@@ -1,0 +1,168 @@
+{
+ "Resources": {
+  "ClinicianUserPoolF2F0447C": {
+   "Type": "AWS::Cognito::UserPool",
+   "Properties": {
+    "AccountRecoverySetting": {
+     "RecoveryMechanisms": [
+      {
+       "Name": "verified_email",
+       "Priority": 1
+      }
+     ]
+    },
+    "AdminCreateUserConfig": {
+     "AllowAdminCreateUserOnly": true
+    },
+    "AutoVerifiedAttributes": [
+     "email"
+    ],
+    "EmailVerificationMessage": "The verification code to your new account is {####}",
+    "EmailVerificationSubject": "Verify your new account",
+    "EnabledMfas": [
+     "SOFTWARE_TOKEN_MFA"
+    ],
+    "MfaConfiguration": "ON",
+    "Policies": {
+     "PasswordPolicy": {
+      "MinimumLength": 12,
+      "RequireLowercase": true,
+      "RequireNumbers": true,
+      "RequireSymbols": true,
+      "RequireUppercase": true
+     }
+    },
+    "SmsVerificationMessage": "The verification code to your new account is {####}",
+    "UserPoolName": "clinic-project-clinicians",
+    "UsernameAttributes": [
+     "email"
+    ],
+    "VerificationMessageTemplate": {
+     "DefaultEmailOption": "CONFIRM_WITH_CODE",
+     "EmailMessage": "The verification code to your new account is {####}",
+     "EmailSubject": "Verify your new account",
+     "SmsMessage": "The verification code to your new account is {####}"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ClinicAuthStack/ClinicianUserPool/Resource"
+   }
+  },
+  "ClinicianUserPoolApiClientD1CA90ED": {
+   "Type": "AWS::Cognito::UserPoolClient",
+   "Properties": {
+    "AllowedOAuthFlows": [
+     "implicit",
+     "code"
+    ],
+    "AllowedOAuthFlowsUserPoolClient": true,
+    "AllowedOAuthScopes": [
+     "profile",
+     "phone",
+     "email",
+     "openid",
+     "aws.cognito.signin.user.admin"
+    ],
+    "CallbackURLs": [
+     "https://example.com"
+    ],
+    "ExplicitAuthFlows": [
+     "ALLOW_USER_PASSWORD_AUTH",
+     "ALLOW_USER_SRP_AUTH",
+     "ALLOW_REFRESH_TOKEN_AUTH"
+    ],
+    "GenerateSecret": false,
+    "SupportedIdentityProviders": [
+     "COGNITO"
+    ],
+    "UserPoolId": {
+     "Ref": "ClinicianUserPoolF2F0447C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicAuthStack/ClinicianUserPool/ApiClient/Resource"
+   }
+  },
+  "AdminGroup": {
+   "Type": "AWS::Cognito::UserPoolGroup",
+   "Properties": {
+    "GroupName": "admin",
+    "UserPoolId": {
+     "Ref": "ClinicianUserPoolF2F0447C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicAuthStack/AdminGroup"
+   }
+  },
+  "ClinicianGroup": {
+   "Type": "AWS::Cognito::UserPoolGroup",
+   "Properties": {
+    "GroupName": "clinician",
+    "UserPoolId": {
+     "Ref": "ClinicianUserPoolF2F0447C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicAuthStack/ClinicianGroup"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/22QQWvCQBCFf4tzLGtqc+ght2JrKYgVg6dSyrgZ4+pmJ93ZGCTkv5doIrb0tI+3j5lvXhzFjw/RZIS1jHV2GFuziZo0oD4orOVLc+5M4KhZC/kls/1ooOrlAguCBO5AgZDdpiZ36/LF4cZSBskWrZACMbl7c0/WoJBA0gAVaCwkwVfUKii2CAm8L+AsU9LsshnqwL7LcigvSQVSSD+zVVCiSM0+W7I1+tQlC+Pm5PKw64E8fVfG05xr8hqFhjG9vy7Lf/1nk5sgf8z0VGzYypUZtebKhRVpPpI/QRJ30YKPaAcg8BTQOGg/1XTrhu7UIKbWkAs3VfbUWIXdzHJ9Lur81x86EHVe6ssrSk6OPAZKSXsKQ0G/ll523TqvnquybZXjjKK93B/jSRRPosloL8aMfeWCKShaXd4fkbe5aSACAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicAuthStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "PublishOutputRefClinicianUserPoolF2F0447C0A7D9CB8": {
+   "Value": {
+    "Ref": "ClinicianUserPoolF2F0447C"
+   }
+  },
+  "PublishOutputRefClinicianUserPoolApiClientD1CA90ED077DB030": {
+   "Value": {
+    "Ref": "ClinicianUserPoolApiClientD1CA90ED"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

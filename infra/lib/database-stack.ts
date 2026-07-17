@@ -3,6 +3,7 @@ import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as rds from 'aws-cdk-lib/aws-rds';
+import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 
 export interface ClinicDatabaseStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -28,6 +29,22 @@ export class ClinicDatabaseStack extends cdk.Stack {
       allowAllOutbound: false,
     });
 
+    // A standalone secret (default Secrets Manager key, NOT `dbKey`) rather than
+    // `rds.Credentials.fromGeneratedSecret(...)` — that helper silently ties the
+    // generated secret's encryption to `storageEncryptionKey`, which would force
+    // granting the ECS execution role decrypt access on `dbKey`'s policy — a
+    // cross-stack cycle, since ComputeStack already depends on this stack for the
+    // security group. Owning the secret directly keeps its encryption on the
+    // default key, so consumers only need a plain IAM grant, one direction only.
+    const masterSecret = new secretsmanager.Secret(this, 'DatabaseSecret', {
+      secretName: 'clinic-project/main/rds/master-credentials',
+      generateSecretString: {
+        secretStringTemplate: JSON.stringify({ username: 'clinic_admin' }),
+        generateStringKey: 'password',
+        excludePunctuation: true,
+      },
+    });
+
     this.instance = new rds.DatabaseInstance(this, 'Database', {
       engine: rds.DatabaseInstanceEngine.postgres({ version: rds.PostgresEngineVersion.VER_16_4 }),
       instanceType: ec2.InstanceType.of(ec2.InstanceClass.T4G, ec2.InstanceSize.MICRO),
@@ -40,10 +57,10 @@ export class ClinicDatabaseStack extends cdk.Stack {
       allocatedStorage: 20,
       storageEncrypted: true,
       storageEncryptionKey: dbKey,
-      credentials: rds.Credentials.fromGeneratedSecret('clinic_admin', {
-        secretName: 'clinic-project/main/rds/master-credentials',
-        encryptionKey: dbKey,
-      }),
+      // Passing the username explicitly (matching what's already deployed) keeps
+      // MasterUsername a literal instead of a dynamic secret reference — the dynamic
+      // form reads as a property change CloudFormation can only apply via replacement.
+      credentials: rds.Credentials.fromSecret(masterSecret, 'clinic_admin'),
       databaseName: 'clinic',
       backupRetention: cdk.Duration.days(7),
       // PHI will eventually live here — protect against accidental teardown.

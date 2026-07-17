@@ -1,0 +1,768 @@
+{
+  "/ClinicComputeStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/Cluster": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "vpc": "*",
+        "clusterName": "*"
+      }
+    }
+  ],
+  "/ClinicComputeStack/ApiLogGroup": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "logGroupName": "*",
+        "retention": 365,
+        "removalPolicy": "retain"
+      }
+    }
+  ],
+  "/ClinicComputeStack/DbIngressFromApp": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "DbIngressFromApp"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:84:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ClusterName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClusterName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:95:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ServiceName": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ServiceName"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:96:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/TaskDefinitionFamily": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "TaskDefinitionFamily"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:97:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/AppSecurityGroupId": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AppSecurityGroupId"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:98:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/AppSubnetIds": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AppSubnetIds"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:101:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/Cluster/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClusterEB0386A7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Cluster2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:30:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiLogGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiLogGroup1DEDFC07"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new LogGroup2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:35:22)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LoadBalancerDNS": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLoadBalancerDNSBF9EB7FC"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/ServiceURL": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceServiceURL2EB28DB2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    }
+  ],
+  "/ClinicComputeStack/ApiService/Service": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    }
+  ],
+  "/ClinicComputeStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/Publish/Output{\"Fn::GetAtt\":[\"ClusterEB0386A7\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputFnGetAttClusterEB0386A7Arn0CAA3DA3"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/Publish/Output{\"Ref\":\"ApiServiceTaskDefDF3191FB\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefApiServiceTaskDefDF3191FBBA2E25D4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/Publish/Output{\"Fn::GetAtt\":[\"ApiServiceTaskDefTaskRole1014CB34\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputFnGetAttApiServiceTaskDefTaskRole1014CB34ArnB3874740"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/Publish/Output{\"Fn::GetAtt\":[\"ApiServiceTaskDefExecutionRole43B90DD6\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputFnGetAttApiServiceTaskDefExecutionRole43B90DD6ArnCCE01173"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLB08B891CD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/SecurityGroup": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "vpc": "*",
+        "description": "*",
+        "allowAllOutbound": false
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addIngressRule": [
+          {
+            "canInlineRule": true,
+            "connections": "*",
+            "uniqueId": "*"
+          },
+          {},
+          "*",
+          false
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addEgressRule": [
+          "*",
+          {},
+          "*",
+          true
+        ]
+      }
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/PublicListener": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": "*"
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/TaskRole": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "assumedBy": {
+          "principalAccount": "*",
+          "assumeRoleAction": "*"
+        }
+      }
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceTaskDefDF3191FB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/ExecutionRole": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "assumedBy": {
+          "principalAccount": "*",
+          "assumeRoleAction": "*"
+        },
+        "roleName": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachInlinePolicy": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachInlinePolicy": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    }
+  ],
+  "/ClinicComputeStack/ApiService/Service/Service": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiService199661B5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/Service/SecurityGroup": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "vpc": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addIngressRule": [
+          "*",
+          {},
+          "*",
+          false
+        ]
+      }
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/SecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLBSecurityGroup5C16BEF8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/SecurityGroup/to ClinicComputeStackApiServiceSecurityGroup6FA8734F:3000": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLBSecurityGrouptoClinicComputeStackApiServiceSecurityGroup6FA8734F300022C02D8F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/PublicListener/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLBPublicListener1394DF3E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/TaskRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceTaskDefTaskRole1014CB34"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/ExecutionRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceTaskDefExecutionRole43B90DD6"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/ExecutionRole/DefaultPolicy": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachToRole": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachToRole": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    }
+  ],
+  "/ClinicComputeStack/ApiService/Service/SecurityGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceSecurityGroup2592096B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:29:17)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/Service/SecurityGroup/from ClinicComputeStackApiServiceLBSecurityGroupA7838BA4:3000": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceSecurityGroupfromClinicComputeStackApiServiceLBSecurityGroupA7838BA4300024B4E7DF"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/LB/PublicListener/ECSGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceLBPublicListenerECSGroup14A87FE9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new ApplicationLoadBalancedFargateService2 in aws-cdk-lib...",
+        "new ClinicComputeStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\compute-stack.ts:41:20)"
+      ]
+    }
+  ],
+  "/ClinicComputeStack/ApiService/TaskDef/ExecutionRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiServiceTaskDefExecutionRoleDefaultPolicyDCB48050"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

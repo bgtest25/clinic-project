@@ -1,0 +1,992 @@
+{
+  "/ClinicNetworkStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/FlowLogsKey": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "alias": "*",
+        "enableKeyRotation": true
+      }
+    }
+  ],
+  "/ClinicNetworkStack/VpcFlowLogGroup": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "logGroupName": "*",
+        "retention": 365,
+        "encryptionKey": "*",
+        "removalPolicy": "retain"
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "vpcName": "*",
+        "maxAzs": "*",
+        "natGateways": "*",
+        "subnetConfiguration": [
+          {
+            "name": "*",
+            "subnetType": "Public",
+            "cidrMask": "*"
+          },
+          {
+            "name": "*",
+            "subnetType": "Private",
+            "cidrMask": "*"
+          },
+          {
+            "name": "*",
+            "subnetType": "Isolated",
+            "cidrMask": "*"
+          }
+        ],
+        "flowLogs": "*"
+      }
+    }
+  ],
+  "/ClinicNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/ClinicNetworkStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/FlowLogsKey/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FlowLogsKey895A70D5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Key2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:14:24)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/FlowLogsKey/Alias": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "aliasName": "*",
+        "targetKey": "*"
+      }
+    }
+  ],
+  "/ClinicNetworkStack/VpcFlowLogGroup/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "VpcFlowLogGroup86559C69"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new LogGroup2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:31:26)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpc20F387A1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": true,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": true,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {}
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addNatGateway": [
+          "*"
+        ]
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet2": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": true,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": true,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {}
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet1": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {}
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet2": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {}
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet1": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet2": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "availabilityZone": "*",
+        "vpcId": "*",
+        "cidrBlock": "*",
+        "mapPublicIpOnLaunch": false,
+        "ipv6CidrBlock": "*",
+        "assignIpv6AddressOnCreation": "*"
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/IGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcIGW9F2EAC9E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/VPCGW": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcVPCGW987EB1A9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/all-traffic": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "resourceType": "*",
+        "destination": "*",
+        "trafficType": "ALL"
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/RestrictDefaultSecurityGroupCustomResource": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    }
+  ],
+  "/ClinicNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpc20F387A1\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpc20F387A171D625A1"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpcprivatedataSubnet1Subnet9116044F\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpcprivatedataSubnet1Subnet9116044F95DEAD2C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpcprivatedataSubnet2Subnet00BE707C\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpcprivatedataSubnet2Subnet00BE707CF3391E23"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpcpublicSubnet1Subnet97AABABA\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpcpublicSubnet1Subnet97AABABA1058129E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpcpublicSubnet2SubnetAC2509A9\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpcpublicSubnet2SubnetAC2509A98796C5B9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpcprivateappSubnet1SubnetB7126921\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpcprivateappSubnet1SubnetB7126921FD164B83"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/Publish/Output{\"Ref\":\"ClinicVpcprivateappSubnet2SubnetF1530657\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicVpcprivateappSubnet2SubnetF15306571C2EF1BE"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/FlowLogsKey/Alias/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "FlowLogsKeyAlias812A10BD"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Key2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:14:24)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet1Subnet97AABABA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet1RouteTable32E3AAC4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet1RouteTableAssociation17772F3A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet1DefaultRoute24C4B325"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:208 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1/EIP": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet1EIP8BBC171E"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet1/NATGateway": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet1NATGateway95D6CFB5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet2SubnetAC2509A9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet2RouteTable12D960C4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet2RouteTableAssociationE116B571"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:268 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/publicSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcpublicSubnet2DefaultRoute2941F8E5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:208 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet1SubnetB7126921"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet1RouteTableF25CC65B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet1RouteTableAssociation7B9FEDF8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet1/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet1DefaultRoute385D1AB2"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet2SubnetF1530657"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet2RouteTableB32E9895"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet2RouteTableAssociationF939E3FB"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:270 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-appSubnet2/DefaultRoute": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivateappSubnet2DefaultRoute37EC8659"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet1/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivatedataSubnet1Subnet9116044F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:272 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet1/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivatedataSubnet1RouteTable195CFED0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:272 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet1/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivatedataSubnet1RouteTableAssociationD8D2F847"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:272 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet2/Subnet": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivatedataSubnet2Subnet00BE707C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:272 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet2/RouteTable": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivatedataSubnet2RouteTableA5E30B28"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:272 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/private-dataSubnet2/RouteTableAssociation": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcprivatedataSubnet2RouteTableAssociation837213D5"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...C:\\Users\\barse\\Clinic Project\\infra\\node_modules\\aws-cdk-lib\\aws-ec2\\lib\\vpc.js:1:272 in aws-cdk-lib...",
+        "Array.forEach (:)",
+        "...aws-cdk-lib..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/all-traffic/IAMRole": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "roleName": "*",
+        "assumedBy": {
+          "principalAccount": "*",
+          "assumeRoleAction": "*"
+        }
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachInlinePolicy": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachInlinePolicy": [
+          "*"
+        ]
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/all-traffic/FlowLog": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcalltrafficFlowLog8281FF0A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/RestrictDefaultSecurityGroupCustomResource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcRestrictDefaultSecurityGroupCustomResourceF325C038"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/all-traffic/IAMRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcalltrafficIAMRoleE2E6ED9F"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Vpc2 in aws-cdk-lib...",
+        "new ClinicNetworkStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\network-stack.ts:38:16)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:22:17)"
+      ]
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/all-traffic/IAMRole/DefaultPolicy": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachToRole": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachToRole": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    }
+  ],
+  "/ClinicNetworkStack/ClinicVpc/all-traffic/IAMRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicVpcalltrafficIAMRoleDefaultPolicy60C2924B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

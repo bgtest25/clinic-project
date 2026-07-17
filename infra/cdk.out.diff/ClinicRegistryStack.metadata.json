@@ -1,0 +1,122 @@
+{
+  "/ClinicRegistryStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:25:18)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicRegistryStack/ApiRepository": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "repositoryName": "*",
+        "imageScanOnPush": true,
+        "lifecycleRules": [
+          {
+            "description": "*",
+            "maxImageCount": "*"
+          }
+        ],
+        "removalPolicy": "retain"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addLifecycleRule": [
+          {
+            "description": "*",
+            "maxImageCount": "*"
+          },
+          "*",
+          "*"
+        ]
+      }
+    }
+  ],
+  "/ClinicRegistryStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicRegistryStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicRegistryStack/ApiRepository/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ApiRepositoryB8378B43"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Repository2 in aws-cdk-lib...",
+        "new ClinicRegistryStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\registry-stack.ts:11:26)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:25:18)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicRegistryStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicRegistryStack/Publish/Output{\"Fn::GetAtt\":[\"ApiRepositoryB8378B43\",\"Arn\"]}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputFnGetAttApiRepositoryB8378B43Arn875FE3A0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicRegistryStack/Publish/Output{\"Ref\":\"ApiRepositoryB8378B43\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefApiRepositoryB8378B43D25321C9"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ]
+}

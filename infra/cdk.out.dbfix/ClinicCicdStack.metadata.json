@@ -1,0 +1,378 @@
+{
+  "/ClinicCicdStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:40:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicCicdStack/GithubOidcProvider": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "url": "*",
+        "clientIds": "*"
+      }
+    }
+  ],
+  "/ClinicCicdStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider": [
+    {
+      "type": "aws:cdk:is-custom-resource-handler-customResourceProvider",
+      "data": true
+    }
+  ],
+  "/ClinicCicdStack/GithubActionsDeployRole": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "roleName": "*",
+        "assumedBy": {
+          "principalAccount": "*",
+          "assumeRoleAction": "*"
+        },
+        "maxSessionDuration": "*"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachInlinePolicy": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachInlinePolicy": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPolicy": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addToPrincipalPolicy": [
+          {}
+        ]
+      }
+    }
+  ],
+  "/ClinicCicdStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicCicdStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicCicdStack/GithubOidcProvider/Resource": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    }
+  ],
+  "/ClinicCicdStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Role": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new OpenIdConnectProvider2 in aws-cdk-lib...",
+        "new ClinicCicdStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\cicd-stack.ts:22:22)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:40:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicCicdStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Handler": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderHandlerF2C543E0"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new OpenIdConnectProvider2 in aws-cdk-lib...",
+        "new ClinicCicdStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\cicd-stack.ts:22:22)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:40:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals..."
+      ]
+    }
+  ],
+  "/ClinicCicdStack/GithubActionsDeployRole/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GithubActionsDeployRole3AEBE7B4"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Role2 in aws-cdk-lib...",
+        "new ClinicCicdStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\cicd-stack.ts:27:23)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:40:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicCicdStack/GithubActionsDeployRole/DefaultPolicy": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": "*"
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachToRole": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "attachToRole": [
+          "*"
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addStatements": [
+          {}
+        ]
+      }
+    }
+  ],
+  "/ClinicCicdStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicCicdStack/GithubOidcProvider/Resource/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GithubOidcProviderD8241A88"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new OpenIdConnectProvider2 in aws-cdk-lib...",
+        "new ClinicCicdStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\cicd-stack.ts:22:22)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:40:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicCicdStack/GithubActionsDeployRole/DefaultPolicy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "GithubActionsDeployRoleDefaultPolicy656FD013"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.<anonymous> in aws-cdk-lib...",
+        "new ClinicCicdStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\cicd-stack.ts:37:21)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:40:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+**/node_modules
+**/dist
+**/generated
+infra
+.git
+*.log
+.env
+.env.*
+!.env.example

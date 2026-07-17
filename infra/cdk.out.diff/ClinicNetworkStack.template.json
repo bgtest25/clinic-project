@@ -1,0 +1,867 @@
+{
+ "Resources": {
+  "FlowLogsKey895A70D5": {
+   "Type": "AWS::KMS::Key",
+   "Properties": {
+    "EnableKeyRotation": true,
+    "KeyPolicy": {
+     "Statement": [
+      {
+       "Action": "kms:*",
+       "Effect": "Allow",
+       "Principal": {
+        "AWS": "arn:aws:iam::501264525435:root"
+       },
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "kms:Decrypt*",
+        "kms:Describe*",
+        "kms:Encrypt*",
+        "kms:GenerateDataKey*",
+        "kms:ReEncrypt*"
+       ],
+       "Condition": {
+        "ArnLike": {
+         "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:us-east-1:501264525435:*"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "logs.us-east-1.amazonaws.com"
+       },
+       "Resource": "*"
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/FlowLogsKey/Resource"
+   }
+  },
+  "FlowLogsKeyAlias812A10BD": {
+   "Type": "AWS::KMS::Alias",
+   "Properties": {
+    "AliasName": "alias/clinic-project/vpc-flow-logs",
+    "TargetKeyId": {
+     "Fn::GetAtt": [
+      "FlowLogsKey895A70D5",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/FlowLogsKey/Alias/Resource"
+   }
+  },
+  "VpcFlowLogGroup86559C69": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "KmsKeyId": {
+     "Fn::GetAtt": [
+      "FlowLogsKey895A70D5",
+      "Arn"
+     ]
+    },
+    "LogGroupName": "/clinic-project/vpc-flow-logs",
+    "RetentionInDays": 365
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/VpcFlowLogGroup/Resource"
+   }
+  },
+  "ClinicVpc20F387A1": {
+   "Type": "AWS::EC2::VPC",
+   "Properties": {
+    "CidrBlock": "10.0.0.0/16",
+    "EnableDnsHostnames": true,
+    "EnableDnsSupport": true,
+    "InstanceTenancy": "default",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "clinic-project-vpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/Resource"
+   }
+  },
+  "ClinicVpcpublicSubnet1Subnet97AABABA": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.0.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet1/Subnet"
+   }
+  },
+  "ClinicVpcpublicSubnet1RouteTable32E3AAC4": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/publicSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet1/RouteTable"
+   }
+  },
+  "ClinicVpcpublicSubnet1RouteTableAssociation17772F3A": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "ClinicVpcpublicSubnet1RouteTable32E3AAC4"
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcpublicSubnet1Subnet97AABABA"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet1/RouteTableAssociation"
+   }
+  },
+  "ClinicVpcpublicSubnet1DefaultRoute24C4B325": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "ClinicVpcIGW9F2EAC9E"
+    },
+    "RouteTableId": {
+     "Ref": "ClinicVpcpublicSubnet1RouteTable32E3AAC4"
+    }
+   },
+   "DependsOn": [
+    "ClinicVpcVPCGW987EB1A9"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet1/DefaultRoute"
+   }
+  },
+  "ClinicVpcpublicSubnet1EIP8BBC171E": {
+   "Type": "AWS::EC2::EIP",
+   "Properties": {
+    "Domain": "vpc",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/publicSubnet1"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet1/EIP"
+   }
+  },
+  "ClinicVpcpublicSubnet1NATGateway95D6CFB5": {
+   "Type": "AWS::EC2::NatGateway",
+   "Properties": {
+    "AllocationId": {
+     "Fn::GetAtt": [
+      "ClinicVpcpublicSubnet1EIP8BBC171E",
+      "AllocationId"
+     ]
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcpublicSubnet1Subnet97AABABA"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/publicSubnet1"
+     }
+    ]
+   },
+   "DependsOn": [
+    "ClinicVpcpublicSubnet1DefaultRoute24C4B325",
+    "ClinicVpcpublicSubnet1RouteTableAssociation17772F3A"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet1/NATGateway"
+   }
+  },
+  "ClinicVpcpublicSubnet2SubnetAC2509A9": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.1.0/24",
+    "MapPublicIpOnLaunch": true,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "public"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Public"
+     },
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet2/Subnet"
+   }
+  },
+  "ClinicVpcpublicSubnet2RouteTable12D960C4": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/publicSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet2/RouteTable"
+   }
+  },
+  "ClinicVpcpublicSubnet2RouteTableAssociationE116B571": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "ClinicVpcpublicSubnet2RouteTable12D960C4"
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcpublicSubnet2SubnetAC2509A9"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet2/RouteTableAssociation"
+   }
+  },
+  "ClinicVpcpublicSubnet2DefaultRoute2941F8E5": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "GatewayId": {
+     "Ref": "ClinicVpcIGW9F2EAC9E"
+    },
+    "RouteTableId": {
+     "Ref": "ClinicVpcpublicSubnet2RouteTable12D960C4"
+    }
+   },
+   "DependsOn": [
+    "ClinicVpcVPCGW987EB1A9"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/publicSubnet2/DefaultRoute"
+   }
+  },
+  "ClinicVpcprivateappSubnet1SubnetB7126921": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.2.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "private-app"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-appSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet1/Subnet"
+   }
+  },
+  "ClinicVpcprivateappSubnet1RouteTableF25CC65B": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-appSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet1/RouteTable"
+   }
+  },
+  "ClinicVpcprivateappSubnet1RouteTableAssociation7B9FEDF8": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "ClinicVpcprivateappSubnet1RouteTableF25CC65B"
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcprivateappSubnet1SubnetB7126921"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet1/RouteTableAssociation"
+   }
+  },
+  "ClinicVpcprivateappSubnet1DefaultRoute385D1AB2": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "ClinicVpcpublicSubnet1NATGateway95D6CFB5"
+    },
+    "RouteTableId": {
+     "Ref": "ClinicVpcprivateappSubnet1RouteTableF25CC65B"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet1/DefaultRoute"
+   }
+  },
+  "ClinicVpcprivateappSubnet2SubnetF1530657": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.3.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "private-app"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Private"
+     },
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-appSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet2/Subnet"
+   }
+  },
+  "ClinicVpcprivateappSubnet2RouteTableB32E9895": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-appSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet2/RouteTable"
+   }
+  },
+  "ClinicVpcprivateappSubnet2RouteTableAssociationF939E3FB": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "ClinicVpcprivateappSubnet2RouteTableB32E9895"
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcprivateappSubnet2SubnetF1530657"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet2/RouteTableAssociation"
+   }
+  },
+  "ClinicVpcprivateappSubnet2DefaultRoute37EC8659": {
+   "Type": "AWS::EC2::Route",
+   "Properties": {
+    "DestinationCidrBlock": "0.0.0.0/0",
+    "NatGatewayId": {
+     "Ref": "ClinicVpcpublicSubnet1NATGateway95D6CFB5"
+    },
+    "RouteTableId": {
+     "Ref": "ClinicVpcprivateappSubnet2RouteTableB32E9895"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-appSubnet2/DefaultRoute"
+   }
+  },
+  "ClinicVpcprivatedataSubnet1Subnet9116044F": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1a",
+    "CidrBlock": "10.0.4.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "private-data"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Isolated"
+     },
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-dataSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-dataSubnet1/Subnet"
+   }
+  },
+  "ClinicVpcprivatedataSubnet1RouteTable195CFED0": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-dataSubnet1"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-dataSubnet1/RouteTable"
+   }
+  },
+  "ClinicVpcprivatedataSubnet1RouteTableAssociationD8D2F847": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "ClinicVpcprivatedataSubnet1RouteTable195CFED0"
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcprivatedataSubnet1Subnet9116044F"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-dataSubnet1/RouteTableAssociation"
+   }
+  },
+  "ClinicVpcprivatedataSubnet2Subnet00BE707C": {
+   "Type": "AWS::EC2::Subnet",
+   "Properties": {
+    "AvailabilityZone": "us-east-1b",
+    "CidrBlock": "10.0.5.0/24",
+    "MapPublicIpOnLaunch": false,
+    "Tags": [
+     {
+      "Key": "aws-cdk:subnet-name",
+      "Value": "private-data"
+     },
+     {
+      "Key": "aws-cdk:subnet-type",
+      "Value": "Isolated"
+     },
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-dataSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-dataSubnet2/Subnet"
+   }
+  },
+  "ClinicVpcprivatedataSubnet2RouteTableA5E30B28": {
+   "Type": "AWS::EC2::RouteTable",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/private-dataSubnet2"
+     }
+    ],
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-dataSubnet2/RouteTable"
+   }
+  },
+  "ClinicVpcprivatedataSubnet2RouteTableAssociation837213D5": {
+   "Type": "AWS::EC2::SubnetRouteTableAssociation",
+   "Properties": {
+    "RouteTableId": {
+     "Ref": "ClinicVpcprivatedataSubnet2RouteTableA5E30B28"
+    },
+    "SubnetId": {
+     "Ref": "ClinicVpcprivatedataSubnet2Subnet00BE707C"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/private-dataSubnet2/RouteTableAssociation"
+   }
+  },
+  "ClinicVpcIGW9F2EAC9E": {
+   "Type": "AWS::EC2::InternetGateway",
+   "Properties": {
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "clinic-project-vpc"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/IGW"
+   }
+  },
+  "ClinicVpcVPCGW987EB1A9": {
+   "Type": "AWS::EC2::VPCGatewayAttachment",
+   "Properties": {
+    "InternetGatewayId": {
+     "Ref": "ClinicVpcIGW9F2EAC9E"
+    },
+    "VpcId": {
+     "Ref": "ClinicVpc20F387A1"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/VPCGW"
+   }
+  },
+  "ClinicVpcalltrafficIAMRoleE2E6ED9F": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "vpc-flow-logs.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/all-traffic"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/all-traffic/IAMRole/Resource"
+   }
+  },
+  "ClinicVpcalltrafficIAMRoleDefaultPolicy60C2924B": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:DescribeLogStreams",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "VpcFlowLogGroup86559C69",
+         "Arn"
+        ]
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ClinicVpcalltrafficIAMRoleDefaultPolicy60C2924B",
+    "Roles": [
+     {
+      "Ref": "ClinicVpcalltrafficIAMRoleE2E6ED9F"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/all-traffic/IAMRole/DefaultPolicy/Resource"
+   }
+  },
+  "ClinicVpcalltrafficFlowLog8281FF0A": {
+   "Type": "AWS::EC2::FlowLog",
+   "Properties": {
+    "DeliverLogsPermissionArn": {
+     "Fn::GetAtt": [
+      "ClinicVpcalltrafficIAMRoleE2E6ED9F",
+      "Arn"
+     ]
+    },
+    "LogDestinationType": "cloud-watch-logs",
+    "LogGroupName": {
+     "Ref": "VpcFlowLogGroup86559C69"
+    },
+    "ResourceId": {
+     "Ref": "ClinicVpc20F387A1"
+    },
+    "ResourceType": "VPC",
+    "Tags": [
+     {
+      "Key": "Name",
+      "Value": "ClinicNetworkStack/ClinicVpc/all-traffic"
+     }
+    ],
+    "TrafficType": "ALL"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/all-traffic/FlowLog"
+   }
+  },
+  "ClinicVpcRestrictDefaultSecurityGroupCustomResourceF325C038": {
+   "Type": "Custom::VpcRestrictDefaultSG",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E",
+      "Arn"
+     ]
+    },
+    "DefaultSecurityGroupId": {
+     "Fn::GetAtt": [
+      "ClinicVpc20F387A1",
+      "DefaultSecurityGroup"
+     ]
+    },
+    "Account": "501264525435"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/ClinicVpc/RestrictDefaultSecurityGroupCustomResource/Default"
+   }
+  },
+  "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ],
+    "Policies": [
+     {
+      "PolicyName": "Inline",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Action": [
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupEgress"
+         ],
+         "Resource": [
+          {
+           "Fn::Join": [
+            "",
+            [
+             "arn:aws:ec2:us-east-1:501264525435:security-group/",
+             {
+              "Fn::GetAtt": [
+               "ClinicVpc20F387A1",
+               "DefaultSecurityGroup"
+              ]
+             }
+            ]
+           ]
+          }
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Role"
+   }
+  },
+  "CustomVpcRestrictDefaultSGCustomResourceProviderHandlerDC833E5E": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-501264525435-us-east-1",
+     "S3Key": "02b51ab524e7bcf8f477de3e71e5f9a72e448301b26ba62e9e75a14f9c55a093.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "__entrypoint__.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x",
+    "Description": "Lambda function for removing all inbound/outbound rules from the VPC default security group"
+   },
+   "DependsOn": [
+    "CustomVpcRestrictDefaultSGCustomResourceProviderRole26592FE0"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/Custom::VpcRestrictDefaultSGCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.02b51ab524e7bcf8f477de3e71e5f9a72e448301b26ba62e9e75a14f9c55a093",
+    "aws:asset:property": "Code"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/+1WwW7bMAz9lupYqF6WYTnk5gZbESRrgyTooUEwMDLjqpElQ5KdeYb/fZAlJ9m6DRi2gw87WaL4Hh9pQtQwGo7eRoMrOJoblhxuBN9F9coCO1A4ms/1ITNRPcNqUxMQHAwZk2tCCUrYCZxhtVQWLFeSjK0usNnSyV7OsKKxc+5A95BhAFrQKdoZVu3e+7e+DRUqNVE9V+mdVkW+qYkIywu4RovSx3s3eu90MF3lztBROp9MlSAWSnDmbBotcBlidfQNRTaM6secbWpS5uwiRgZf4q9dohLsHVg8QtVZTLGTaCdK7nla6JD8pibyzOBd1lXuDItiJzgjlDCe6E9gDj5z+huE5iVY/BPI1CgBFpNXmC0le6GOc5Wai4o/LibU61q1LO5HlcAF7LjgtnpSsotS5myahLVjvhWKHU6Fyj3JNH+Qcygke/ZtQAnPy9HkB3cwhqdympejOEk0GvMgJxpDAUN+vVDRCkmS+9OvJ+MNuSbb3gjshwrfSr6B3GqpCotrdy+c7WdbbIxivCU4ObvFh+nCfc7FpqH9/3ln7kGYHtT872T0R0lPZPRHyX8ZvZPR3lBTaVFLPN0vfv6FXWwtsOcMpaUf/Zzc1ESjUYVmGIarC5WgsVyeqSmxGvZ7zoJPPJ+HcIGmoRyyqF4qgY5RCbx4YoAxRYbJbUXGNck1l4znIGLGVCHtdz4OH7NzRmE2rdWiQ3XvnE3d+AnVZjSVgks8nZ3G1y8Pt/5WFki93VlPgLVyJ694XpuTZGXBoqunCZJaYs/ZNHQZSksnhbEq67YtQ6vg5+cLrUqeoL4FgzQ2Bu3KQspl2lCpEoxezJtyOIiGg2hw9WI4v9GFtDzDaOm/3wC55aH15woAAA=="
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicNetworkStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "PublishOutputRefClinicVpc20F387A171D625A1": {
+   "Value": {
+    "Ref": "ClinicVpc20F387A1"
+   }
+  },
+  "PublishOutputRefClinicVpcprivatedataSubnet1Subnet9116044F95DEAD2C": {
+   "Value": {
+    "Ref": "ClinicVpcprivatedataSubnet1Subnet9116044F"
+   }
+  },
+  "PublishOutputRefClinicVpcprivatedataSubnet2Subnet00BE707CF3391E23": {
+   "Value": {
+    "Ref": "ClinicVpcprivatedataSubnet2Subnet00BE707C"
+   }
+  },
+  "PublishOutputRefClinicVpcpublicSubnet1Subnet97AABABA1058129E": {
+   "Value": {
+    "Ref": "ClinicVpcpublicSubnet1Subnet97AABABA"
+   }
+  },
+  "PublishOutputRefClinicVpcpublicSubnet2SubnetAC2509A98796C5B9": {
+   "Value": {
+    "Ref": "ClinicVpcpublicSubnet2SubnetAC2509A9"
+   }
+  },
+  "PublishOutputRefClinicVpcprivateappSubnet1SubnetB7126921FD164B83": {
+   "Value": {
+    "Ref": "ClinicVpcprivateappSubnet1SubnetB7126921"
+   }
+  },
+  "PublishOutputRefClinicVpcprivateappSubnet2SubnetF15306571C2EF1BE": {
+   "Value": {
+    "Ref": "ClinicVpcprivateappSubnet2SubnetF1530657"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

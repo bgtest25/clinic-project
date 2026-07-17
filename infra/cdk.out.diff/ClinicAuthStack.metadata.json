@@ -1,0 +1,178 @@
+{
+  "/ClinicAuthStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:24:14)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicAuthStack/ClinicianUserPool": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "userPoolName": "*",
+        "selfSignUpEnabled": false,
+        "signInAliases": {
+          "email": true
+        },
+        "mfa": "ON",
+        "mfaSecondFactor": {
+          "otp": true,
+          "sms": false
+        },
+        "passwordPolicy": {
+          "minLength": "*",
+          "requireLowercase": true,
+          "requireUppercase": true,
+          "requireDigits": true,
+          "requireSymbols": true
+        },
+        "accountRecovery": 2,
+        "removalPolicy": "retain"
+      }
+    }
+  ],
+  "/ClinicAuthStack/AdminGroup": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "AdminGroup"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicAuthStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\auth-stack.ts:30:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:24:14)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicAuthStack/ClinicianGroup": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicianGroup"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "new ClinicAuthStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\auth-stack.ts:35:5)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:24:14)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicAuthStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicAuthStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicAuthStack/ClinicianUserPool/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicianUserPoolF2F0447C"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new UserPool2 in aws-cdk-lib...",
+        "new ClinicAuthStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\auth-stack.ts:12:21)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:24:14)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicAuthStack/ClinicianUserPool/ApiClient": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "userPool": "*",
+        "authFlows": {
+          "userPassword": true,
+          "userSrp": true
+        },
+        "generateSecret": false
+      }
+    }
+  ],
+  "/ClinicAuthStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicAuthStack/Publish/Output{\"Ref\":\"ClinicianUserPoolF2F0447C\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicianUserPoolF2F0447C0A7D9CB8"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicAuthStack/Publish/Output{\"Ref\":\"ClinicianUserPoolApiClientD1CA90ED\"}": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "PublishOutputRefClinicianUserPoolApiClientD1CA90ED077DB030"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicAuthStack/ClinicianUserPool/ApiClient/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "ClinicianUserPoolApiClientD1CA90ED"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...WrappedClass.addClient in aws-cdk-lib...",
+        "new ClinicAuthStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\auth-stack.ts:40:41)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:24:14)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ]
+}

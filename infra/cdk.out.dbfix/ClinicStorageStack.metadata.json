@@ -1,0 +1,172 @@
+{
+  "/ClinicStorageStack": [
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:27:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicStorageStack/MediaKey": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "alias": "*",
+        "enableKeyRotation": true
+      }
+    }
+  ],
+  "/ClinicStorageStack/MediaBucket": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "bucketName": "*",
+        "encryption": "KMS",
+        "encryptionKey": "*",
+        "blockPublicAccess": "*",
+        "versioned": true,
+        "enforceSSL": true,
+        "lifecycleRules": [
+          {
+            "id": "*",
+            "prefix": "*"
+          }
+        ],
+        "removalPolicy": "retain"
+      }
+    },
+    {
+      "type": "aws:cdk:analytics:method",
+      "data": {
+        "addLifecycleRule": [
+          {
+            "id": "*",
+            "prefix": "*"
+          },
+          "*",
+          "*"
+        ]
+      }
+    }
+  ],
+  "/ClinicStorageStack/BootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "BootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicStorageStack/CheckBootstrapVersion": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CheckBootstrapVersion"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicStorageStack/MediaKey/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaKey78E57B5A"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Key2 in aws-cdk-lib...",
+        "new ClinicStorageStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\storage-stack.ts:12:22)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:27:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicStorageStack/MediaKey/Alias": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "aliasName": "*",
+        "targetKey": "*"
+      }
+    }
+  ],
+  "/ClinicStorageStack/MediaBucket/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaBucketBCBB02BA"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new ClinicStorageStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\storage-stack.ts:17:24)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:27:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicStorageStack/MediaBucket/Policy": [
+    {
+      "type": "aws:cdk:analytics:construct",
+      "data": {
+        "bucket": "*"
+      }
+    }
+  ],
+  "/ClinicStorageStack/CDKMetadata/Default": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "CDKMetadata"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...aws-cdk-lib, node internals...",
+        "(no user code in 10 frames, use --stack-trace-limit to capture more)"
+      ]
+    }
+  ],
+  "/ClinicStorageStack/MediaKey/Alias/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaKeyAlias3174C1C7"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Key2 in aws-cdk-lib...",
+        "new ClinicStorageStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\storage-stack.ts:12:22)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:27:1)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:47:2)",
+        "...node internals, tsx..."
+      ]
+    }
+  ],
+  "/ClinicStorageStack/MediaBucket/Policy/Resource": [
+    {
+      "type": "aws:cdk:logicalId",
+      "data": "MediaBucketPolicy68C27F6B"
+    },
+    {
+      "type": "aws:cdk:creationStack",
+      "data": [
+        "...new Bucket2 in aws-cdk-lib...",
+        "new ClinicStorageStack (C:\\Users\\barse\\Clinic Project\\infra\\lib\\storage-stack.ts:17:24)",
+        "<anonymous> (C:\\Users\\barse\\Clinic Project\\infra\\bin\\infra.ts:27:1)"
+      ]
+    }
+  ]
+}

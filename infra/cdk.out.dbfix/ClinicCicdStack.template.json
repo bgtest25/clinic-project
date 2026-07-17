@@ -1,0 +1,278 @@
+{
+ "Resources": {
+  "GithubOidcProviderD8241A88": {
+   "Type": "Custom::AWSCDKOpenIdConnectProvider",
+   "Properties": {
+    "ServiceToken": {
+     "Fn::GetAtt": [
+      "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderHandlerF2C543E0",
+      "Arn"
+     ]
+    },
+    "ClientIDList": [
+     "sts.amazonaws.com"
+    ],
+    "Url": "https://token.actions.githubusercontent.com",
+    "RejectUnauthorized": true,
+    "CodeHash": "c0d9f24649426c60a1bc01108070535a40353ae6cd8ceccb812969319b936e5d"
+   },
+   "UpdateReplacePolicy": "Delete",
+   "DeletionPolicy": "Delete",
+   "Metadata": {
+    "aws:cdk:path": "ClinicCicdStack/GithubOidcProvider/Resource/Default"
+   }
+  },
+  "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Version": "2012-10-17",
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "lambda.amazonaws.com"
+       }
+      }
+     ]
+    },
+    "ManagedPolicyArns": [
+     {
+      "Fn::Sub": "arn:${AWS::Partition}:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+     }
+    ],
+    "Policies": [
+     {
+      "PolicyName": "Inline",
+      "PolicyDocument": {
+       "Version": "2012-10-17",
+       "Statement": [
+        {
+         "Effect": "Allow",
+         "Resource": "*",
+         "Action": [
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:AddClientIDToOpenIDConnectProvider",
+          "iam:RemoveClientIDFromOpenIDConnectProvider"
+         ]
+        }
+       ]
+      }
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicCicdStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Role"
+   }
+  },
+  "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderHandlerF2C543E0": {
+   "Type": "AWS::Lambda::Function",
+   "Properties": {
+    "Code": {
+     "S3Bucket": "cdk-hnb659fds-assets-501264525435-us-east-1",
+     "S3Key": "c0d9f24649426c60a1bc01108070535a40353ae6cd8ceccb812969319b936e5d.zip"
+    },
+    "Timeout": 900,
+    "MemorySize": 128,
+    "Handler": "__entrypoint__.handler",
+    "Role": {
+     "Fn::GetAtt": [
+      "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65",
+      "Arn"
+     ]
+    },
+    "Runtime": "nodejs24.x"
+   },
+   "DependsOn": [
+    "CustomAWSCDKOpenIdConnectProviderCustomResourceProviderRole517FED65"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicCicdStack/Custom::AWSCDKOpenIdConnectProviderCustomResourceProvider/Handler",
+    "aws:asset:path": "asset.c0d9f24649426c60a1bc01108070535a40353ae6cd8ceccb812969319b936e5d",
+    "aws:asset:property": "Code"
+   }
+  },
+  "GithubActionsDeployRole3AEBE7B4": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRoleWithWebIdentity",
+       "Condition": {
+        "StringEquals": {
+         "token.actions.githubusercontent.com:aud": "sts.amazonaws.com"
+        },
+        "StringLike": {
+         "token.actions.githubusercontent.com:sub": "repo:bgtest25/clinic-project:ref:refs/heads/main"
+        }
+       },
+       "Effect": "Allow",
+       "Principal": {
+        "Federated": {
+         "Ref": "GithubOidcProviderD8241A88"
+        }
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "MaxSessionDuration": 3600,
+    "RoleName": "clinic-project-github-actions-deploy"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicCicdStack/GithubActionsDeployRole/Resource"
+   }
+  },
+  "GithubActionsDeployRoleDefaultPolicy656FD013": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Resource": [
+        "arn:aws:iam::501264525435:role/cdk-hnb659fds-deploy-role-501264525435-us-east-1",
+        "arn:aws:iam::501264525435:role/cdk-hnb659fds-file-publishing-role-501264525435-us-east-1",
+        "arn:aws:iam::501264525435:role/cdk-hnb659fds-image-publishing-role-501264525435-us-east-1",
+        "arn:aws:iam::501264525435:role/cdk-hnb659fds-lookup-role-501264525435-us-east-1"
+       ]
+      },
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:CompleteLayerUpload",
+        "ecr:GetDownloadUrlForLayer",
+        "ecr:InitiateLayerUpload",
+        "ecr:PutImage",
+        "ecr:UploadLayerPart"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetStackOutput": {
+         "StackName": "ClinicRegistryStack",
+         "Region": "us-east-1",
+         "OutputName": "PublishOutputFnGetAttApiRepositoryB8378B43Arn875FE3A0"
+        }
+       }
+      },
+      {
+       "Action": [
+        "ecr:GetAuthorizationToken",
+        "ecs:DescribeTaskDefinition",
+        "ecs:DescribeTasks"
+       ],
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": "ecs:RunTask",
+       "Condition": {
+        "ArnEquals": {
+         "ecs:cluster": {
+          "Fn::GetStackOutput": {
+           "StackName": "ClinicComputeStack",
+           "Region": "us-east-1",
+           "OutputName": "PublishOutputFnGetAttClusterEB0386A7Arn0CAA3DA3"
+          }
+         }
+        }
+       },
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetStackOutput": {
+         "StackName": "ClinicComputeStack",
+         "Region": "us-east-1",
+         "OutputName": "PublishOutputRefApiServiceTaskDefDF3191FBBA2E25D4"
+        }
+       }
+      },
+      {
+       "Action": "iam:PassRole",
+       "Effect": "Allow",
+       "Resource": [
+        {
+         "Fn::GetStackOutput": {
+          "StackName": "ClinicComputeStack",
+          "Region": "us-east-1",
+          "OutputName": "PublishOutputFnGetAttApiServiceTaskDefExecutionRole43B90DD6ArnCCE01173"
+         }
+        },
+        {
+         "Fn::GetStackOutput": {
+          "StackName": "ClinicComputeStack",
+          "Region": "us-east-1",
+          "OutputName": "PublishOutputFnGetAttApiServiceTaskDefTaskRole1014CB34ArnB3874740"
+         }
+        }
+       ]
+      },
+      {
+       "Action": "cloudformation:DescribeStacks",
+       "Effect": "Allow",
+       "Resource": "arn:aws:cloudformation:us-east-1:501264525435:stack/Clinic*/*"
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "GithubActionsDeployRoleDefaultPolicy656FD013",
+    "Roles": [
+     {
+      "Ref": "GithubActionsDeployRole3AEBE7B4"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicCicdStack/GithubActionsDeployRole/DefaultPolicy/Resource"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/+WTPW/CMBCGfwsekXHTDB3YgC5ZWkTYEKpc+0oN9hn5bCiK8t+rJEBLkSrGSp2se5/70Hsn5yJ/uBdZT+5poPRmYM2rqMoo1YbLPb0Y6UT1vAUs9MQjgorT4HdGQ1hULAXLhqzPOFPWAMZCUxvXSz7zFhYVC97Ck3RwTJNEyYEeH9iwYttgUJmttCOlfMJ4kdPUj1Q0HruOnDn5UQKR8fiYgvxGKia1nvupt0Yd2HBR1csv8TTjisYo1XuB1iCcGeuzG+DvfW+g/7NkySdv2JyVd3Kz0POu574hVye4lrUuo4zgACNdjP3Dcuu8M13zSaLo3QzIp6CgNdYu5ij84KfPNpYEfEQEsYxyZXBVc/QaxJrudnkm8kxkvTUZMwgJo3EgZt37CRDj+oveAwAA"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicCicdStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}

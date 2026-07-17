@@ -1,0 +1,783 @@
+{
+ "Resources": {
+  "ClusterEB0386A7": {
+   "Type": "AWS::ECS::Cluster",
+   "Properties": {
+    "ClusterName": "clinic-project-cluster"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/Cluster/Resource"
+   }
+  },
+  "ApiLogGroup1DEDFC07": {
+   "Type": "AWS::Logs::LogGroup",
+   "Properties": {
+    "LogGroupName": "/clinic-project/api",
+    "RetentionInDays": 365
+   },
+   "UpdateReplacePolicy": "Retain",
+   "DeletionPolicy": "Retain",
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiLogGroup/Resource"
+   }
+  },
+  "ApiServiceLB08B891CD": {
+   "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+   "Properties": {
+    "LoadBalancerAttributes": [
+     {
+      "Key": "deletion_protection.enabled",
+      "Value": "false"
+     }
+    ],
+    "Scheme": "internet-facing",
+    "SecurityGroups": [
+     {
+      "Fn::GetAtt": [
+       "ApiServiceLBSecurityGroup5C16BEF8",
+       "GroupId"
+      ]
+     }
+    ],
+    "Subnets": [
+     {
+      "Fn::GetStackOutput": {
+       "StackName": "ClinicNetworkStack",
+       "Region": "us-east-1",
+       "OutputName": "PublishOutputRefClinicVpcpublicSubnet1Subnet97AABABA1058129E"
+      }
+     },
+     {
+      "Fn::GetStackOutput": {
+       "StackName": "ClinicNetworkStack",
+       "Region": "us-east-1",
+       "OutputName": "PublishOutputRefClinicVpcpublicSubnet2SubnetAC2509A98796C5B9"
+      }
+     }
+    ],
+    "Type": "application"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/LB/Resource"
+   }
+  },
+  "ApiServiceLBSecurityGroup5C16BEF8": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "Automatically created Security Group for ELB ClinicComputeStackApiServiceLBE4305CCD",
+    "SecurityGroupIngress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow from anyone on port 80",
+      "FromPort": 80,
+      "IpProtocol": "tcp",
+      "ToPort": 80
+     }
+    ],
+    "VpcId": {
+     "Fn::GetStackOutput": {
+      "StackName": "ClinicNetworkStack",
+      "Region": "us-east-1",
+      "OutputName": "PublishOutputRefClinicVpc20F387A171D625A1"
+     }
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/LB/SecurityGroup/Resource"
+   }
+  },
+  "ApiServiceLBSecurityGrouptoClinicComputeStackApiServiceSecurityGroup6FA8734F300022C02D8F": {
+   "Type": "AWS::EC2::SecurityGroupEgress",
+   "Properties": {
+    "Description": "Load balancer to target",
+    "DestinationSecurityGroupId": {
+     "Fn::GetAtt": [
+      "ApiServiceSecurityGroup2592096B",
+      "GroupId"
+     ]
+    },
+    "FromPort": 3000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "ApiServiceLBSecurityGroup5C16BEF8",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "ToPort": 3000
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/LB/SecurityGroup/to ClinicComputeStackApiServiceSecurityGroup6FA8734F:3000"
+   }
+  },
+  "ApiServiceLBPublicListener1394DF3E": {
+   "Type": "AWS::ElasticLoadBalancingV2::Listener",
+   "Properties": {
+    "DefaultActions": [
+     {
+      "TargetGroupArn": {
+       "Ref": "ApiServiceLBPublicListenerECSGroup14A87FE9"
+      },
+      "Type": "forward"
+     }
+    ],
+    "LoadBalancerArn": {
+     "Ref": "ApiServiceLB08B891CD"
+    },
+    "Port": 80,
+    "Protocol": "HTTP"
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/LB/PublicListener/Resource"
+   }
+  },
+  "ApiServiceLBPublicListenerECSGroup14A87FE9": {
+   "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+   "Properties": {
+    "HealthCheckPath": "/health",
+    "Matcher": {
+     "HttpCode": "200"
+    },
+    "Port": 80,
+    "Protocol": "HTTP",
+    "TargetGroupAttributes": [
+     {
+      "Key": "stickiness.enabled",
+      "Value": "false"
+     }
+    ],
+    "TargetType": "ip",
+    "VpcId": {
+     "Fn::GetStackOutput": {
+      "StackName": "ClinicNetworkStack",
+      "Region": "us-east-1",
+      "OutputName": "PublishOutputRefClinicVpc20F387A171D625A1"
+     }
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/LB/PublicListener/ECSGroup/Resource"
+   }
+  },
+  "ApiServiceTaskDefTaskRole1014CB34": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/TaskDef/TaskRole/Resource"
+   }
+  },
+  "ApiServiceTaskDefDF3191FB": {
+   "Type": "AWS::ECS::TaskDefinition",
+   "Properties": {
+    "ContainerDefinitions": [
+     {
+      "Environment": [
+       {
+        "Name": "AWS_REGION",
+        "Value": "us-east-1"
+       },
+       {
+        "Name": "COGNITO_USER_POOL_ID",
+        "Value": {
+         "Fn::GetStackOutput": {
+          "StackName": "ClinicAuthStack",
+          "Region": "us-east-1",
+          "OutputName": "PublishOutputRefClinicianUserPoolF2F0447C0A7D9CB8"
+         }
+        }
+       },
+       {
+        "Name": "COGNITO_CLIENT_ID",
+        "Value": {
+         "Fn::GetStackOutput": {
+          "StackName": "ClinicAuthStack",
+          "Region": "us-east-1",
+          "OutputName": "PublishOutputRefClinicianUserPoolApiClientD1CA90ED077DB030"
+         }
+        }
+       }
+      ],
+      "Essential": true,
+      "Image": {
+       "Fn::Join": [
+        "",
+        [
+         {
+          "Fn::Select": [
+           4,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::GetStackOutput": {
+               "StackName": "ClinicRegistryStack",
+               "Region": "us-east-1",
+               "OutputName": "PublishOutputFnGetAttApiRepositoryB8378B43Arn875FE3A0"
+              }
+             }
+            ]
+           }
+          ]
+         },
+         ".dkr.ecr.",
+         {
+          "Fn::Select": [
+           3,
+           {
+            "Fn::Split": [
+             ":",
+             {
+              "Fn::GetStackOutput": {
+               "StackName": "ClinicRegistryStack",
+               "Region": "us-east-1",
+               "OutputName": "PublishOutputFnGetAttApiRepositoryB8378B43Arn875FE3A0"
+              }
+             }
+            ]
+           }
+          ]
+         },
+         ".",
+         {
+          "Ref": "AWS::URLSuffix"
+         },
+         "/",
+         {
+          "Fn::GetStackOutput": {
+           "StackName": "ClinicRegistryStack",
+           "Region": "us-east-1",
+           "OutputName": "PublishOutputRefApiRepositoryB8378B43D25321C9"
+          }
+         },
+         ":latest"
+        ]
+       ]
+      },
+      "LogConfiguration": {
+       "LogDriver": "awslogs",
+       "Options": {
+        "awslogs-group": {
+         "Ref": "ApiLogGroup1DEDFC07"
+        },
+        "awslogs-stream-prefix": "api",
+        "awslogs-region": "us-east-1"
+       }
+      },
+      "Name": "web",
+      "PortMappings": [
+       {
+        "ContainerPort": 3000,
+        "Protocol": "tcp"
+       }
+      ],
+      "Secrets": [
+       {
+        "Name": "DB_HOST",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetStackOutput": {
+             "StackName": "ClinicDatabaseStack",
+             "Region": "us-east-1",
+             "OutputName": "PublishOutputRefDatabaseSecretAttachment9A63A3D4D3DD6154"
+            }
+           },
+           ":host::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "DB_PORT",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetStackOutput": {
+             "StackName": "ClinicDatabaseStack",
+             "Region": "us-east-1",
+             "OutputName": "PublishOutputRefDatabaseSecretAttachment9A63A3D4D3DD6154"
+            }
+           },
+           ":port::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "DB_NAME",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetStackOutput": {
+             "StackName": "ClinicDatabaseStack",
+             "Region": "us-east-1",
+             "OutputName": "PublishOutputRefDatabaseSecretAttachment9A63A3D4D3DD6154"
+            }
+           },
+           ":dbname::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "DB_USERNAME",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetStackOutput": {
+             "StackName": "ClinicDatabaseStack",
+             "Region": "us-east-1",
+             "OutputName": "PublishOutputRefDatabaseSecretAttachment9A63A3D4D3DD6154"
+            }
+           },
+           ":username::"
+          ]
+         ]
+        }
+       },
+       {
+        "Name": "DB_PASSWORD",
+        "ValueFrom": {
+         "Fn::Join": [
+          "",
+          [
+           {
+            "Fn::GetStackOutput": {
+             "StackName": "ClinicDatabaseStack",
+             "Region": "us-east-1",
+             "OutputName": "PublishOutputRefDatabaseSecretAttachment9A63A3D4D3DD6154"
+            }
+           },
+           ":password::"
+          ]
+         ]
+        }
+       }
+      ]
+     }
+    ],
+    "Cpu": "256",
+    "ExecutionRoleArn": {
+     "Fn::GetAtt": [
+      "ApiServiceTaskDefExecutionRole43B90DD6",
+      "Arn"
+     ]
+    },
+    "Family": "ClinicComputeStackApiServiceTaskDef7D43DF1E",
+    "Memory": "512",
+    "NetworkMode": "awsvpc",
+    "RequiresCompatibilities": [
+     "FARGATE"
+    ],
+    "TaskRoleArn": {
+     "Fn::GetAtt": [
+      "ApiServiceTaskDefTaskRole1014CB34",
+      "Arn"
+     ]
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/TaskDef/Resource"
+   }
+  },
+  "ApiServiceTaskDefExecutionRole43B90DD6": {
+   "Type": "AWS::IAM::Role",
+   "Properties": {
+    "AssumeRolePolicyDocument": {
+     "Statement": [
+      {
+       "Action": "sts:AssumeRole",
+       "Effect": "Allow",
+       "Principal": {
+        "Service": "ecs-tasks.amazonaws.com"
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    }
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/TaskDef/ExecutionRole/Resource"
+   }
+  },
+  "ApiServiceTaskDefExecutionRoleDefaultPolicyDCB48050": {
+   "Type": "AWS::IAM::Policy",
+   "Properties": {
+    "PolicyDocument": {
+     "Statement": [
+      {
+       "Action": [
+        "ecr:BatchCheckLayerAvailability",
+        "ecr:BatchGetImage",
+        "ecr:GetDownloadUrlForLayer"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetStackOutput": {
+         "StackName": "ClinicRegistryStack",
+         "Region": "us-east-1",
+         "OutputName": "PublishOutputFnGetAttApiRepositoryB8378B43Arn875FE3A0"
+        }
+       }
+      },
+      {
+       "Action": "ecr:GetAuthorizationToken",
+       "Effect": "Allow",
+       "Resource": "*"
+      },
+      {
+       "Action": [
+        "logs:CreateLogStream",
+        "logs:PutLogEvents"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetAtt": [
+         "ApiLogGroup1DEDFC07",
+         "Arn"
+        ]
+       }
+      },
+      {
+       "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue"
+       ],
+       "Effect": "Allow",
+       "Resource": {
+        "Fn::GetStackOutput": {
+         "StackName": "ClinicDatabaseStack",
+         "Region": "us-east-1",
+         "OutputName": "PublishOutputRefDatabaseSecretAttachment9A63A3D4D3DD6154"
+        }
+       }
+      }
+     ],
+     "Version": "2012-10-17"
+    },
+    "PolicyName": "ApiServiceTaskDefExecutionRoleDefaultPolicyDCB48050",
+    "Roles": [
+     {
+      "Ref": "ApiServiceTaskDefExecutionRole43B90DD6"
+     }
+    ]
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/TaskDef/ExecutionRole/DefaultPolicy/Resource"
+   }
+  },
+  "ApiService199661B5": {
+   "Type": "AWS::ECS::Service",
+   "Properties": {
+    "Cluster": {
+     "Ref": "ClusterEB0386A7"
+    },
+    "DeploymentConfiguration": {
+     "DeploymentCircuitBreaker": {
+      "Enable": true,
+      "Rollback": true
+     },
+     "MaximumPercent": 200,
+     "MinimumHealthyPercent": 100
+    },
+    "DesiredCount": 1,
+    "EnableECSManagedTags": false,
+    "HealthCheckGracePeriodSeconds": 60,
+    "LaunchType": "FARGATE",
+    "LoadBalancers": [
+     {
+      "ContainerName": "web",
+      "ContainerPort": 3000,
+      "TargetGroupArn": {
+       "Ref": "ApiServiceLBPublicListenerECSGroup14A87FE9"
+      }
+     }
+    ],
+    "NetworkConfiguration": {
+     "AwsvpcConfiguration": {
+      "AssignPublicIp": "DISABLED",
+      "SecurityGroups": [
+       {
+        "Fn::GetAtt": [
+         "ApiServiceSecurityGroup2592096B",
+         "GroupId"
+        ]
+       }
+      ],
+      "Subnets": [
+       {
+        "Fn::GetStackOutput": {
+         "StackName": "ClinicNetworkStack",
+         "Region": "us-east-1",
+         "OutputName": "PublishOutputRefClinicVpcprivateappSubnet1SubnetB7126921FD164B83"
+        }
+       },
+       {
+        "Fn::GetStackOutput": {
+         "StackName": "ClinicNetworkStack",
+         "Region": "us-east-1",
+         "OutputName": "PublishOutputRefClinicVpcprivateappSubnet2SubnetF15306571C2EF1BE"
+        }
+       }
+      ]
+     }
+    },
+    "TaskDefinition": {
+     "Ref": "ApiServiceTaskDefDF3191FB"
+    }
+   },
+   "DependsOn": [
+    "ApiServiceLBPublicListenerECSGroup14A87FE9",
+    "ApiServiceLBPublicListener1394DF3E",
+    "ApiServiceTaskDefTaskRole1014CB34"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/Service/Service"
+   }
+  },
+  "ApiServiceSecurityGroup2592096B": {
+   "Type": "AWS::EC2::SecurityGroup",
+   "Properties": {
+    "GroupDescription": "ClinicComputeStack/ApiService/Service/SecurityGroup",
+    "SecurityGroupEgress": [
+     {
+      "CidrIp": "0.0.0.0/0",
+      "Description": "Allow all outbound traffic by default",
+      "IpProtocol": "-1"
+     }
+    ],
+    "VpcId": {
+     "Fn::GetStackOutput": {
+      "StackName": "ClinicNetworkStack",
+      "Region": "us-east-1",
+      "OutputName": "PublishOutputRefClinicVpc20F387A171D625A1"
+     }
+    }
+   },
+   "DependsOn": [
+    "ApiServiceTaskDefTaskRole1014CB34"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/Service/SecurityGroup/Resource"
+   }
+  },
+  "ApiServiceSecurityGroupfromClinicComputeStackApiServiceLBSecurityGroupA7838BA4300024B4E7DF": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Load balancer to target",
+    "FromPort": 3000,
+    "GroupId": {
+     "Fn::GetAtt": [
+      "ApiServiceSecurityGroup2592096B",
+      "GroupId"
+     ]
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "ApiServiceLBSecurityGroup5C16BEF8",
+      "GroupId"
+     ]
+    },
+    "ToPort": 3000
+   },
+   "DependsOn": [
+    "ApiServiceTaskDefTaskRole1014CB34"
+   ],
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/ApiService/Service/SecurityGroup/from ClinicComputeStackApiServiceLBSecurityGroupA7838BA4:3000"
+   }
+  },
+  "DbIngressFromApp": {
+   "Type": "AWS::EC2::SecurityGroupIngress",
+   "Properties": {
+    "Description": "Allow ECS app tier to reach Postgres",
+    "FromPort": 5432,
+    "GroupId": {
+     "Fn::GetStackOutput": {
+      "StackName": "ClinicDatabaseStack",
+      "Region": "us-east-1",
+      "OutputName": "PublishOutputFnGetAttDatabaseSecurityGroup7319C0F6GroupId3AE3795A"
+     }
+    },
+    "IpProtocol": "tcp",
+    "SourceSecurityGroupId": {
+     "Fn::GetAtt": [
+      "ApiServiceSecurityGroup2592096B",
+      "GroupId"
+     ]
+    },
+    "ToPort": 5432
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/DbIngressFromApp"
+   }
+  },
+  "CDKMetadata": {
+   "Type": "AWS::CDK::Metadata",
+   "Properties": {
+    "Analytics": "v2:deflate64:H4sIAAAAAAAA/9VTTW8aMRD9LfGxMi6lag7cCP0QUtREwG0VRYM9UAdjb/0BQtb+98r2LiwiSque2gNi/d6855m3syM2uv3AhjdwcAMutgMlVywuPPAthYN7jsgdi1MVnEdbRbKvORmTd4QSXrDvsMOMNE90utZtJf0KdgMel+C2n3EttfTS6CoL/+yX3S7ldGq0B6nR9rD2ogXaveRYdcr23FBlNo7Fe7P5Zk2oq0hU+3hqnBKLHnVyI+OPt5/SeWf2oB6NkvxIxokHqdsJO6uGInfPNXiPVjs2qWslOSSXewPiDhRojuKyPYoKnJdcGRCrXCH1Zj9i8XW1rfph9AnaF0jnUZ+LLxLsyL5gCXaDPg9RQj4d00wjFhfIg5X+2EV2fukCHbeyLlllBJQyh4lSD8GvTNCCjNegHDY0EhBipjcWnZsHhWRcRcJBz7SSGgvibUBKuNEaefJ0rWnQ8mfAmSiLRWOTZ8rGT63zl75xYtuiZJlruqZf7aQnaF3brekNfgWUK6/g1rmhEnYszo3CKhJwLuxQ3B3JOJLaSs1lDWrCuQnad9HlmiSY8FOiTe73r9WUWKPw/FGW4ZfmsTPplrqKTYnSe+A/yks5cWl7fk++7fu/sXkBUpy0wGVH2giWJjFXyVzDQiw8eNyh9u7i2n8YzpOXoZsmPT8EXwffUG0Eshf3fj8astGQDW9enJQDG7SXO2Tz8v8L4s2PhkEGAAA="
+   },
+   "Metadata": {
+    "aws:cdk:path": "ClinicComputeStack/CDKMetadata/Default"
+   }
+  }
+ },
+ "Outputs": {
+  "ApiServiceLoadBalancerDNSBF9EB7FC": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiServiceLB08B891CD",
+     "DNSName"
+    ]
+   }
+  },
+  "ApiServiceServiceURL2EB28DB2": {
+   "Value": {
+    "Fn::Join": [
+     "",
+     [
+      "http://",
+      {
+       "Fn::GetAtt": [
+        "ApiServiceLB08B891CD",
+        "DNSName"
+       ]
+      }
+     ]
+    ]
+   }
+  },
+  "ClusterName": {
+   "Value": {
+    "Ref": "ClusterEB0386A7"
+   }
+  },
+  "ServiceName": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiService199661B5",
+     "Name"
+    ]
+   }
+  },
+  "TaskDefinitionFamily": {
+   "Value": "ClinicComputeStackApiServiceTaskDef7D43DF1E"
+  },
+  "AppSecurityGroupId": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiServiceSecurityGroup2592096B",
+     "GroupId"
+    ]
+   }
+  },
+  "AppSubnetIds": {
+   "Value": {
+    "Fn::Join": [
+     ",",
+     [
+      {
+       "Fn::GetStackOutput": {
+        "StackName": "ClinicNetworkStack",
+        "Region": "us-east-1",
+        "OutputName": "PublishOutputRefClinicVpcprivateappSubnet1SubnetB7126921FD164B83"
+       }
+      },
+      {
+       "Fn::GetStackOutput": {
+        "StackName": "ClinicNetworkStack",
+        "Region": "us-east-1",
+        "OutputName": "PublishOutputRefClinicVpcprivateappSubnet2SubnetF15306571C2EF1BE"
+       }
+      }
+     ]
+    ]
+   }
+  },
+  "PublishOutputFnGetAttClusterEB0386A7Arn0CAA3DA3": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ClusterEB0386A7",
+     "Arn"
+    ]
+   }
+  },
+  "PublishOutputRefApiServiceTaskDefDF3191FBBA2E25D4": {
+   "Value": {
+    "Ref": "ApiServiceTaskDefDF3191FB"
+   }
+  },
+  "PublishOutputFnGetAttApiServiceTaskDefTaskRole1014CB34ArnB3874740": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiServiceTaskDefTaskRole1014CB34",
+     "Arn"
+    ]
+   }
+  },
+  "PublishOutputFnGetAttApiServiceTaskDefExecutionRole43B90DD6ArnCCE01173": {
+   "Value": {
+    "Fn::GetAtt": [
+     "ApiServiceTaskDefExecutionRole43B90DD6",
+     "Arn"
+    ]
+   }
+  }
+ },
+ "Parameters": {
+  "BootstrapVersion": {
+   "Type": "AWS::SSM::Parameter::Value<String>",
+   "Default": "/cdk-bootstrap/hnb659fds/version",
+   "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]"
+  }
+ },
+ "Rules": {
+  "CheckBootstrapVersion": {
+   "Assertions": [
+    {
+     "Assert": {
+      "Fn::Not": [
+       {
+        "Fn::Contains": [
+         [
+          "1",
+          "2",
+          "3",
+          "4",
+          "5"
+         ],
+         {
+          "Ref": "BootstrapVersion"
+         }
+        ]
+       }
+      ]
+     },
+     "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI."
+    }
+   ]
+  }
+ }
+}
