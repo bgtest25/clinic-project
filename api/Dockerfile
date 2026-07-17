@@ -17,6 +17,7 @@ ENV NODE_ENV=production
 COPY --from=build /repo/node_modules ./node_modules
 COPY --from=build /repo/api/dist ./api/dist
 COPY --from=build /repo/api/prisma ./api/prisma
+COPY --from=build /repo/api/prisma.config.ts ./api/prisma.config.ts
 COPY --from=build /repo/api/package.json ./api/package.json
 
 EXPOSE 3000

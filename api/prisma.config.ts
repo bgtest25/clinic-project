@@ -3,12 +3,27 @@
 import "dotenv/config";
 import { defineConfig } from "prisma/config";
 
+// Mirrors PrismaService's resolver (src/prisma/prisma.service.ts) — duplicated
+// rather than shared, since this file is loaded standalone by the `prisma` CLI
+// (outside the compiled src/ build), while PrismaService is bundled into dist/.
+function resolveDatabaseUrl(): string {
+  if (process.env.DATABASE_URL) return process.env.DATABASE_URL;
+
+  const { DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD } = process.env;
+  if (!DB_HOST || !DB_PORT || !DB_NAME || !DB_USERNAME || !DB_PASSWORD) {
+    throw new Error(
+      "No DATABASE_URL and incomplete DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD to build one from",
+    );
+  }
+  return `postgresql://${DB_USERNAME}:${encodeURIComponent(DB_PASSWORD)}@${DB_HOST}:${DB_PORT}/${DB_NAME}?schema=public`;
+}
+
 export default defineConfig({
   schema: "prisma/schema.prisma",
   migrations: {
     path: "prisma/migrations",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    url: resolveDatabaseUrl(),
   },
 });
