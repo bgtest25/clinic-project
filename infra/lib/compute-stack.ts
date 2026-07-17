@@ -6,7 +6,9 @@ import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
+import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 
 export interface ClinicComputeStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -16,6 +18,8 @@ export interface ClinicComputeStackProps extends cdk.StackProps {
   apiImageTag: string;
   userPool: cognito.IUserPool;
   userPoolClient: cognito.IUserPoolClient;
+  mediaBucket: s3.Bucket;
+  pipelineStateMachine: sfn.StateMachine;
 }
 
 export class ClinicComputeStack extends cdk.Stack {
@@ -25,7 +29,17 @@ export class ClinicComputeStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: ClinicComputeStackProps) {
     super(scope, id, props);
-    const { vpc, dbSecurityGroup, dbSecret, apiRepository, apiImageTag, userPool, userPoolClient } = props;
+    const {
+      vpc,
+      dbSecurityGroup,
+      dbSecret,
+      apiRepository,
+      apiImageTag,
+      userPool,
+      userPoolClient,
+      mediaBucket,
+      pipelineStateMachine,
+    } = props;
 
     this.cluster = new ecs.Cluster(this, 'Cluster', {
       vpc,
@@ -59,6 +73,8 @@ export class ClinicComputeStack extends cdk.Stack {
           AWS_REGION: this.region,
           COGNITO_USER_POOL_ID: userPool.userPoolId,
           COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
+          MEDIA_BUCKET_NAME: mediaBucket.bucketName,
+          PIPELINE_STATE_MACHINE_ARN: pipelineStateMachine.stateMachineArn,
         },
         secrets: {
           DB_HOST: ecs.Secret.fromSecretsManager(dbSecret, 'host'),
@@ -71,6 +87,11 @@ export class ClinicComputeStack extends cdk.Stack {
     });
 
     this.taskDefinition = this.service.taskDefinition;
+
+    // Needed for presigned upload URLs to be valid (SigV4 signing uses the task
+    // role's own credentials) and to kick off the AI pipeline after upload.
+    mediaBucket.grantReadWrite(this.taskDefinition.taskRole);
+    pipelineStateMachine.grantStartExecution(this.taskDefinition.taskRole);
 
     this.service.targetGroup.configureHealthCheck({
       path: '/health',

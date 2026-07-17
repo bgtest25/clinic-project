@@ -10,15 +10,19 @@
   "devDependencies": {
     "@swc/core": "^1.15.0",
     "@swc/jest": "^0.2.39",
+    "@types/aws-lambda": "^8.10.162",
     "@types/jest": "^30",
     "@types/node": "^24.10.1",
-    "jest": "^30",
+    "@types/pg": "^8.20.0",
     "aws-cdk": "2.1132.0",
+    "jest": "^30",
     "tsx": "^4.23.0",
     "typescript": "^5.7.3"
   },
   "dependencies": {
+    "@aws-sdk/client-bedrock-runtime": "^3.1090.0",
     "aws-cdk-lib": "^2.261.0",
-    "constructs": "^10.5.0"
+    "constructs": "^10.5.0",
+    "pg": "^8.22.0"
   }
 }

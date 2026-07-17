@@ -1,6 +1,5 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
-import * as kms from 'aws-cdk-lib/aws-kms';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
 export class ClinicStorageStack extends cdk.Stack {
@@ -9,15 +8,15 @@ export class ClinicStorageStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    const mediaKey = new kms.Key(this, 'MediaKey', {
-      alias: 'clinic-project/media',
-      enableKeyRotation: true,
-    });
-
+    // SSE-S3, not a customer-managed KMS key: this bucket is read/written by both
+    // ComputeStack's ECS task role (presigned upload URLs) and the AI pipeline
+    // Lambda's role, in two different stacks. A customer key's resource policy
+    // would need to reference both, in both directions — the same cross-stack
+    // cycle already hit and fixed for the RDS secret in Phase 1. SSE-S3 still
+    // encrypts at rest; consumers just need a plain IAM grant, no KMS policy edit.
     this.mediaBucket = new s3.Bucket(this, 'MediaBucket', {
       bucketName: `clinic-project-media-${this.account}`,
-      encryption: s3.BucketEncryption.KMS,
-      encryptionKey: mediaKey,
+      encryption: s3.BucketEncryption.S3_MANAGED,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
       enforceSSL: true,

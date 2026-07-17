@@ -5,6 +5,7 @@ import { ClinicDatabaseStack } from '../lib/database-stack';
 import { ClinicStorageStack } from '../lib/storage-stack';
 import { ClinicAuthStack } from '../lib/auth-stack';
 import { ClinicRegistryStack } from '../lib/registry-stack';
+import { ClinicAiPipelineStack } from '../lib/ai-pipeline-stack';
 import { ClinicComputeStack } from '../lib/compute-stack';
 import { ClinicCicdStack } from '../lib/cicd-stack';
 
@@ -18,13 +19,22 @@ const env = {
 // Passed by the GitHub Actions workflow at deploy time (`-c apiImageTag=<git-sha>`);
 // defaults to 'latest' for local/manual synth.
 const apiImageTag = app.node.tryGetContext('apiImageTag') ?? 'latest';
+const bedrockModelId = app.node.tryGetContext('bedrockModelId') ?? 'anthropic.claude-sonnet-5';
 
 const network = new ClinicNetworkStack(app, 'ClinicNetworkStack', { env });
 const database = new ClinicDatabaseStack(app, 'ClinicDatabaseStack', { env, vpc: network.vpc });
 const auth = new ClinicAuthStack(app, 'ClinicAuthStack', { env });
 const registry = new ClinicRegistryStack(app, 'ClinicRegistryStack', { env });
+const storage = new ClinicStorageStack(app, 'ClinicStorageStack', { env });
 
-new ClinicStorageStack(app, 'ClinicStorageStack', { env });
+const aiPipeline = new ClinicAiPipelineStack(app, 'ClinicAiPipelineStack', {
+  env,
+  vpc: network.vpc,
+  mediaBucket: storage.mediaBucket,
+  dbSecurityGroup: database.dbSecurityGroup,
+  dbSecret: database.instance.secret!,
+  bedrockModelId,
+});
 
 const compute = new ClinicComputeStack(app, 'ClinicComputeStack', {
   env,
@@ -35,6 +45,8 @@ const compute = new ClinicComputeStack(app, 'ClinicComputeStack', {
   apiImageTag,
   userPool: auth.userPool,
   userPoolClient: auth.userPoolClient,
+  mediaBucket: storage.mediaBucket,
+  pipelineStateMachine: aiPipeline.stateMachine,
 });
 
 new ClinicCicdStack(app, 'ClinicCicdStack', {
