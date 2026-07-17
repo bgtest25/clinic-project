@@ -28,7 +28,14 @@ export class ClinicCicdStack extends cdk.Stack {
       roleName: 'clinic-project-github-actions-deploy',
       assumedBy: new iam.WebIdentityPrincipal(provider.openIdConnectProviderArn, {
         StringEquals: { 'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com' },
-        StringLike: { 'token.actions.githubusercontent.com:sub': `repo:${githubOrg}/${githubRepo}:ref:refs/heads/main` },
+        // Wildcarded around org/repo: GitHub's actual sub claim appends immutable
+        // numeric IDs (repo:org@12345/repo@67890:ref:...), not the classic
+        // repo:org/repo:ref:... form — confirmed via the CloudTrail-logged principalId
+        // on a real denied AssumeRoleWithWebIdentity call. This still requires an
+        // exact match on org/repo name prefix and the branch ref.
+        StringLike: {
+          'token.actions.githubusercontent.com:sub': `repo:${githubOrg}*/${githubRepo}*:ref:refs/heads/main`,
+        },
       }),
       maxSessionDuration: cdk.Duration.hours(1),
     });
