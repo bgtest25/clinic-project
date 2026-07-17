@@ -80,6 +80,36 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       }),
     );
 
+    const transcriptionFailed = new sfn.Fail(this, 'TranscriptionFailed', {
+      cause: 'Transcribe Medical job failed',
+    });
+
+    // Reused for both failure entry points below: a Transcribe job that reports
+    // TranscriptionJobStatus=FAILED (a normal outcome, not an exception), and an
+    // actual exception from the Transcribe API calls (throttling exhausted,
+    // invalid input, etc.) caught via .addCatch(). The success-path Lambda
+    // (ProcessTranscript) marks failure on its own already — see its try/catch —
+    // so it doesn't need this same treatment.
+    const markFailedFromJobStatus = new tasks.LambdaInvoke(this, 'MarkFailedFromJobStatus', {
+      lambdaFunction: processTranscriptFn,
+      payload: sfn.TaskInput.fromObject({
+        mode: 'markFailed',
+        encounterId: sfn.JsonPath.stringAt('$.encounterId'),
+        reason: sfn.JsonPath.stringAt('$.transcriptionStatus.MedicalTranscriptionJob.FailureReason'),
+      }),
+      resultPath: sfn.JsonPath.DISCARD,
+    }).next(transcriptionFailed);
+
+    const markFailedFromException = new tasks.LambdaInvoke(this, 'MarkFailedFromException', {
+      lambdaFunction: processTranscriptFn,
+      payload: sfn.TaskInput.fromObject({
+        mode: 'markFailed',
+        encounterId: sfn.JsonPath.stringAt('$.encounterId'),
+        reason: sfn.JsonPath.stringAt('$.errorInfo.Cause'),
+      }),
+      resultPath: sfn.JsonPath.DISCARD,
+    }).next(transcriptionFailed);
+
     const startTranscription = new tasks.CallAwsService(this, 'StartMedicalTranscription', {
       service: 'transcribe',
       action: 'startMedicalTranscriptionJob',
@@ -101,6 +131,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       },
       resultPath: sfn.JsonPath.DISCARD,
     });
+    startTranscription.addCatch(markFailedFromException, { resultPath: '$.errorInfo' });
 
     const waitForTranscription = new sfn.Wait(this, 'WaitForTranscription', {
       time: sfn.WaitTime.duration(cdk.Duration.seconds(30)),
@@ -115,6 +146,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       },
       resultPath: '$.transcriptionStatus',
     });
+    getTranscriptionStatus.addCatch(markFailedFromException, { resultPath: '$.errorInfo' });
 
     const processTranscriptTask = new tasks.LambdaInvoke(this, 'ProcessTranscript', {
       lambdaFunction: processTranscriptFn,
@@ -126,10 +158,6 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       resultPath: '$.processResult',
     });
 
-    const transcriptionFailed = new sfn.Fail(this, 'TranscriptionFailed', {
-      cause: 'Transcribe Medical job failed',
-    });
-
     waitForTranscription.next(getTranscriptionStatus);
 
     const checkTranscriptionStatus = new sfn.Choice(this, 'IsTranscriptionComplete')
@@ -139,7 +167,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       )
       .when(
         sfn.Condition.stringEquals('$.transcriptionStatus.MedicalTranscriptionJob.TranscriptionJobStatus', 'FAILED'),
-        transcriptionFailed,
+        markFailedFromJobStatus,
       )
       .otherwise(waitForTranscription);
 

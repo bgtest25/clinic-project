@@ -6,11 +6,20 @@ import { randomUUID } from 'crypto';
 const s3 = new S3Client({});
 const bedrock = new BedrockRuntimeClient({});
 
-interface PipelineEvent {
+interface ProcessEvent {
+  mode?: 'process';
   encounterId: string;
   bucket: string;
   transcriptKey: string;
 }
+
+interface MarkFailedEvent {
+  mode: 'markFailed';
+  encounterId: string;
+  reason: string;
+}
+
+type PipelineEvent = ProcessEvent | MarkFailedEvent;
 
 const SOAP_SYSTEM_PROMPT =
   'You are a clinical documentation assistant. You will be given a raw transcript of a ' +
@@ -21,6 +30,23 @@ const SOAP_SYSTEM_PROMPT =
   "actually present or reasonably inferable from the transcript — never invent vitals, exam " +
   'findings, or history that was not mentioned. If a section has no information, use an empty ' +
   'string for that field. Respond with ONLY the JSON object, no other text.';
+
+function resolveDatabaseConfig() {
+  const { DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD } = process.env;
+  if (!DB_HOST || !DB_PORT || !DB_NAME || !DB_USERNAME || !DB_PASSWORD) {
+    throw new Error('Missing DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD');
+  }
+  return {
+    host: DB_HOST,
+    port: Number(DB_PORT),
+    database: DB_NAME,
+    user: DB_USERNAME,
+    password: DB_PASSWORD,
+    // Same rationale as the API's PrismaService: RDS enforces TLS, this
+    // connection never leaves the private isolated subnet.
+    ssl: { rejectUnauthorized: false },
+  };
+}
 
 async function fetchTranscriptText(bucket: string, key: string): Promise<string> {
   const res = await s3.send(new GetObjectCommand({ Bucket: bucket, Key: key }));
@@ -62,24 +88,24 @@ async function generateSoapNote(transcriptText: string) {
   };
 }
 
-function resolveDatabaseConfig() {
-  const { DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD } = process.env;
-  if (!DB_HOST || !DB_PORT || !DB_NAME || !DB_USERNAME || !DB_PASSWORD) {
-    throw new Error('Missing DB_HOST/DB_PORT/DB_NAME/DB_USERNAME/DB_PASSWORD');
+// Best-effort: opens its own connection so it works whether it's called from
+// the markFailed path (no other DB activity this invocation) or from the
+// catch block of the main flow (where the primary connection may itself be
+// the thing that broke).
+async function markEncounterFailed(encounterId: string, reason: string) {
+  const client = new Client(resolveDatabaseConfig());
+  await client.connect();
+  try {
+    await client.query(
+      `UPDATE "encounters" SET "status" = 'FAILED', "processingError" = $2, "updatedAt" = now() WHERE "id" = $1`,
+      [encounterId, reason.slice(0, 2000)],
+    );
+  } finally {
+    await client.end();
   }
-  return {
-    host: DB_HOST,
-    port: Number(DB_PORT),
-    database: DB_NAME,
-    user: DB_USERNAME,
-    password: DB_PASSWORD,
-    // Same rationale as the API's PrismaService: RDS enforces TLS, this
-    // connection never leaves the private isolated subnet.
-    ssl: { rejectUnauthorized: false },
-  };
 }
 
-export const handler = async (event: PipelineEvent) => {
+async function processTranscript(event: ProcessEvent) {
   const { encounterId, bucket, transcriptKey } = event;
 
   const transcriptText = await fetchTranscriptText(bucket, transcriptKey);
@@ -121,4 +147,21 @@ export const handler = async (event: PipelineEvent) => {
   }
 
   return { encounterId, status: 'IN_REVIEW' };
+}
+
+export const handler = async (event: PipelineEvent) => {
+  if (event.mode === 'markFailed') {
+    await markEncounterFailed(event.encounterId, event.reason);
+    return { encounterId: event.encounterId, status: 'FAILED' };
+  }
+
+  try {
+    return await processTranscript(event);
+  } catch (err) {
+    const reason = err instanceof Error ? err.message : String(err);
+    // Best-effort — if this itself fails (e.g. the DB is the thing that's down),
+    // the original error still propagates below so the execution shows FAILED.
+    await markEncounterFailed(event.encounterId, reason).catch(() => {});
+    throw err;
+  }
 };

@@ -20,6 +20,7 @@ enum EncounterStatus {
   DRAFTING
   IN_REVIEW
   SIGNED
+  FAILED
 }
 
 enum NoteStatus {
@@ -84,6 +85,9 @@ model Encounter {
   status            EncounterStatus @default(RECORDING)
   consentCapturedAt DateTime?
   consentCapturedBy String?
+  // Set only when status = FAILED, so staff know why without digging into
+  // CloudWatch/Step Functions — the full error detail still lives there.
+  processingError   String?
   createdAt         DateTime        @default(now())
   updatedAt         DateTime        @updatedAt
 

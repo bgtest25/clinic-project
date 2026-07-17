@@ -59,10 +59,13 @@ export class ClinicCicdStack extends cdk.Stack {
     );
 
     // For the one-off `prisma migrate deploy` task run directly via the AWS CLI (not through CDK).
+    // Wildcarded on revision number, not `taskDefinition.taskDefinitionArn` — that
+    // token snapshots whatever revision existed when THIS stack last deployed, and
+    // every ComputeStack deploy creates a new revision, silently going stale.
     this.deployRole.addToPolicy(
       new iam.PolicyStatement({
         actions: ['ecs:RunTask'],
-        resources: [taskDefinition.taskDefinitionArn],
+        resources: [`arn:aws:ecs:${this.region}:${this.account}:task-definition/${taskDefinition.family}:*`],
         conditions: { ArnEquals: { 'ecs:cluster': cluster.clusterArn } },
       }),
     );
