@@ -75,11 +75,13 @@ jobs:
           # against the family name here would silently run against the OLD
           # image and its OLD bundled migrations, reporting false success
           # while never touching the schema this deploy actually needs.
-          current_def=$(aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query "taskDefinition")
-          new_def=$(echo "$current_def" | jq --arg IMAGE "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
+          aws ecs describe-task-definition --task-definition "$TASK_FAMILY" --query "taskDefinition" \
+            > current-task-def.json
+          jq --arg IMAGE "$REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" \
             '.containerDefinitions[0].image = $IMAGE
-             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
-          migration_task_def_arn=$(echo "$new_def" | aws ecs register-task-definition --cli-input-json file:///dev/stdin \
+             | del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)' \
+            current-task-def.json > migration-task-def.json
+          migration_task_def_arn=$(aws ecs register-task-definition --cli-input-json file://migration-task-def.json \
             --query "taskDefinition.taskDefinitionArn" --output text)
           echo "Registered migration task def: $migration_task_def_arn"
 
