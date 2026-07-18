@@ -6,10 +6,12 @@ export function NewEncounter({
   token,
   me,
   onCreated,
+  onBack,
 }: {
   token: string;
   me: Me;
   onCreated: (encounter: Encounter) => void;
+  onBack: () => void;
 }) {
   const [name, setName] = useState('');
   const [dob, setDob] = useState('');
@@ -39,6 +41,9 @@ export function NewEncounter({
 
   return (
     <form onSubmit={handleSubmit} className="panel">
+      <button type="button" className="link-button back-link" onClick={onBack}>
+        ← Back to visits
+      </button>
       <h1>Start a new visit</h1>
       <label>
         Patient name

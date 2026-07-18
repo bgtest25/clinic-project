@@ -19,6 +19,7 @@ export class EncountersService {
   findAll(clinicianId?: string) {
     return this.prisma.encounter.findMany({
       where: clinicianId ? { clinicianId } : undefined,
+      include: { patient: true },
       orderBy: { visitDate: 'desc' },
     });
   }

@@ -2,15 +2,18 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { apiFetch } from './api/client';
-import type { Encounter, Me } from './api/types';
+import type { Me } from './api/types';
+import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
 import { NewEncounter } from './pages/NewEncounter';
 import { Recording } from './pages/Recording';
 
+type View = { mode: 'dashboard' } | { mode: 'new' } | { mode: 'encounter'; id: string };
+
 function AuthenticatedApp({ token }: { token: string }) {
   const { logout } = useAuth();
   const [me, setMe] = useState<Me | null>(null);
-  const [encounter, setEncounter] = useState<Encounter | null>(null);
+  const [view, setView] = useState<View>({ mode: 'dashboard' });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -36,10 +39,24 @@ function AuthenticatedApp({ token }: { token: string }) {
         <span>{me.name}</span>
         <button onClick={logout}>Sign out</button>
       </header>
-      {!encounter ? (
-        <NewEncounter token={token} me={me} onCreated={setEncounter} />
-      ) : (
-        <Recording token={token} encounter={encounter} />
+      {view.mode === 'dashboard' && (
+        <Dashboard
+          token={token}
+          me={me}
+          onNew={() => setView({ mode: 'new' })}
+          onSelect={(id) => setView({ mode: 'encounter', id })}
+        />
+      )}
+      {view.mode === 'new' && (
+        <NewEncounter
+          token={token}
+          me={me}
+          onBack={() => setView({ mode: 'dashboard' })}
+          onCreated={(encounter) => setView({ mode: 'encounter', id: encounter.id })}
+        />
+      )}
+      {view.mode === 'encounter' && (
+        <Recording token={token} encounterId={view.id} onBack={() => setView({ mode: 'dashboard' })} />
       )}
     </div>
   );
