@@ -3,6 +3,7 @@ import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 
 const NOTE_FIELDS = ['subjective', 'objective', 'assessment', 'plan', 'suggestedCodes'] as const;
@@ -113,6 +114,31 @@ export class NotesService {
     // forward. Best-effort and never blocks signing: the bucket's lifecycle
     // rule is the backstop if this doesn't run (e.g. S3 hiccup).
     await this.purgeRawAudio(encounterId, actor.id).catch(() => {});
+
+    return note;
+  }
+
+  async submitFeedback(encounterId: string, cognitoSub: string, dto: SubmitFeedbackDto) {
+    const latest = await this.findLatest(encounterId);
+    if (latest.status !== 'SIGNED') {
+      throw new ForbiddenException('Feedback can only be submitted for a signed note');
+    }
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+
+    const [note] = await this.prisma.$transaction([
+      this.prisma.clinicalNote.update({
+        where: { id: latest.id },
+        data: { satisfactionRating: dto.rating, feedbackComment: dto.comment ?? null },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          encounterId,
+          actorId: actor.id,
+          action: 'note.feedback',
+          newValue: String(dto.rating),
+        },
+      }),
+    ]);
 
     return note;
   }

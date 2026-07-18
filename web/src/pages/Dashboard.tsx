@@ -9,12 +9,14 @@ export function Dashboard({
   onSelect,
   onNew,
   onInvite,
+  onMetrics,
 }: {
   token: string;
   me: Me;
   onSelect: (encounterId: string) => void;
   onNew: () => void;
   onInvite: () => void;
+  onMetrics: () => void;
 }) {
   const [encounters, setEncounters] = useState<EncounterListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -34,9 +36,14 @@ export function Dashboard({
         </div>
         <div className="dashboard-header-actions">
           {me.role === 'ADMIN' && (
-            <button className="btn btn-secondary" onClick={onInvite}>
-              Invite clinician
-            </button>
+            <>
+              <button className="btn btn-secondary" onClick={onMetrics}>
+                View metrics
+              </button>
+              <button className="btn btn-secondary" onClick={onInvite}>
+                Invite clinician
+              </button>
+            </>
           )}
           <button className="btn btn-primary" onClick={onNew}>
             + Start new visit

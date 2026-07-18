@@ -129,21 +129,26 @@ model Transcript {
 }
 
 model ClinicalNote {
-  id             String     @id @default(uuid())
-  encounterId    String
-  encounter      Encounter  @relation(fields: [encounterId], references: [id])
-  version        Int        @default(1)
-  subjective     String?
-  objective      String?
-  assessment     String?
-  plan           String?
-  suggestedCodes Json?
-  status         NoteStatus @default(DRAFT)
-  signedById     String?
-  signedBy       User?      @relation("SignedByUser", fields: [signedById], references: [id])
-  signedAt       DateTime?
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
+  id                 String     @id @default(uuid())
+  encounterId        String
+  encounter          Encounter  @relation(fields: [encounterId], references: [id])
+  version            Int        @default(1)
+  subjective         String?
+  objective          String?
+  assessment         String?
+  plan               String?
+  suggestedCodes     Json?
+  status             NoteStatus @default(DRAFT)
+  signedById         String?
+  signedBy           User?      @relation("SignedByUser", fields: [signedById], references: [id])
+  signedAt           DateTime?
+  // Collected once, right after signing — the clinician's own read on this
+  // specific draft, feeding the Phase 5 pilot case study alongside the
+  // measured review-time/edit-count metrics (see MetricsService).
+  satisfactionRating Int?
+  feedbackComment    String?
+  createdAt          DateTime   @default(now())
+  updatedAt          DateTime   @updatedAt
 
   @@index([encounterId])
   @@map("clinical_notes")

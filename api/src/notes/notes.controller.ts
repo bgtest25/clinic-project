@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { buildNotePdf } from './note-pdf';
 import { NotesService } from './notes.service';
+import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 
 @UseGuards(CognitoAuthGuard)
@@ -23,6 +24,15 @@ export class NotesController {
   @Post('sign')
   sign(@Param('encounterId') encounterId: string, @Req() req: any) {
     return this.notesService.sign(encounterId, req.user.sub);
+  }
+
+  @Post('feedback')
+  submitFeedback(
+    @Param('encounterId') encounterId: string,
+    @Body() dto: SubmitFeedbackDto,
+    @Req() req: any,
+  ) {
+    return this.notesService.submitFeedback(encounterId, req.user.sub, dto);
   }
 
   @Get('pdf')

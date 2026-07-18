@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
 import type { ClinicalNote } from '../api/types';
-import { CheckIcon } from '../icons';
+import { CheckIcon, StarIcon } from '../icons';
 
 type FormState = {
   subjective: string;
@@ -46,6 +46,10 @@ export function NoteReview({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [feedbackRating, setFeedbackRating] = useState(0);
+  const [feedbackComment, setFeedbackComment] = useState('');
+  const [feedbackBusy, setFeedbackBusy] = useState(false);
+  const [feedbackError, setFeedbackError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token)
@@ -103,6 +107,23 @@ export function NoteReview({
       await apiDownload(`/encounters/${encounterId}/note/pdf`, token, `visit-note-${encounterId}.pdf`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to download the PDF');
+    }
+  }
+
+  async function handleSubmitFeedback() {
+    if (!feedbackRating) return;
+    setFeedbackBusy(true);
+    setFeedbackError(null);
+    try {
+      const updated = await apiFetch<ClinicalNote>(`/encounters/${encounterId}/note/feedback`, token, {
+        method: 'POST',
+        body: JSON.stringify({ rating: feedbackRating, comment: feedbackComment || undefined }),
+      });
+      setNote(updated);
+    } catch (err) {
+      setFeedbackError(err instanceof Error ? err.message : 'Failed to submit feedback');
+    } finally {
+      setFeedbackBusy(false);
     }
   }
 
@@ -164,6 +185,52 @@ export function NoteReview({
           Signed {note.signedAt ? new Date(note.signedAt).toLocaleString() : ''}
         </div>
       )}
+
+      {note.status === 'SIGNED' &&
+        (note.satisfactionRating ? (
+          <div className="card feedback-card feedback-submitted">
+            <div className="star-row" aria-hidden="true">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <StarIcon key={n} filled={n <= note.satisfactionRating!} />
+              ))}
+            </div>
+            <p className="status-line">Thanks for your feedback on this draft.</p>
+          </div>
+        ) : (
+          <div className="card feedback-card">
+            <h2>How was this draft?</h2>
+            <div className="star-row">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className="star-button"
+                  aria-label={`${n} star${n > 1 ? 's' : ''}`}
+                  onClick={() => setFeedbackRating(n)}
+                >
+                  <StarIcon filled={n <= feedbackRating} />
+                </button>
+              ))}
+            </div>
+            <label className="field">
+              Comment (optional)
+              <textarea
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                rows={2}
+                placeholder="Anything that made this draft better or worse?"
+              />
+            </label>
+            {feedbackError && <p className="error">{feedbackError}</p>}
+            <button
+              className="btn btn-secondary"
+              onClick={handleSubmitFeedback}
+              disabled={feedbackBusy || !feedbackRating}
+            >
+              {feedbackBusy ? 'Submitting…' : 'Submit feedback'}
+            </button>
+          </div>
+        ))}
 
       <div className="review-columns">
         <div className="transcript-pane">

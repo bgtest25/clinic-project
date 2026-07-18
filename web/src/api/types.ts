@@ -45,6 +45,8 @@ export interface ClinicalNote {
   status: 'DRAFT' | 'SIGNED' | 'AMENDED';
   signedById: string | null;
   signedAt: string | null;
+  satisfactionRating: number | null;
+  feedbackComment: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -63,4 +65,12 @@ export interface InviteUserPayload {
   name: string;
   role: 'ADMIN' | 'CLINICIAN';
   clinicId: string;
+}
+
+export interface MetricsSummary {
+  totalNotesSigned: number;
+  avgReviewTimeSeconds: number | null;
+  avgSatisfactionRating: number | null;
+  satisfactionResponseCount: number;
+  avgEditsPerNote: number | null;
 }
