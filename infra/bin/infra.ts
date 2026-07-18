@@ -2,12 +2,14 @@
 import * as cdk from 'aws-cdk-lib';
 import { ClinicNetworkStack } from '../lib/network-stack';
 import { ClinicDatabaseStack } from '../lib/database-stack';
+import { ClinicDnsStack } from '../lib/dns-stack';
 import { ClinicStorageStack } from '../lib/storage-stack';
 import { ClinicAuthStack } from '../lib/auth-stack';
 import { ClinicRegistryStack } from '../lib/registry-stack';
 import { ClinicAiPipelineStack } from '../lib/ai-pipeline-stack';
 import { ClinicComputeStack } from '../lib/compute-stack';
 import { ClinicCicdStack } from '../lib/cicd-stack';
+import { ClinicWebHostingStack } from '../lib/web-hosting-stack';
 
 const app = new cdk.App();
 
@@ -27,6 +29,7 @@ const bedrockModelId = app.node.tryGetContext('bedrockModelId') ?? 'anthropic.cl
 const mockSoapNote = (app.node.tryGetContext('mockSoapNote') ?? 'true') === 'true';
 
 const network = new ClinicNetworkStack(app, 'ClinicNetworkStack', { env });
+const dns = new ClinicDnsStack(app, 'ClinicDnsStack', { env });
 const database = new ClinicDatabaseStack(app, 'ClinicDatabaseStack', { env, vpc: network.vpc });
 const auth = new ClinicAuthStack(app, 'ClinicAuthStack', { env });
 const registry = new ClinicRegistryStack(app, 'ClinicRegistryStack', { env });
@@ -55,6 +58,7 @@ const compute = new ClinicComputeStack(app, 'ClinicComputeStack', {
   mediaBucket: storage.mediaBucket,
   mediaBucketKey: storage.mediaBucketKey,
   pipelineStateMachine: aiPipeline.stateMachine,
+  hostedZone: dns.hostedZone,
 });
 
 new ClinicCicdStack(app, 'ClinicCicdStack', {
@@ -64,4 +68,9 @@ new ClinicCicdStack(app, 'ClinicCicdStack', {
   apiRepository: registry.apiRepository,
   cluster: compute.cluster,
   taskDefinition: compute.taskDefinition,
+});
+
+new ClinicWebHostingStack(app, 'ClinicWebHostingStack', {
+  env,
+  hostedZone: dns.hostedZone,
 });

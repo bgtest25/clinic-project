@@ -5,9 +5,11 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
 import * as logs from 'aws-cdk-lib/aws-logs';
+import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
@@ -23,6 +25,7 @@ export interface ClinicComputeStackProps extends cdk.StackProps {
   mediaBucket: s3.Bucket;
   mediaBucketKey: kms.Key;
   pipelineStateMachine: sfn.StateMachine;
+  hostedZone: route53.IHostedZone;
 }
 
 export class ClinicComputeStack extends cdk.Stack {
@@ -43,6 +46,7 @@ export class ClinicComputeStack extends cdk.Stack {
       mediaBucket,
       mediaBucketKey,
       pipelineStateMachine,
+      hostedZone,
     } = props;
 
     this.cluster = new ecs.Cluster(this, 'Cluster', {
@@ -63,9 +67,16 @@ export class ClinicComputeStack extends cdk.Stack {
       memoryLimitMiB: 512,
       desiredCount: 1,
       publicLoadBalancer: true,
-      // HTTP only for now — no domain/ACM cert yet. Add an HTTPS listener once
-      // the domain from Phase 1's Route53 step exists.
-      listenerPort: 80,
+      // HTTPS via api.havenote.health — the construct auto-creates the ACM
+      // cert (DNS-validated against hostedZone), the HTTPS listener, an
+      // HTTP->HTTPS redirect listener, and the Route53 alias record, all from
+      // just these three props. Cert validation (and DNS resolution of the
+      // domain at all) stays pending until the registrar's nameservers point
+      // to this hosted zone — see dns-stack.ts.
+      domainName: 'api.havenote.health',
+      domainZone: hostedZone,
+      protocol: elbv2.ApplicationProtocol.HTTPS,
+      redirectHTTP: true,
       circuitBreaker: { rollback: true },
       minHealthyPercent: 100,
       maxHealthyPercent: 200,
