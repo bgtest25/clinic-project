@@ -70,7 +70,14 @@ export class ClinicCicdStack extends cdk.Stack {
       }),
     );
     this.deployRole.addToPolicy(
-      new iam.PolicyStatement({ actions: ['ecs:DescribeTasks', 'ecs:DescribeTaskDefinition'], resources: ['*'] }),
+      new iam.PolicyStatement({
+        // RegisterTaskDefinition has no resource-level permissions (there's no
+        // ARN yet for a revision that doesn't exist) — needed so CI can register
+        // a migration-only revision pointing at the image it just built, ahead
+        // of `cdk deploy` updating the "real" service revision later in the run.
+        actions: ['ecs:DescribeTasks', 'ecs:DescribeTaskDefinition', 'ecs:RegisterTaskDefinition'],
+        resources: ['*'],
+      }),
     );
 
     const passRoleArns = [taskDefinition.taskRole.roleArn];
