@@ -37,11 +37,12 @@ Rough total: 8–12 weeks solo, with Phase 2 as the most likely place to run lon
 
 ## Phase 4 — Compliance Hardening & Pilot Prep (1–2 weeks)
 
-- Security pass: confirm every PHI-touching service is HIPAA-eligible, KMS encryption verified everywhere, least-privilege IAM audit
-- S3 lifecycle rule to auto-delete raw audio after a configurable window post-sign-off
-- Draft the BAA you'll sign with the pilot clinic (you're the business associate, they're the covered entity)
-- Retention/deletion policy, privacy policy, lightweight incident-response runbook
-- **Deliverable**: ready for a real clinic to put real patient data through this
+- Security pass: confirm every PHI-touching service is HIPAA-eligible, KMS encryption verified everywhere, least-privilege IAM audit — **done** (2026-07-18): media bucket switched to SSE-KMS with a customer-managed key; IAM audit found 5 justified wildcards, no hardcoded secrets
+- S3 lifecycle rule to auto-delete raw audio after a configurable window post-sign-off — **done**: event-driven purge in `NotesService.sign()` + 90-day backstop lifecycle rule
+- RDS Multi-AZ — **done** (2026-07-18), verified as an in-place conversion, no data loss
+- Draft the BAA you'll sign with the pilot clinic (you're the business associate, they're the covered entity) — **draft written**, `compliance/BAA-TEMPLATE.md` — **not reviewed by counsel, not ready to sign**
+- Retention/deletion policy, privacy policy, lightweight incident-response runbook — **drafts written**: `compliance/RETENTION-POLICY.md`, `compliance/PRIVACY-POLICY.md`, `compliance/INCIDENT-RESPONSE-RUNBOOK.md`. The retention policy accurately describes already-built system behavior (high confidence); the privacy policy and BAA are legal documents that **need qualified legal counsel review before use with a real clinic** — see each file's own status note.
+- **Deliverable**: ready for a real clinic to put real patient data through this, **pending legal review of the BAA/privacy policy** and the open items listed in `compliance/RETENTION-POLICY.md`
 
 ## Phase 5 — Pilot
 
@@ -77,3 +78,17 @@ record, not living config — verify against the account directly (commands belo
   Verify: `aws guardduty get-detector --detector-id dccfb6e0cce0e95ccd6703f83b57cd22`
 
 All commands above need `--profile clinic-project --region us-east-1` (AWS account 501264525435).
+
+## Media bucket encryption decision (2026-07-18)
+
+Switched the media bucket (`clinic-project-media-*`) from SSE-S3 to SSE-KMS with a customer-managed key
+(`MediaBucketKey` in `storage-stack.ts`). S3 is HIPAA-eligible either way, but SSE-KMS produces a
+CloudTrail-logged audit trail of every key use — SSE-S3 gives none — which is the more defensible choice
+now that CloudTrail/Config/GuardDuty are documented as part of this account's compliance baseline.
+
+The original blocker (a cross-stack IAM cycle between StorageStack and ComputeStack/AiPipelineStack,
+same shape as the RDS-secret cycle from Phase 1) was solved by leaving the key on CDK's default policy
+(full account-root trust, never modified) and granting each consumer via a plain IAM statement on its
+own role — never touching the key's own resource policy from another stack. See the comments in
+`storage-stack.ts`, `compute-stack.ts`, and `ai-pipeline-stack.ts` for the exact pattern if this needs
+replicating elsewhere.
