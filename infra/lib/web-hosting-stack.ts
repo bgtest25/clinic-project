@@ -1,3 +1,4 @@
+import { existsSync } from 'fs';
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as acm from 'aws-cdk-lib/aws-certificatemanager';
@@ -7,6 +8,8 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as targets from 'aws-cdk-lib/aws-route53-targets';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as s3deploy from 'aws-cdk-lib/aws-s3-deployment';
+
+const WEB_DIST_PATH = '../web/dist';
 
 export interface ClinicWebHostingStackProps extends cdk.StackProps {
   hostedZone: route53.IHostedZone;
@@ -67,12 +70,20 @@ export class ClinicWebHostingStack extends cdk.Stack {
       target: route53.RecordTarget.fromAlias(new targets.CloudFrontTarget(distribution)),
     });
 
-    new s3deploy.BucketDeployment(this, 'DeployWebAssets', {
-      sources: [s3deploy.Source.asset('../web/dist')],
-      destinationBucket: siteBucket,
-      distribution,
-      distributionPaths: ['/*'],
-    });
+    // `cdk synth` builds every stack in the app regardless of which one is
+    // targeted — CI's `cdk deploy ClinicComputeStack` run synthesizes this
+    // stack too, and CI never builds the frontend, so web/dist doesn't exist
+    // there. Skip the deployment construct entirely rather than crash synth
+    // for every future API deploy; CI never deploys this stack anyway.
+    // Manual deploys (`cdk deploy ClinicWebHostingStack`) always build first.
+    if (existsSync(WEB_DIST_PATH)) {
+      new s3deploy.BucketDeployment(this, 'DeployWebAssets', {
+        sources: [s3deploy.Source.asset(WEB_DIST_PATH)],
+        destinationBucket: siteBucket,
+        distribution,
+        distributionPaths: ['/*'],
+      });
+    }
 
     new cdk.CfnOutput(this, 'SiteUrl', { value: 'https://havenote.health (also https://app.havenote.health)' });
     new cdk.CfnOutput(this, 'DistributionDomainName', { value: distribution.distributionDomainName });
