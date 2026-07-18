@@ -22,4 +22,34 @@ export interface Encounter {
   status: string;
   consentCapturedAt: string | null;
   consentCapturedBy: string | null;
+  processingError: string | null;
+}
+
+export interface Transcript {
+  id: string;
+  encounterId: string;
+  rawText: string;
+  sttProvider: string;
+  createdAt: string;
+}
+
+export interface ClinicalNote {
+  id: string;
+  encounterId: string;
+  version: number;
+  subjective: string | null;
+  objective: string | null;
+  assessment: string | null;
+  plan: string | null;
+  suggestedCodes: string | null;
+  status: 'DRAFT' | 'SIGNED' | 'AMENDED';
+  signedById: string | null;
+  signedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface EncounterDetail extends Encounter {
+  transcript: Transcript | null;
+  clinicalNotes: ClinicalNote[];
 }

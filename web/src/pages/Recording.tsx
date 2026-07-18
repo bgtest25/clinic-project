@@ -1,17 +1,41 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api/client';
-import type { Encounter } from '../api/types';
+import type { Encounter, EncounterDetail } from '../api/types';
+import { NoteReview } from './NoteReview';
 
-type RecordingState = 'idle' | 'recording' | 'uploading' | 'processing' | 'error';
+type RecordingState = 'idle' | 'recording' | 'uploading' | 'processing' | 'review' | 'error';
 
 export function Recording({ token, encounter }: { token: string; encounter: Encounter }) {
   const [consentGiven, setConsentGiven] = useState(!!encounter.consentCapturedAt);
   const [state, setState] = useState<RecordingState>('idle');
   const [error, setError] = useState<string | null>(null);
   const [encounterStatus, setEncounterStatus] = useState(encounter.status);
+  const [transcript, setTranscript] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+
+  useEffect(() => {
+    if (state !== 'processing') return;
+
+    const interval = setInterval(async () => {
+      try {
+        const latest = await apiFetch<EncounterDetail>(`/encounters/${encounter.id}`, token);
+        setEncounterStatus(latest.status);
+        if (latest.status === 'IN_REVIEW' || latest.status === 'SIGNED') {
+          setTranscript(latest.transcript?.rawText ?? null);
+          setState('review');
+        } else if (latest.status === 'FAILED') {
+          setError(latest.processingError ?? 'Processing failed.');
+          setState('error');
+        }
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to check processing status');
+      }
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [state, encounter.id, token]);
 
   async function handleConsent() {
     setError(null);
@@ -71,6 +95,10 @@ export function Recording({ token, encounter }: { token: string; encounter: Enco
       setState('error');
       setError(err instanceof Error ? err.message : 'Upload failed');
     }
+  }
+
+  if (state === 'review') {
+    return <NoteReview token={token} encounterId={encounter.id} transcript={transcript} />;
   }
 
   return (
