@@ -1,4 +1,4 @@
-import { Controller, Get, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -11,7 +11,7 @@ export class MetricsController {
 
   @Get()
   @Roles('admin')
-  summary(@Param('clinicId') clinicId: string) {
-    return this.metricsService.summary(clinicId);
+  summary(@Param('clinicId') clinicId: string, @Req() req: any) {
+    return this.metricsService.summary(clinicId, req.user.sub);
   }
 }

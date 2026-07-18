@@ -3,16 +3,25 @@ import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn';
 import { randomUUID } from 'crypto';
+import { EncountersService } from '../encounters/encounters.service';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 
 @Injectable()
 export class RecordingsService {
   private readonly s3 = new S3Client({});
   private readonly sfn = new SFNClient({});
 
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+    private readonly encountersService: EncountersService,
+  ) {}
 
-  async createUploadUrl(encounterId: string) {
+  async createUploadUrl(encounterId: string, cognitoSub: string) {
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    await this.encountersService.assertClinicOwnsEncounter(encounterId, actor.clinicId);
+
     const s3Key = `audio/${encounterId}/${randomUUID()}.webm`;
     const command = new PutObjectCommand({
       Bucket: process.env.MEDIA_BUCKET_NAME,
@@ -30,7 +39,10 @@ export class RecordingsService {
     return { uploadUrl, s3Key };
   }
 
-  async completeUpload(encounterId: string) {
+  async completeUpload(encounterId: string, cognitoSub: string) {
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    await this.encountersService.assertClinicOwnsEncounter(encounterId, actor.clinicId);
+
     const recording = await this.prisma.audioRecording.findUniqueOrThrow({ where: { encounterId } });
 
     await this.prisma.$transaction([

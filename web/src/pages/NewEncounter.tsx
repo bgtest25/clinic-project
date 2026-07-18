@@ -25,7 +25,7 @@ export function NewEncounter({
     try {
       const patient = await apiFetch<Patient>('/patients', token, {
         method: 'POST',
-        body: JSON.stringify({ clinicId: me.clinicId, name, dateOfBirth: dob }),
+        body: JSON.stringify({ name, dateOfBirth: dob }),
       });
       const encounter = await apiFetch<Encounter>('/encounters', token, {
         method: 'POST',

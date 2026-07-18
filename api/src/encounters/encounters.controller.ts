@@ -9,22 +9,22 @@ export class EncountersController {
   constructor(private readonly encountersService: EncountersService) {}
 
   @Post()
-  create(@Body() dto: CreateEncounterDto) {
-    return this.encountersService.create(dto);
+  create(@Body() dto: CreateEncounterDto, @Req() req: any) {
+    return this.encountersService.create(req.user.sub, dto);
   }
 
   @Get()
-  findAll(@Query('clinicianId') clinicianId?: string) {
-    return this.encountersService.findAll(clinicianId);
+  findAll(@Query('clinicianId') clinicianId: string | undefined, @Req() req: any) {
+    return this.encountersService.findAll(req.user.sub, clinicianId);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.encountersService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.encountersService.findOne(req.user.sub, id);
   }
 
   @Patch(':id/consent')
   captureConsent(@Param('id') id: string, @Req() req: any) {
-    return this.encountersService.captureConsent(id, req.user?.username ?? req.user?.sub);
+    return this.encountersService.captureConsent(req.user.sub, id);
   }
 }

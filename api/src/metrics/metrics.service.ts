@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { UsersService } from '../users/users.service';
 
 interface ReviewTimeRow {
   avgSeconds: number | null;
@@ -12,9 +13,17 @@ interface EditCountRow {
 
 @Injectable()
 export class MetricsService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly usersService: UsersService,
+  ) {}
 
-  async summary(clinicId: string) {
+  async summary(clinicId: string, cognitoSub: string) {
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    if (actor.clinicId !== clinicId) {
+      throw new ForbiddenException("Cannot view another clinic's metrics");
+    }
+
     // Review time: how long a note sat in front of a clinician before they
     // signed it — the measurable proxy for documentation time, since the
     // system has no way to know how long an unassisted note would have taken.

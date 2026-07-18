@@ -12,8 +12,8 @@ export class NotesController {
   constructor(private readonly notesService: NotesService) {}
 
   @Get()
-  findLatest(@Param('encounterId') encounterId: string) {
-    return this.notesService.findLatest(encounterId);
+  findLatest(@Param('encounterId') encounterId: string, @Req() req: any) {
+    return this.notesService.findLatest(encounterId, req.user.sub);
   }
 
   @Patch()
@@ -36,8 +36,8 @@ export class NotesController {
   }
 
   @Get('pdf')
-  async downloadPdf(@Param('encounterId') encounterId: string, @Res() res: Response) {
-    const { note, encounter } = await this.notesService.getForExport(encounterId);
+  async downloadPdf(@Param('encounterId') encounterId: string, @Res() res: Response, @Req() req: any) {
+    const { note, encounter } = await this.notesService.getForExport(encounterId, req.user.sub);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="visit-note-${encounterId}.pdf"`);
     const doc = buildNotePdf(note, encounter);

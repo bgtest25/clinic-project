@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Prisma } from '@prisma/client';
+import { EncountersService } from '../encounters/encounters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
@@ -26,9 +27,15 @@ export class NotesService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
+    private readonly encountersService: EncountersService,
   ) {}
 
-  async findLatest(encounterId: string) {
+  // Every public entry point funnels through here first — verifies the
+  // caller's clinic actually owns this encounter before anything else runs.
+  async findLatest(encounterId: string, cognitoSub: string) {
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    await this.encountersService.assertClinicOwnsEncounter(encounterId, actor.clinicId);
+
     const note = await this.prisma.clinicalNote.findFirst({
       where: { encounterId },
       orderBy: { version: 'desc' },
@@ -38,7 +45,7 @@ export class NotesService {
   }
 
   async update(encounterId: string, cognitoSub: string, dto: UpdateClinicalNoteDto) {
-    const latest = await this.findLatest(encounterId);
+    const latest = await this.findLatest(encounterId, cognitoSub);
     const actor = await this.usersService.findByCognitoSub(cognitoSub);
 
     const changedFields = NOTE_FIELDS.filter(
@@ -82,8 +89,8 @@ export class NotesService {
     return note;
   }
 
-  async getForExport(encounterId: string) {
-    const note = await this.findLatest(encounterId);
+  async getForExport(encounterId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
     const encounter = await this.prisma.encounter.findUniqueOrThrow({
       where: { id: encounterId },
       include: { patient: true, clinician: true },
@@ -92,7 +99,7 @@ export class NotesService {
   }
 
   async sign(encounterId: string, cognitoSub: string) {
-    const latest = await this.findLatest(encounterId);
+    const latest = await this.findLatest(encounterId, cognitoSub);
     if (latest.status === 'SIGNED') {
       throw new ForbiddenException('This note is already signed — edit it to create a new amendment first');
     }
@@ -119,7 +126,7 @@ export class NotesService {
   }
 
   async submitFeedback(encounterId: string, cognitoSub: string, dto: SubmitFeedbackDto) {
-    const latest = await this.findLatest(encounterId);
+    const latest = await this.findLatest(encounterId, cognitoSub);
     if (latest.status !== 'SIGNED') {
       throw new ForbiddenException('Feedback can only be submitted for a signed note');
     }
