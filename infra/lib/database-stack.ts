@@ -51,9 +51,9 @@ export class ClinicDatabaseStack extends cdk.Stack {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [this.dbSecurityGroup],
-      // Single-AZ during build/pilot-prep to control cost — flip to true before
-      // the real clinic pilot goes live (Phase 5). Online change, no rearchitecture.
-      multiAz: false,
+      // Flipped to true ahead of the pilot (Phase 5) — was single-AZ during
+      // build to control cost.
+      multiAz: true,
       allocatedStorage: 20,
       storageEncrypted: true,
       storageEncryptionKey: dbKey,
