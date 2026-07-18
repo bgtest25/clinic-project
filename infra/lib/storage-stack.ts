@@ -22,11 +22,24 @@ export class ClinicStorageStack extends cdk.Stack {
       enforceSSL: true,
       lifecycleRules: [
         {
-          id: 'expire-raw-audio',
+          id: 'expire-raw-audio-backstop',
           prefix: 'audio/',
-          // Placeholder retention — raw audio should be deleted once its note is
-          // signed off; revisit alongside the Phase 4 retention policy.
+          // The real retention mechanism is event-driven: NotesService.sign()
+          // deletes an encounter's raw audio object the moment its note is
+          // signed, since the transcript + note are the record of the visit
+          // from then on. This is just the backstop for anything that never
+          // reaches SIGNED (abandoned recordings, stuck/failed pipelines) so
+          // raw audio doesn't live forever regardless of workflow outcome.
           expiration: cdk.Duration.days(90),
+        },
+        {
+          id: 'expire-raw-transcripts-backstop',
+          prefix: 'transcripts/',
+          // Transcribe's raw JSON output here is a redundant intermediate —
+          // process-transcript copies the text into the `transcripts` table,
+          // which is the actual source of truth from then on. Shorter window
+          // than audio since nothing ever needs to re-read this copy.
+          expiration: cdk.Duration.days(30),
         },
       ],
       removalPolicy: cdk.RemovalPolicy.RETAIN,

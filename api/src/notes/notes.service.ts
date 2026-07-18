@@ -1,4 +1,5 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
@@ -19,6 +20,8 @@ function toJsonInput(value: Prisma.JsonValue | undefined): Prisma.InputJsonValue
 
 @Injectable()
 export class NotesService {
+  private readonly s3 = new S3Client({});
+
   constructor(
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
@@ -105,6 +108,37 @@ export class NotesService {
       }),
     ]);
 
+    // Retention: raw audio is no longer needed once the note built from it is
+    // signed — the transcript and note are the record of the visit going
+    // forward. Best-effort and never blocks signing: the bucket's lifecycle
+    // rule is the backstop if this doesn't run (e.g. S3 hiccup).
+    await this.purgeRawAudio(encounterId, actor.id).catch(() => {});
+
     return note;
+  }
+
+  // actorId here is the signing clinician — the purge is a direct, synchronous
+  // consequence of their sign action, not an independent background job.
+  private async purgeRawAudio(encounterId: string, actorId: string) {
+    const recording = await this.prisma.audioRecording.findUnique({ where: { encounterId } });
+    if (!recording || recording.deletedAt) return;
+
+    try {
+      await this.s3.send(
+        new DeleteObjectCommand({ Bucket: process.env.MEDIA_BUCKET_NAME, Key: recording.s3Key }),
+      );
+      await this.prisma.$transaction([
+        this.prisma.audioRecording.update({ where: { encounterId }, data: { deletedAt: new Date() } }),
+        this.prisma.auditLog.create({
+          data: { encounterId, actorId, action: 'audio.purged', newValue: recording.s3Key },
+        }),
+      ]);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      await this.prisma.auditLog.create({
+        data: { encounterId, actorId, action: 'audio.purge_failed', newValue: reason.slice(0, 2000) },
+      });
+      throw err;
+    }
   }
 }

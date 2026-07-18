@@ -108,6 +108,10 @@ model AudioRecording {
   s3Key       String
   durationSec Int?
   uploadedAt  DateTime  @default(now())
+  // Set once the raw audio object is purged from S3 (on note sign-off, or by
+  // the bucket's backstop lifecycle rule) — the row itself is kept as an
+  // auditable record that a recording existed and when it was removed.
+  deletedAt   DateTime?
 
   @@map("audio_recordings")
 }
