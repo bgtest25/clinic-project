@@ -50,6 +50,14 @@ jobs:
         run: npm test --workspace=api
 
       - name: Run API e2e tests
+        # PrismaService's onModuleInit() calls $connect(), but with the pg
+        # driver adapter that only prepares a connection pool — it doesn't
+        # eagerly open a real connection, so a syntactically-valid but
+        # unreachable URL is enough (same as local dev's api/.env, which is
+        # gitignored and never present in CI). The one e2e test never
+        # queries the database at all.
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci?schema=public
         run: npm run test:e2e --workspace=api
 
       - name: Configure AWS credentials
