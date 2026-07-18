@@ -1,0 +1,68 @@
+name: Deploy Web
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'infra/lib/web-hosting-stack.ts'
+      - 'infra/lib/dns-stack.ts'
+      - 'infra/bin/infra.ts'
+      - '.github/workflows/deploy-web.yml'
+  workflow_dispatch: {}
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '501264525435'
+  # Not secrets: the Cognito app client has no client secret (SPA-only,
+  # generateSecret: false) and both IDs end up in the built JS bundle
+  # regardless, same as any public API base URL.
+  VITE_API_URL: https://api.havenote.health
+  VITE_COGNITO_USER_POOL_ID: us-east-1_odhVx41g7
+  VITE_COGNITO_CLIENT_ID: 6qut6e3b4gd68it3i28dsqjg6b
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Installing from the repo root (not `cd web && npm ci`) matters here —
+      # web is an npm workspace member, and installing from inside a member
+      # subdirectory reinstalls a smaller, incompletely-hoisted local copy
+      # instead of resolving through the root lockfile.
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Lint web
+        run: npm run lint --workspace=web
+
+      - name: Build web
+        run: npm run build --workspace=web
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/clinic-project-github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Same GithubActionsDeployRole as deploy-api.yml — its only direct grant
+      # relevant here is sts:AssumeRole into the CDK bootstrap roles, which is
+      # what actually creates/updates resources for ANY stack, so no separate
+      # CloudFront/ACM/Route53/S3 permissions were needed for this workflow.
+      - name: Deploy the web hosting stack
+        working-directory: infra
+        env:
+          CDK_DEFAULT_ACCOUNT: ${{ env.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        run: npx cdk deploy ClinicWebHostingStack --require-approval never

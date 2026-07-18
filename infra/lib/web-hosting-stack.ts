@@ -16,10 +16,10 @@ export interface ClinicWebHostingStackProps extends cdk.StackProps {
 }
 
 // Static hosting for web/ at app.havenote.health — this didn't exist at all
-// before (the frontend had only ever been run locally). Not wired into CI:
-// this deploys whatever is currently built in web/dist at `cdk deploy` time,
-// a one-time snapshot like the other stacks GitHub Actions doesn't touch —
-// a real frontend CI/CD pipeline is a separate, future piece of work.
+// before (the frontend had only ever been run locally). Now deployed by
+// .github/workflows/deploy-web.yml, which builds web/dist before running
+// `cdk deploy ClinicWebHostingStack` — see the existsSync guard below for why
+// that ordering matters.
 export class ClinicWebHostingStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ClinicWebHostingStackProps) {
     super(scope, id, props);
@@ -71,11 +71,11 @@ export class ClinicWebHostingStack extends cdk.Stack {
     });
 
     // `cdk synth` builds every stack in the app regardless of which one is
-    // targeted — CI's `cdk deploy ClinicComputeStack` run synthesizes this
-    // stack too, and CI never builds the frontend, so web/dist doesn't exist
-    // there. Skip the deployment construct entirely rather than crash synth
-    // for every future API deploy; CI never deploys this stack anyway.
-    // Manual deploys (`cdk deploy ClinicWebHostingStack`) always build first.
+    // targeted — deploy-api.yml's `cdk deploy ClinicComputeStack` run
+    // synthesizes this stack too, and that workflow never builds the
+    // frontend, so web/dist doesn't exist there. Skip the deployment
+    // construct entirely rather than crash synth on every API deploy.
+    // deploy-web.yml (and manual deploys) always build web/dist first.
     if (existsSync(WEB_DIST_PATH)) {
       new s3deploy.BucketDeployment(this, 'DeployWebAssets', {
         sources: [s3deploy.Source.asset(WEB_DIST_PATH)],
