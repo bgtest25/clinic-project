@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { apiFetch } from './api/client';
+import { BrandMark } from './icons';
 import type { Me } from './api/types';
 import { Dashboard } from './pages/Dashboard';
 import { Login } from './pages/Login';
@@ -24,20 +25,32 @@ function AuthenticatedApp({ token }: { token: string }) {
 
   if (error) {
     return (
-      <div className="panel">
+      <div className="page">
         <p className="error">{error}</p>
-        <button onClick={logout}>Sign out</button>
+        <button className="btn btn-secondary" onClick={logout}>
+          Sign out
+        </button>
       </div>
     );
   }
 
-  if (!me) return <div className="panel">Loading…</div>;
+  if (!me) return <div className="page">Loading…</div>;
 
   return (
     <div>
       <header className="topbar">
-        <span>{me.name}</span>
-        <button onClick={logout}>Sign out</button>
+        <span className="brand">
+          <BrandMark />
+          Havenote
+        </span>
+        <div className="topbar-user">
+          <span>
+            <strong>{me.name}</strong>
+          </span>
+          <button className="btn btn-ghost" onClick={logout}>
+            Sign out
+          </button>
+        </div>
       </header>
       {view.mode === 'dashboard' && (
         <Dashboard
@@ -64,7 +77,7 @@ function AuthenticatedApp({ token }: { token: string }) {
 
 function Shell() {
   const { token, loading } = useAuth();
-  if (loading) return <div className="panel">Loading…</div>;
+  if (loading) return <div className="auth-shell">Loading…</div>;
   if (!token) return <Login />;
   return <AuthenticatedApp token={token} />;
 }

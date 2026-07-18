@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
 import type { EncounterListItem, Me } from '../api/types';
+import { EmptyIcon } from '../icons';
 
 export function Dashboard({
   token,
@@ -23,39 +24,55 @@ export function Dashboard({
   }, [me.id, token]);
 
   return (
-    <div className="dashboard-panel">
+    <div className="page page-wide">
       <div className="dashboard-header">
-        <h1>Your visits</h1>
-        <button onClick={onNew}>Start new visit</button>
+        <div>
+          <h1>Your visits</h1>
+          <p>Resume an in-progress visit or start a new one.</p>
+        </div>
+        <button className="btn btn-primary" onClick={onNew}>
+          + Start new visit
+        </button>
       </div>
 
       {error && <p className="error">{error}</p>}
-      {!error && !encounters && <p>Loading…</p>}
-      {encounters && encounters.length === 0 && <p>No visits yet — start your first one above.</p>}
+
+      {!error && !encounters && <p className="status-line">Loading…</p>}
+
+      {encounters && encounters.length === 0 && (
+        <div className="card empty-state">
+          <div className="empty-state-icon">
+            <EmptyIcon />
+          </div>
+          <p>No visits yet — start your first one above.</p>
+        </div>
+      )}
 
       {encounters && encounters.length > 0 && (
-        <table className="encounter-table">
-          <thead>
-            <tr>
-              <th>Patient</th>
-              <th>Visit date</th>
-              <th>Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {encounters.map((encounter) => (
-              <tr key={encounter.id} className="encounter-row" onClick={() => onSelect(encounter.id)}>
-                <td>{encounter.patient.name}</td>
-                <td>{new Date(encounter.visitDate).toLocaleDateString()}</td>
-                <td>
-                  <span className={`status-badge status-${encounter.status.toLowerCase()}`}>
-                    {encounter.status}
-                  </span>
-                </td>
+        <div className="card dashboard-card">
+          <table className="encounter-table">
+            <thead>
+              <tr>
+                <th>Patient</th>
+                <th>Visit date</th>
+                <th>Status</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {encounters.map((encounter) => (
+                <tr key={encounter.id} className="encounter-row" onClick={() => onSelect(encounter.id)}>
+                  <td className="patient-name">{encounter.patient.name}</td>
+                  <td>{new Date(encounter.visitDate).toLocaleDateString()}</td>
+                  <td>
+                    <span className={`status-badge status-${encounter.status.toLowerCase()}`}>
+                      {encounter.status.replace('_', ' ')}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       )}
     </div>
   );

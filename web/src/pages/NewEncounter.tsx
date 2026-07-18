@@ -40,23 +40,27 @@ export function NewEncounter({
   }
 
   return (
-    <form onSubmit={handleSubmit} className="panel">
+    <div className="page">
       <button type="button" className="link-button back-link" onClick={onBack}>
         ← Back to visits
       </button>
-      <h1>Start a new visit</h1>
-      <label>
-        Patient name
-        <input value={name} onChange={(e) => setName(e.target.value)} required />
-      </label>
-      <label>
-        Date of birth
-        <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required />
-      </label>
-      {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>
-        {busy ? 'Starting…' : 'Start visit'}
-      </button>
-    </form>
+      <div className="card">
+        <h1>Start a new visit</h1>
+        <form onSubmit={handleSubmit} className="form-stack form-stack-spaced">
+          <label className="field">
+            Patient name
+            <input value={name} onChange={(e) => setName(e.target.value)} required />
+          </label>
+          <label className="field">
+            Date of birth
+            <input type="date" value={dob} onChange={(e) => setDob(e.target.value)} required />
+          </label>
+          {error && <p className="error">{error}</p>}
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+            {busy ? 'Starting…' : 'Start visit'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

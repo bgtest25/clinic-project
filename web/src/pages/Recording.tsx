@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api/client';
 import type { EncounterDetail } from '../api/types';
+import { MicIcon, StopIcon } from '../icons';
 import { NoteReview } from './NoteReview';
 
 type RecordingState = 'loading' | 'idle' | 'recording' | 'uploading' | 'processing' | 'review' | 'error';
@@ -130,7 +131,7 @@ export function Recording({
   }
 
   if (state === 'loading') {
-    return <div className="panel">Loading…</div>;
+    return <div className="page">Loading…</div>;
   }
 
   if (state === 'review') {
@@ -147,33 +148,65 @@ export function Recording({
   }
 
   return (
-    <div className="panel">
+    <div className="page">
       <button className="link-button back-link" onClick={onBack}>
         ← Back to visits
       </button>
-      <h1>Visit recording</h1>
-      <p className="status-line">Status: {encounterStatus}</p>
-
-      {!consentGiven && (
-        <div>
-          <p>Confirm the patient has consented to this visit being recorded before starting.</p>
-          <button onClick={handleConsent}>I confirm consent was given</button>
+      <div className="card">
+        <div className="review-header">
+          <h1>Visit recording</h1>
+          <span className={`status-badge status-${encounterStatus.toLowerCase()}`}>
+            {encounterStatus.replace('_', ' ')}
+          </span>
         </div>
-      )}
 
-      {consentGiven && state === 'idle' && <button onClick={startRecording}>Start recording</button>}
+        {!consentGiven && (
+          <div className="consent-step">
+            <p>Confirm the patient has consented to this visit being recorded before starting.</p>
+            <button className="btn btn-primary" onClick={handleConsent}>
+              I confirm consent was given
+            </button>
+          </div>
+        )}
 
-      {state === 'recording' && (
-        <button onClick={stopRecording} className="recording">
-          Stop recording
-        </button>
-      )}
+        {consentGiven && state === 'idle' && (
+          <div className="record-stage">
+            <button className="record-button" onClick={startRecording} aria-label="Start recording">
+              <MicIcon />
+            </button>
+            <p className="record-caption">Tap to start recording the visit</p>
+          </div>
+        )}
 
-      {state === 'uploading' && <p>Uploading…</p>}
-      {state === 'processing' && (
-        <p>Processing in the background — the draft note will be ready for review shortly.</p>
-      )}
-      {error && <p className="error">{error}</p>}
+        {state === 'recording' && (
+          <div className="record-stage">
+            <button
+              className="record-button is-recording"
+              onClick={stopRecording}
+              aria-label="Stop recording"
+            >
+              <StopIcon />
+            </button>
+            <p className="record-caption">Recording — tap to stop</p>
+          </div>
+        )}
+
+        {state === 'uploading' && (
+          <div className="processing-state">
+            <span className="spinner" />
+            Uploading…
+          </div>
+        )}
+
+        {state === 'processing' && (
+          <div className="processing-state">
+            <span className="spinner" />
+            Processing in the background — the draft note will be ready for review shortly.
+          </div>
+        )}
+
+        {error && <p className="error">{error}</p>}
+      </div>
     </div>
   );
 }

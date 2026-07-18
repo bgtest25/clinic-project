@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import type { CognitoUser } from 'amazon-cognito-identity-js';
 import { confirmMfaSetup, login, submitMfaCode } from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
+import { BrandMark } from '../icons';
 
 type Stage =
   | { step: 'credentials' }
@@ -63,67 +64,106 @@ export function Login() {
 
   if (stage.step === 'mfa') {
     return (
-      <form onSubmit={handleMfaCode} className="panel">
-        <h1>Enter your authenticator code</h1>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="6-digit code"
-          inputMode="numeric"
-          autoFocus
-        />
-        {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={busy}>
-          {busy ? 'Verifying…' : 'Verify'}
-        </button>
-      </form>
+      <div className="auth-shell">
+        <div className="auth-card card">
+          <span className="brand">
+            <BrandMark />
+            Havenote
+          </span>
+          <h1>Enter your authenticator code</h1>
+          <form onSubmit={handleMfaCode} className="form-stack">
+            <label className="field">
+              6-digit code
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123 456"
+                inputMode="numeric"
+                autoFocus
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+              {busy ? 'Verifying…' : 'Verify'}
+            </button>
+          </form>
+        </div>
+      </div>
     );
   }
 
   if (stage.step === 'mfaSetup') {
     return (
-      <form onSubmit={handleMfaSetup} className="panel">
-        <h1>Set up your authenticator app</h1>
-        <p>
-          Add this secret to an authenticator app (Google Authenticator, Authy, 1Password), then enter the
-          code it shows.
-        </p>
-        <code className="secret-code">{stage.secretCode}</code>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="6-digit code"
-          inputMode="numeric"
-          autoFocus
-        />
-        {error && <p className="error">{error}</p>}
-        <button type="submit" disabled={busy}>
-          {busy ? 'Confirming…' : 'Confirm'}
-        </button>
-      </form>
+      <div className="auth-shell">
+        <div className="auth-card card">
+          <span className="brand">
+            <BrandMark />
+            Havenote
+          </span>
+          <h1>Set up your authenticator app</h1>
+          <p className="auth-subtitle">
+            Add this secret to an authenticator app (Google Authenticator, Authy, 1Password), then enter the
+            code it shows.
+          </p>
+          <code className="secret-code">{stage.secretCode}</code>
+          <form onSubmit={handleMfaSetup} className="form-stack">
+            <label className="field">
+              6-digit code
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123 456"
+                inputMode="numeric"
+                autoFocus
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+              {busy ? 'Confirming…' : 'Confirm'}
+            </button>
+          </form>
+        </div>
+      </div>
     );
   }
 
   return (
-    <form onSubmit={handleCredentials} className="panel">
-      <h1>Havenote</h1>
-      <input
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Email"
-        type="email"
-        autoFocus
-      />
-      <input
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Password"
-        type="password"
-      />
-      {error && <p className="error">{error}</p>}
-      <button type="submit" disabled={busy}>
-        {busy ? 'Signing in…' : 'Sign in'}
-      </button>
-    </form>
+    <div className="auth-shell">
+      <div className="auth-card card">
+        <span className="brand">
+          <BrandMark />
+          Havenote
+        </span>
+        <div>
+          <h1>Sign in</h1>
+          <p className="auth-subtitle">Clinical documentation, from visit to signed note.</p>
+        </div>
+        <form onSubmit={handleCredentials} className="form-stack">
+          <label className="field">
+            Email
+            <input
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              autoComplete="username"
+              autoFocus
+            />
+          </label>
+          <label className="field">
+            Password
+            <input
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              type="password"
+              autoComplete="current-password"
+            />
+          </label>
+          {error && <p className="error">{error}</p>}
+          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+            {busy ? 'Signing in…' : 'Sign in'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
 import type { ClinicalNote } from '../api/types';
+import { CheckIcon } from '../icons';
 
 type FormState = {
   subjective: string;
@@ -90,25 +91,30 @@ export function NoteReview({
 
   if (error && !note) {
     return (
-      <div className="panel">
+      <div className="page">
         <p className="error">{error}</p>
       </div>
     );
   }
 
   if (!note || !form) {
-    return <div className="panel">Loading note…</div>;
+    return <div className="page">Loading note…</div>;
   }
 
   const isMock = NOTE_FIELDS.some((field) => form[field].includes(MOCK_MARKER));
   const locked = note.status === 'SIGNED' && !editing;
 
   return (
-    <div className="review-panel">
-      <h1>
-        Visit note — {note.status}
-        {note.version > 1 ? ` (v${note.version})` : ''}
-      </h1>
+    <div className="page page-wide">
+      <div className="review-header">
+        <h1>
+          Visit note
+          <span className="status-badge">
+            {note.status}
+            {note.version > 1 ? ` · v${note.version}` : ''}
+          </span>
+        </h1>
+      </div>
 
       {isMock && (
         <p className="notice">
@@ -118,9 +124,10 @@ export function NoteReview({
       )}
 
       {note.status === 'SIGNED' && (
-        <p className="status-line">
+        <div className="signed-banner">
+          <CheckIcon />
           Signed {note.signedAt ? new Date(note.signedAt).toLocaleString() : ''}
-        </p>
+        </div>
       )}
 
       <div className="review-columns">
@@ -129,10 +136,10 @@ export function NoteReview({
           <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>
         </div>
 
-        <div className="note-form">
+        <div className="card note-form">
           {NOTE_FIELDS.map((field) => (
-            <label key={field}>
-              {field[0].toUpperCase() + field.slice(1)}
+            <label key={field} className="field">
+              <span className="note-section-label">{field}</span>
               <textarea
                 value={form[field]}
                 disabled={locked}
@@ -141,8 +148,8 @@ export function NoteReview({
               />
             </label>
           ))}
-          <label>
-            Suggested codes
+          <label className="field">
+            <span className="note-section-label">Suggested codes</span>
             <input
               value={form.suggestedCodes}
               disabled={locked}
@@ -154,13 +161,15 @@ export function NoteReview({
 
           <div className="review-actions">
             {locked ? (
-              <button onClick={() => setEditing(true)}>Edit (creates an amendment)</button>
+              <button className="btn btn-secondary" onClick={() => setEditing(true)}>
+                Edit (creates an amendment)
+              </button>
             ) : (
               <>
-                <button onClick={handleSave} disabled={busy}>
+                <button className="btn btn-secondary" onClick={handleSave} disabled={busy}>
                   {busy ? 'Saving…' : 'Save draft'}
                 </button>
-                <button onClick={handleSign} disabled={busy}>
+                <button className="btn btn-primary" onClick={handleSign} disabled={busy}>
                   {busy ? 'Signing…' : 'Sign note'}
                 </button>
               </>
