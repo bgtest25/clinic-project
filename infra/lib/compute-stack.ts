@@ -5,6 +5,8 @@ import * as ec2 from 'aws-cdk-lib/aws-ec2';
 import * as ecr from 'aws-cdk-lib/aws-ecr';
 import * as ecs from 'aws-cdk-lib/aws-ecs';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
@@ -19,6 +21,7 @@ export interface ClinicComputeStackProps extends cdk.StackProps {
   userPool: cognito.IUserPool;
   userPoolClient: cognito.IUserPoolClient;
   mediaBucket: s3.Bucket;
+  mediaBucketKey: kms.Key;
   pipelineStateMachine: sfn.StateMachine;
 }
 
@@ -38,6 +41,7 @@ export class ClinicComputeStack extends cdk.Stack {
       userPool,
       userPoolClient,
       mediaBucket,
+      mediaBucketKey,
       pipelineStateMachine,
     } = props;
 
@@ -89,8 +93,24 @@ export class ClinicComputeStack extends cdk.Stack {
     this.taskDefinition = this.service.taskDefinition;
 
     // Needed for presigned upload URLs to be valid (SigV4 signing uses the task
-    // role's own credentials) and to kick off the AI pipeline after upload.
-    mediaBucket.grantReadWrite(this.taskDefinition.taskRole);
+    // role's own credentials) and for NotesService's audio purge on sign-off.
+    // Manual statements on this role, not `mediaBucket.grantReadWrite(...)` —
+    // that method auto-grants the bucket's KMS key too, which would touch
+    // MediaBucketKey's resource policy from this stack and recreate the
+    // cross-stack cycle the key's default (unmodified) policy is designed to
+    // avoid. See storage-stack.ts.
+    this.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:PutObject', 's3:DeleteObject'],
+        resources: [mediaBucket.arnForObjects('*')],
+      }),
+    );
+    this.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Encrypt', 'kms:GenerateDataKey*', 'kms:DescribeKey'],
+        resources: [mediaBucketKey.keyArn],
+      }),
+    );
     pipelineStateMachine.grantStartExecution(this.taskDefinition.taskRole);
 
     this.service.targetGroup.configureHealthCheck({

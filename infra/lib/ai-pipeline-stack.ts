@@ -1,6 +1,8 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import * as ec2 from 'aws-cdk-lib/aws-ec2';
+import * as iam from 'aws-cdk-lib/aws-iam';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
 import * as logs from 'aws-cdk-lib/aws-logs';
@@ -12,6 +14,7 @@ import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
 export interface ClinicAiPipelineStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
   mediaBucket: s3.Bucket;
+  mediaBucketKey: kms.Key;
   dbSecurityGroup: ec2.SecurityGroup;
   dbSecret: secretsmanager.ISecret;
   bedrockModelId: string;
@@ -23,7 +26,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: ClinicAiPipelineStackProps) {
     super(scope, id, props);
-    const { vpc, mediaBucket, dbSecurityGroup, dbSecret, bedrockModelId, mockSoapNote } = props;
+    const { vpc, mediaBucket, mediaBucketKey, dbSecurityGroup, dbSecret, bedrockModelId, mockSoapNote } = props;
 
     const lambdaSg = new ec2.SecurityGroup(this, 'ProcessTranscriptSg', {
       vpc,
@@ -73,10 +76,24 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       },
     });
 
-    mediaBucket.grantRead(processTranscriptFn);
+    // Manual statements, not `mediaBucket.grantRead(...)` — see the matching
+    // comment in compute-stack.ts on why the convenience grant methods are
+    // avoided once the bucket has a customer-managed KMS key attached.
+    processTranscriptFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject'],
+        resources: [mediaBucket.arnForObjects('*')],
+      }),
+    );
+    processTranscriptFn.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Decrypt', 'kms:DescribeKey'],
+        resources: [mediaBucketKey.keyArn],
+      }),
+    );
 
     processTranscriptFn.addToRolePolicy(
-      new cdk.aws_iam.PolicyStatement({
+      new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel'],
         resources: [`arn:aws:bedrock:${this.region}::foundation-model/${bedrockModelId}`],
       }),
@@ -194,11 +211,24 @@ export class ClinicAiPipelineStack extends cdk.Stack {
     });
 
     // Transcribe's exact S3 access model (calling-role vs. service-role) isn't
-    // fully certain without a live test — granting this defensively covers the
-    // "evaluates the calling role's permissions" case; if the live test still
-    // fails with an S3 access error, a bucket policy for transcribe.amazonaws.com
-    // (or a DataAccessRoleArn param) is the next thing to check, not a guess.
-    mediaBucket.grantReadWrite(this.stateMachine);
+    // fully certain without a live test — this stays a fairly permissive
+    // read+write grant (not narrowed further) to avoid re-breaking the
+    // already-verified-working live pipeline; if a real S3 access error shows
+    // up, a bucket policy for transcribe.amazonaws.com (or a DataAccessRoleArn
+    // param) is the next thing to check, not a guess. Manual statements, not
+    // `mediaBucket.grantReadWrite(...)` — same KMS cross-stack reason as above.
+    this.stateMachine.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['s3:GetObject', 's3:GetBucketLocation', 's3:ListBucket', 's3:PutObject'],
+        resources: [mediaBucket.bucketArn, mediaBucket.arnForObjects('*')],
+      }),
+    );
+    this.stateMachine.addToRolePolicy(
+      new iam.PolicyStatement({
+        actions: ['kms:Decrypt', 'kms:Encrypt', 'kms:GenerateDataKey*', 'kms:DescribeKey'],
+        resources: [mediaBucketKey.keyArn],
+      }),
+    );
 
     new cdk.CfnOutput(this, 'StateMachineArn', { value: this.stateMachine.stateMachineArn });
   }

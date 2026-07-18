@@ -36,6 +36,7 @@ const aiPipeline = new ClinicAiPipelineStack(app, 'ClinicAiPipelineStack', {
   env,
   vpc: network.vpc,
   mediaBucket: storage.mediaBucket,
+  mediaBucketKey: storage.mediaBucketKey,
   dbSecurityGroup: database.dbSecurityGroup,
   dbSecret: database.instance.secret!,
   bedrockModelId,
@@ -52,6 +53,7 @@ const compute = new ClinicComputeStack(app, 'ClinicComputeStack', {
   userPool: auth.userPool,
   userPoolClient: auth.userPoolClient,
   mediaBucket: storage.mediaBucket,
+  mediaBucketKey: storage.mediaBucketKey,
   pipelineStateMachine: aiPipeline.stateMachine,
 });
 

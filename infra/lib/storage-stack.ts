@@ -1,22 +1,43 @@
 import * as cdk from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import * as kms from 'aws-cdk-lib/aws-kms';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 
 export class ClinicStorageStack extends cdk.Stack {
   public readonly mediaBucket: s3.Bucket;
+  public readonly mediaBucketKey: kms.Key;
 
   constructor(scope: Construct, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // SSE-S3, not a customer-managed KMS key: this bucket is read/written by both
-    // ComputeStack's ECS task role (presigned upload URLs) and the AI pipeline
-    // Lambda's role, in two different stacks. A customer key's resource policy
-    // would need to reference both, in both directions — the same cross-stack
-    // cycle already hit and fixed for the RDS secret in Phase 1. SSE-S3 still
-    // encrypts at rest; consumers just need a plain IAM grant, no KMS policy edit.
+    // Customer-managed key, left on CDK's default policy (full account-root
+    // trust) rather than adding per-consumer statements via `.grant*()` —
+    // that would touch this key's resource policy from ComputeStack/
+    // AiPipelineStack, recreating the exact cross-stack cycle already hit
+    // and avoided for the RDS secret in Phase 1. Consumers instead get plain
+    // IAM policy statements on their own roles (see compute-stack.ts,
+    // ai-pipeline-stack.ts), authorized against this key purely via the
+    // default root-trust statement — this key's own policy never needs to
+    // change when a new consumer is added in another stack.
+    //
+    // SSE-KMS over SSE-S3 specifically for the CloudTrail-logged audit trail
+    // of every key use (who decrypted what, when) — meaningful for PHI, and
+    // SSE-S3 provides none. S3 itself is HIPAA-eligible either way; this is
+    // the stronger, auditable choice now that CloudTrail/Config/GuardDuty
+    // are documented as part of this account's baseline.
+    this.mediaBucketKey = new kms.Key(this, 'MediaBucketKey', {
+      alias: 'clinic-project/media-bucket',
+      enableKeyRotation: true,
+    });
+
     this.mediaBucket = new s3.Bucket(this, 'MediaBucket', {
       bucketName: `clinic-project-media-${this.account}`,
-      encryption: s3.BucketEncryption.S3_MANAGED,
+      encryption: s3.BucketEncryption.KMS,
+      encryptionKey: this.mediaBucketKey,
+      // Reduces KMS API call volume/cost by reusing a bucket-level data key
+      // instead of calling KMS per-object; still fully compatible with
+      // CloudTrail logging of key usage.
+      bucketKeyEnabled: true,
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
       enforceSSL: true,
