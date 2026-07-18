@@ -15,6 +15,7 @@ export interface ClinicAiPipelineStackProps extends cdk.StackProps {
   dbSecurityGroup: ec2.SecurityGroup;
   dbSecret: secretsmanager.ISecret;
   bedrockModelId: string;
+  mockSoapNote: boolean;
 }
 
 export class ClinicAiPipelineStack extends cdk.Stack {
@@ -22,7 +23,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: ClinicAiPipelineStackProps) {
     super(scope, id, props);
-    const { vpc, mediaBucket, dbSecurityGroup, dbSecret, bedrockModelId } = props;
+    const { vpc, mediaBucket, dbSecurityGroup, dbSecret, bedrockModelId, mockSoapNote } = props;
 
     const lambdaSg = new ec2.SecurityGroup(this, 'ProcessTranscriptSg', {
       vpc,
@@ -60,6 +61,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       logGroup: processTranscriptLogGroup,
       environment: {
         BEDROCK_MODEL_ID: bedrockModelId,
+        MOCK_SOAP_NOTE: mockSoapNote ? 'true' : 'false',
         // Dynamic CloudFormation references, resolved server-side at deploy time —
         // never appear as plaintext in the template, same effect as ECS's `secrets:`
         // mapping but Lambda has no native equivalent, so this is the standard way.

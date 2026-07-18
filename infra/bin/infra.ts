@@ -20,6 +20,11 @@ const env = {
 // defaults to 'latest' for local/manual synth.
 const apiImageTag = app.node.tryGetContext('apiImageTag') ?? 'latest';
 const bedrockModelId = app.node.tryGetContext('bedrockModelId') ?? 'anthropic.claude-sonnet-5';
+// Default true until the Bedrock model-access support case (AWS account
+// 501264525435) is resolved — the pipeline runs end-to-end with a canned
+// placeholder note instead of a real Bedrock InvokeModel call. Flip the
+// default to 'false' (or pass `-c mockSoapNote=false`) once access is granted.
+const mockSoapNote = (app.node.tryGetContext('mockSoapNote') ?? 'true') === 'true';
 
 const network = new ClinicNetworkStack(app, 'ClinicNetworkStack', { env });
 const database = new ClinicDatabaseStack(app, 'ClinicDatabaseStack', { env, vpc: network.vpc });
@@ -34,6 +39,7 @@ const aiPipeline = new ClinicAiPipelineStack(app, 'ClinicAiPipelineStack', {
   dbSecurityGroup: database.dbSecurityGroup,
   dbSecret: database.instance.secret!,
   bedrockModelId,
+  mockSoapNote,
 });
 
 const compute = new ClinicComputeStack(app, 'ClinicComputeStack', {

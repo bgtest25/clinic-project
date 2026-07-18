@@ -60,6 +60,21 @@ async function fetchTranscriptText(bucket: string, key: string): Promise<string>
 }
 
 async function generateSoapNote(transcriptText: string) {
+  // Temporary: AWS Bedrock model access for anthropic.claude-sonnet-5 is blocked
+  // on an account-level restriction (AWS support case filed, pending as of
+  // 2026-07-18) — this lets the rest of the pipeline (and the note review/sign
+  // UI) be built and exercised end-to-end without a real InvokeModel call.
+  // Remove this branch once MOCK_SOAP_NOTE is no longer set to 'true' in the stack.
+  if (process.env.MOCK_SOAP_NOTE === 'true') {
+    return {
+      subjective: `[MOCK NOTE — Bedrock access pending] ${transcriptText.slice(0, 300)}`,
+      objective: '[MOCK NOTE — Bedrock access pending]',
+      assessment: '[MOCK NOTE — Bedrock access pending]',
+      plan: '[MOCK NOTE — Bedrock access pending]',
+      suggestedCodes: '',
+    };
+  }
+
   const command = new InvokeModelCommand({
     modelId: process.env.BEDROCK_MODEL_ID,
     contentType: 'application/json',
