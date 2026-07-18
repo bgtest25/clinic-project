@@ -8,11 +8,13 @@ export function Dashboard({
   me,
   onSelect,
   onNew,
+  onInvite,
 }: {
   token: string;
   me: Me;
   onSelect: (encounterId: string) => void;
   onNew: () => void;
+  onInvite: () => void;
 }) {
   const [encounters, setEncounters] = useState<EncounterListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -30,9 +32,16 @@ export function Dashboard({
           <h1>Your visits</h1>
           <p>Resume an in-progress visit or start a new one.</p>
         </div>
-        <button className="btn btn-primary" onClick={onNew}>
-          + Start new visit
-        </button>
+        <div className="dashboard-header-actions">
+          {me.role === 'ADMIN' && (
+            <button className="btn btn-secondary" onClick={onInvite}>
+              Invite clinician
+            </button>
+          )}
+          <button className="btn btn-primary" onClick={onNew}>
+            + Start new visit
+          </button>
+        </div>
       </div>
 
       {error && <p className="error">{error}</p>}

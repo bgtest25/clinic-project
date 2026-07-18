@@ -12,31 +12,55 @@ const userPool = new CognitoUserPool({
 
 export type LoginResult =
   | { type: 'success'; accessToken: string }
+  | { type: 'newPasswordRequired'; user: CognitoUser }
   | { type: 'mfaRequired'; user: CognitoUser }
   | { type: 'mfaSetupRequired'; user: CognitoUser; secretCode: string };
+
+// Shared by both the initial login attempt and the post-new-password retry —
+// an admin-provisioned account (AdminCreateUser) always hits newPasswordRequired
+// first, then (since the pool requires MFA) mfaSetup right after, so both entry
+// points need to handle the same set of possible next challenges.
+function authChallengeCallbacks(
+  user: CognitoUser,
+  resolve: (result: LoginResult) => void,
+  reject: (err: unknown) => void,
+) {
+  return {
+    onSuccess: (session: CognitoUserSession) => {
+      resolve({ type: 'success', accessToken: session.getAccessToken().getJwtToken() });
+    },
+    onFailure: (err: unknown) => reject(err),
+    newPasswordRequired: () => {
+      resolve({ type: 'newPasswordRequired', user });
+    },
+    totpRequired: () => {
+      resolve({ type: 'mfaRequired', user });
+    },
+    mfaSetup: () => {
+      user.associateSoftwareToken({
+        associateSecretCode: (secretCode: string) => {
+          resolve({ type: 'mfaSetupRequired', user, secretCode });
+        },
+        onFailure: (err: unknown) => reject(err),
+      });
+    },
+  };
+}
 
 export function login(username: string, password: string): Promise<LoginResult> {
   return new Promise((resolve, reject) => {
     const user = new CognitoUser({ Username: username, Pool: userPool });
     const authDetails = new AuthenticationDetails({ Username: username, Password: password });
+    user.authenticateUser(authDetails, authChallengeCallbacks(user, resolve, reject));
+  });
+}
 
-    user.authenticateUser(authDetails, {
-      onSuccess: (session: CognitoUserSession) => {
-        resolve({ type: 'success', accessToken: session.getAccessToken().getJwtToken() });
-      },
-      onFailure: (err) => reject(err),
-      totpRequired: () => {
-        resolve({ type: 'mfaRequired', user });
-      },
-      mfaSetup: () => {
-        user.associateSoftwareToken({
-          associateSecretCode: (secretCode: string) => {
-            resolve({ type: 'mfaSetupRequired', user, secretCode });
-          },
-          onFailure: (err) => reject(err),
-        });
-      },
-    });
+// Admin-provisioned accounts (AdminCreateUser) sign in with Cognito's
+// auto-generated temporary password first, then must set a real one here
+// before anything else — including MFA setup — can proceed.
+export function submitNewPassword(user: CognitoUser, newPassword: string): Promise<LoginResult> {
+  return new Promise((resolve, reject) => {
+    user.completeNewPasswordChallenge(newPassword, {}, authChallengeCallbacks(user, resolve, reject));
   });
 }
 

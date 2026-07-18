@@ -5,11 +5,12 @@ import { apiFetch } from './api/client';
 import { BrandMark } from './icons';
 import type { Me } from './api/types';
 import { Dashboard } from './pages/Dashboard';
+import { InviteClinician } from './pages/InviteClinician';
 import { Login } from './pages/Login';
 import { NewEncounter } from './pages/NewEncounter';
 import { Recording } from './pages/Recording';
 
-type View = { mode: 'dashboard' } | { mode: 'new' } | { mode: 'encounter'; id: string };
+type View = { mode: 'dashboard' } | { mode: 'new' } | { mode: 'encounter'; id: string } | { mode: 'invite' };
 
 function AuthenticatedApp({ token }: { token: string }) {
   const { logout } = useAuth();
@@ -58,7 +59,11 @@ function AuthenticatedApp({ token }: { token: string }) {
           me={me}
           onNew={() => setView({ mode: 'new' })}
           onSelect={(id) => setView({ mode: 'encounter', id })}
+          onInvite={() => setView({ mode: 'invite' })}
         />
+      )}
+      {view.mode === 'invite' && (
+        <InviteClinician token={token} me={me} onBack={() => setView({ mode: 'dashboard' })} />
       )}
       {view.mode === 'new' && (
         <NewEncounter

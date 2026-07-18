@@ -1,11 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import type { CognitoUser } from 'amazon-cognito-identity-js';
-import { confirmMfaSetup, login, submitMfaCode } from '../auth/cognito';
+import { confirmMfaSetup, login, submitMfaCode, submitNewPassword, type LoginResult } from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark } from '../icons';
 
 type Stage =
   | { step: 'credentials' }
+  | { step: 'newPassword'; user: CognitoUser }
   | { step: 'mfa'; user: CognitoUser }
   | { step: 'mfaSetup'; user: CognitoUser; secretCode: string };
 
@@ -14,21 +15,45 @@ export function Login() {
   const [stage, setStage] = useState<Stage>({ step: 'credentials' });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  function applyLoginResult(result: LoginResult) {
+    if (result.type === 'success') setToken(result.accessToken);
+    else if (result.type === 'newPasswordRequired') setStage({ step: 'newPassword', user: result.user });
+    else if (result.type === 'mfaRequired') setStage({ step: 'mfa', user: result.user });
+    else setStage({ step: 'mfaSetup', user: result.user, secretCode: result.secretCode });
+  }
 
   async function handleCredentials(e: FormEvent) {
     e.preventDefault();
     setError(null);
     setBusy(true);
     try {
-      const result = await login(username, password);
-      if (result.type === 'success') setToken(result.accessToken);
-      else if (result.type === 'mfaRequired') setStage({ step: 'mfa', user: result.user });
-      else setStage({ step: 'mfaSetup', user: result.user, secretCode: result.secretCode });
+      applyLoginResult(await login(username, password));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Login failed');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleNewPassword(e: FormEvent) {
+    e.preventDefault();
+    if (stage.step !== 'newPassword') return;
+    setError(null);
+    if (newPassword !== confirmNewPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setBusy(true);
+    try {
+      applyLoginResult(await submitNewPassword(stage.user, newPassword));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to set new password');
     } finally {
       setBusy(false);
     }
@@ -60,6 +85,46 @@ export function Login() {
     } finally {
       setBusy(false);
     }
+  }
+
+  if (stage.step === 'newPassword') {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card card">
+          <span className="brand">
+            <BrandMark />
+            Havenote
+          </span>
+          <h1>Set your password</h1>
+          <p className="auth-subtitle">This is your first sign-in — choose a permanent password.</p>
+          <form onSubmit={handleNewPassword} className="form-stack">
+            <label className="field">
+              New password
+              <input
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+                autoFocus
+              />
+            </label>
+            <label className="field">
+              Confirm new password
+              <input
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+              {busy ? 'Saving…' : 'Set password'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
   }
 
   if (stage.step === 'mfa') {

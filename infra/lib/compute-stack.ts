@@ -124,6 +124,15 @@ export class ClinicComputeStack extends cdk.Stack {
     );
     pipelineStateMachine.grantStartExecution(this.taskDefinition.taskRole);
 
+    // For UsersService.invite() — admin-provisioning a clinician's Cognito
+    // account and assigning them to the admin/clinician group.
+    this.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['cognito-idp:AdminCreateUser', 'cognito-idp:AdminAddUserToGroup', 'cognito-idp:AdminDeleteUser'],
+        resources: [userPool.userPoolArn],
+      }),
+    );
+
     this.service.targetGroup.configureHealthCheck({
       path: '/health',
       healthyHttpCodes: '200',

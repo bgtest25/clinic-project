@@ -57,3 +57,10 @@ export interface EncounterDetail extends Encounter {
 export interface EncounterListItem extends Encounter {
   patient: Patient;
 }
+
+export interface InviteUserPayload {
+  email: string;
+  name: string;
+  role: 'ADMIN' | 'CLINICIAN';
+  clinicId: string;
+}
