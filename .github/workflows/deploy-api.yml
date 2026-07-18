@@ -25,6 +25,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Installing from the repo root (not `cd api && npm ci`) matters here —
+      # api is an npm workspace member, and installing from inside a member
+      # subdirectory reinstalls a smaller, incompletely-hoisted local copy
+      # instead of resolving through the root lockfile. Done once, early —
+      # the later cdk deploy step used to repeat this same install just for
+      # itself; steps in a job share the filesystem, so one install covers both.
+      - name: Install workspace dependencies
+        run: npm ci
+
+      - name: Run API tests
+        run: npm test --workspace=api
+
+      - name: Run API e2e tests
+        run: npm run test:e2e --workspace=api
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -101,14 +121,6 @@ jobs:
             echo "Migration failed — aborting before touching the running service."
             exit 1
           fi
-
-      - name: Install workspace dependencies
-        # Installing from the repo root (not `cd infra && npm ci`) matters here —
-        # infra is an npm workspace member, and installing from inside a member
-        # subdirectory reinstalls a smaller, incompletely-hoisted local copy
-        # instead of resolving through the root lockfile the way root-level
-        # installs (and the API's own Dockerfile build) correctly do.
-        run: npm ci
 
       - name: Deploy the compute stack with the new image
         working-directory: infra
