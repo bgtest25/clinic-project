@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { apiFetch } from '../api/client';
+import { apiDownload, apiFetch } from '../api/client';
 import type { ClinicalNote } from '../api/types';
 import { CheckIcon } from '../icons';
 
@@ -13,6 +13,13 @@ type FormState = {
 
 const NOTE_FIELDS = ['subjective', 'objective', 'assessment', 'plan'] as const;
 const MOCK_MARKER = '[MOCK NOTE';
+
+const SECTION_TITLES: Record<(typeof NOTE_FIELDS)[number], string> = {
+  subjective: 'Subjective',
+  objective: 'Objective',
+  assessment: 'Assessment',
+  plan: 'Plan',
+};
 
 function toForm(note: ClinicalNote): FormState {
   return {
@@ -38,6 +45,7 @@ export function NoteReview({
   const [editing, setEditing] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token)
@@ -86,6 +94,33 @@ export function NoteReview({
       setError(err instanceof Error ? err.message : 'Failed to sign the note');
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleDownloadPdf() {
+    setError(null);
+    try {
+      await apiDownload(`/encounters/${encounterId}/note/pdf`, token, `visit-note-${encounterId}.pdf`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to download the PDF');
+    }
+  }
+
+  async function handleCopy() {
+    if (!form) return;
+    const text = [
+      ...NOTE_FIELDS.map((field) => `${SECTION_TITLES[field]}:\n${form[field] || '—'}`),
+      form.suggestedCodes ? `Suggested codes:\n${form.suggestedCodes}` : null,
+    ]
+      .filter(Boolean)
+      .join('\n\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setError('Failed to copy the note to your clipboard');
     }
   }
 
@@ -174,6 +209,12 @@ export function NoteReview({
                 </button>
               </>
             )}
+            <button className="btn btn-ghost" onClick={handleCopy} type="button">
+              {copied ? 'Copied!' : 'Copy note'}
+            </button>
+            <button className="btn btn-ghost" onClick={handleDownloadPdf} type="button">
+              Download PDF
+            </button>
           </div>
         </div>
       </div>

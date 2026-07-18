@@ -587,6 +587,7 @@
 
 .review-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 0.75rem;
   padding-top: 0.25rem;
   border-top: 1px solid var(--color-border);

@@ -1,5 +1,7 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
+import type { Response } from 'express';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
+import { buildNotePdf } from './note-pdf';
 import { NotesService } from './notes.service';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 
@@ -21,5 +23,15 @@ export class NotesController {
   @Post('sign')
   sign(@Param('encounterId') encounterId: string, @Req() req: any) {
     return this.notesService.sign(encounterId, req.user.sub);
+  }
+
+  @Get('pdf')
+  async downloadPdf(@Param('encounterId') encounterId: string, @Res() res: Response) {
+    const { note, encounter } = await this.notesService.getForExport(encounterId);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="visit-note-${encounterId}.pdf"`);
+    const doc = buildNotePdf(note, encounter);
+    doc.pipe(res);
+    doc.end();
   }
 }

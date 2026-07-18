@@ -78,6 +78,15 @@ export class NotesService {
     return note;
   }
 
+  async getForExport(encounterId: string) {
+    const note = await this.findLatest(encounterId);
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: true },
+    });
+    return { note, encounter };
+  }
+
   async sign(encounterId: string, cognitoSub: string) {
     const latest = await this.findLatest(encounterId);
     if (latest.status === 'SIGNED') {
