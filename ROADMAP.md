@@ -47,3 +47,33 @@ Rough total: 8–12 weeks solo, with Phase 2 as the most likely place to run lon
 
 - Onboard one clinic, 1–2 clinicians; shadow real visits; tune Bedrock prompts on real feedback
 - Track time-saved-per-note and clinician satisfaction — this becomes your case study for the next clinic, and eventually hospitals
+
+## Account baseline status (verified 2026-07-18, not managed by this repo's CDK)
+
+Phase 0's "CloudTrail, GuardDuty, AWS Config turned on" item is done, but was set up outside this
+codebase (likely at account creation, 2026-07-16) rather than through CDK — there's no IaC record of it.
+Attempted to bring it under `cdk import`; not possible, since none of `AWS::CloudTrail::Trail`,
+`AWS::Config::ConfigurationRecorder`, `AWS::Config::DeliveryChannel`, or `AWS::GuardDuty::Detector`
+support CloudFormation's import operation (confirmed against AWS's resource-import-support docs — these
+are account/region-singleton service configs outside the Cloud Control API). Decision: document the
+snapshot here rather than build custom-resource wrappers to manage them from CDK. This is a point-in-time
+record, not living config — verify against the account directly (commands below) before relying on it.
+
+- **CloudTrail**: trail `clinic-project-trail`, multi-region, log file validation on, → bucket
+  `clinic-project-cloudtrail-501264525435` (SSE-S3, versioned, fully public-access-blocked). Not sending
+  to CloudWatch Logs.
+  Verify: `aws cloudtrail get-trail --name clinic-project-trail`
+- **AWS Config**: recorder `default`, continuous recording, **`allSupported: true` /
+  `includeGlobalResourceTypes: true`** — originally excluded `AWS::IAM::Policy/User/Role/Group` from
+  recording (a real audit-trail gap for IAM changes); fixed via `put-configuration-recorder` on
+  2026-07-18. Delivery channel `default` → bucket `config-bucket-501264525435`.
+  Verify: `aws configservice describe-configuration-recorders` /
+  `describe-configuration-recorder-status`
+- **GuardDuty**: detector `dccfb6e0cce0e95ccd6703f83b57cd22` enabled, with an extensive feature set on
+  (malware protection for EBS, RDS login events, Lambda network logs, EKS audit logs, S3/DNS/VPC flow
+  monitoring) — this breadth is why it wasn't imported either; replicating every feature toggle exactly
+  in CDK to avoid an accidental downgrade on next deploy wasn't judged worth the risk for an
+  already-working baseline.
+  Verify: `aws guardduty get-detector --detector-id dccfb6e0cce0e95ccd6703f83b57cd22`
+
+All commands above need `--profile clinic-project --region us-east-1` (AWS account 501264525435).
