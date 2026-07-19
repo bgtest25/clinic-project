@@ -7,5 +7,6 @@ import { PatientsService } from './patients.service';
   imports: [UsersModule],
   controllers: [PatientsController],
   providers: [PatientsService],
+  exports: [PatientsService],
 })
 export class PatientsModule {}

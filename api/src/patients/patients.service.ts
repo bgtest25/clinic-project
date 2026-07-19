@@ -45,4 +45,16 @@ export class PatientsService {
       },
     });
   }
+
+  // Shared by other modules (e.g. PatientDataRequestsService) that only hold
+  // a patientId and need to confirm it belongs to the caller's clinic. 404s
+  // (not 403) on a mismatch — same convention as
+  // EncountersService.assertClinicOwnsEncounter.
+  async assertClinicOwnsPatient(patientId: string, clinicId: string) {
+    const patient = await this.prisma.patient.findFirst({
+      where: { id: patientId, clinicId },
+      select: { id: true },
+    });
+    if (!patient) throw new NotFoundException('Patient not found');
+  }
 }

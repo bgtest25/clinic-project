@@ -1,8 +1,17 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import {
   AdminAddUserToGroupCommand,
   AdminCreateUserCommand,
   AdminDeleteUserCommand,
+  AdminDisableUserCommand,
+  AdminEnableUserCommand,
+  AdminUserGlobalSignOutCommand,
   CognitoIdentityProviderClient,
 } from '@aws-sdk/client-cognito-identity-provider';
 import { PrismaService } from '../prisma/prisma.service';
@@ -14,8 +23,19 @@ export class UsersService {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  findByCognitoSub(cognitoSub: string) {
-    return this.prisma.user.findUniqueOrThrow({ where: { cognitoSub } });
+  // The chokepoint every clinic-scoped service calls first on every request —
+  // so gating a deactivated account here blocks it everywhere in one place,
+  // with no new query and no per-route wiring. This also covers the gap left
+  // by AdminUserGlobalSignOutCommand: that call only revokes refresh tokens,
+  // so an already-issued access token would otherwise keep working for its
+  // remaining TTL (CognitoJwtVerifier only checks signature/expiry, it never
+  // calls out to Cognito to check revocation).
+  async findByCognitoSub(cognitoSub: string) {
+    const user = await this.prisma.user.findUniqueOrThrow({ where: { cognitoSub } });
+    if (user.deactivatedAt) {
+      throw new UnauthorizedException('This account has been deactivated');
+    }
+    return user;
   }
 
   // Admin-provisioned only (selfSignUpEnabled: false on the pool) — creates
@@ -72,5 +92,76 @@ export class UsersService {
         .catch(() => {});
       throw err;
     }
+  }
+
+  // Deactivate, never hard-delete — deleting the row would orphan
+  // ClinicalNote.signedById and AuditLog.actorId, corrupting the legal/audit
+  // record. Admin-only and clinic-scoped by the controller/here; 404s (not
+  // 403) on a cross-clinic target, same convention as everywhere else.
+  async deactivate(cognitoSub: string, targetUserId: string) {
+    const actor = await this.findByCognitoSub(cognitoSub);
+
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, clinicId: actor.clinicId },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (target.id === actor.id) {
+      throw new BadRequestException('Cannot deactivate your own account');
+    }
+    if (target.deactivatedAt) return target;
+
+    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+
+    // Cognito side first: AdminDisableUserCommand blocks all future logins;
+    // AdminUserGlobalSignOutCommand invalidates already-issued refresh tokens
+    // so an active session can't silently renew. Both are safe to retry if
+    // the Postgres write below fails — "disabled in Cognito but not yet
+    // flagged in Postgres" is fail-safe (more restrictive), not fail-open.
+    await this.cognito.send(
+      new AdminDisableUserCommand({ UserPoolId: userPoolId, Username: target.email }),
+    );
+    await this.cognito.send(
+      new AdminUserGlobalSignOutCommand({ UserPoolId: userPoolId, Username: target.email }),
+    );
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: targetUserId },
+        data: { deactivatedAt: new Date(), deactivatedById: actor.id },
+      }),
+      this.prisma.auditLog.create({
+        data: { actorId: actor.id, targetUserId, action: 'user.deactivated' },
+      }),
+    ]);
+
+    return updated;
+  }
+
+  // Symmetrical undo — admin-only, same clinic-scoping, idempotent.
+  async reactivate(cognitoSub: string, targetUserId: string) {
+    const actor = await this.findByCognitoSub(cognitoSub);
+
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, clinicId: actor.clinicId },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (!target.deactivatedAt) return target;
+
+    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+    await this.cognito.send(
+      new AdminEnableUserCommand({ UserPoolId: userPoolId, Username: target.email }),
+    );
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: targetUserId },
+        data: { deactivatedAt: null, deactivatedById: null },
+      }),
+      this.prisma.auditLog.create({
+        data: { actorId: actor.id, targetUserId, action: 'user.reactivated' },
+      }),
+    ]);
+
+    return updated;
   }
 }

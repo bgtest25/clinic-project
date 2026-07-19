@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -17,12 +17,12 @@ export class ClinicsController {
   }
 
   @Get()
-  findAll() {
-    return this.clinicsService.findAll();
+  findAll(@Req() req: any) {
+    return this.clinicsService.findAll(req.user.sub);
   }
 
   @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.clinicsService.findOne(id);
+  findOne(@Param('id') id: string, @Req() req: any) {
+    return this.clinicsService.findOne(req.user.sub, id);
   }
 }

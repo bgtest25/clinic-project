@@ -52,11 +52,23 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  encounters   Encounter[]    @relation("ClinicianEncounters")
-  signedNotes  ClinicalNote[] @relation("SignedByUser")
-  auditEntries AuditLog[]
+  // Offboarding: null while active. The row itself is never deleted — that
+  // would orphan ClinicalNote.signedById / AuditLog.actorId and corrupt the
+  // legal/audit record — so deactivation is a flag, not a removal.
+  deactivatedAt   DateTime?
+  deactivatedById String?
+  deactivatedBy   User?     @relation("UserDeactivatedBy", fields: [deactivatedById], references: [id])
+
+  encounters           Encounter[]          @relation("ClinicianEncounters")
+  signedNotes          ClinicalNote[]       @relation("SignedByUser")
+  auditEntries         AuditLog[]           @relation("AuditLogActor")
+  targetedAuditEntries AuditLog[]           @relation("AuditLogTargetUser")
+  deactivatedUsers     User[]               @relation("UserDeactivatedBy")
+  loggedDataRequests   PatientDataRequest[] @relation("PatientDataRequestLoggedBy")
+  resolvedDataRequests PatientDataRequest[] @relation("PatientDataRequestResolvedBy")
 
   @@index([clinicId])
+  @@index([deactivatedById])
   @@map("users")
 }
 
@@ -69,7 +81,9 @@ model Patient {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  encounters Encounter[]
+  encounters   Encounter[]
+  auditLogs    AuditLog[]
+  dataRequests PatientDataRequest[]
 
   @@index([clinicId])
   @@map("patients")
@@ -155,11 +169,18 @@ model ClinicalNote {
 }
 
 model AuditLog {
-  id           String    @id @default(uuid())
-  encounterId  String
-  encounter    Encounter @relation(fields: [encounterId], references: [id])
+  id          String     @id @default(uuid())
+  // At least one of encounterId/patientId/targetUserId must be set — not
+  // DB-enforced (this codebase doesn't use check constraints for invariants
+  // like this elsewhere), just a convention every writer must follow.
+  encounterId String?
+  encounter   Encounter? @relation(fields: [encounterId], references: [id])
+  patientId   String?
+  patient     Patient?   @relation(fields: [patientId], references: [id])
+  targetUserId String?
+  targetUser   User?     @relation("AuditLogTargetUser", fields: [targetUserId], references: [id])
   actorId      String
-  actor        User      @relation(fields: [actorId], references: [id])
+  actor        User      @relation("AuditLogActor", fields: [actorId], references: [id])
   action       String
   fieldChanged String?
   oldValue     String?
@@ -167,5 +188,38 @@ model AuditLog {
   createdAt    DateTime  @default(now())
 
   @@index([encounterId])
+  @@index([patientId])
+  @@index([targetUserId])
   @@map("audit_logs")
+}
+
+// Right-to-request-amendment/deletion under HIPAA (45 CFR 164.526) is a
+// request the clinic may deny, not an obligation to act — and Pennsylvania
+// retention law (49 Pa. Code § 16.95, longer floor for minors) forbids
+// actually deleting/anonymizing records as a side effect of this flow. This
+// model is strictly log-and-route-for-review: it never deletes or mutates
+// Patient or clinical data itself.
+model PatientDataRequest {
+  id        String  @id @default(uuid())
+  patientId String
+  patient   Patient @relation(fields: [patientId], references: [id])
+  // Freeform, following the same no-enum convention as AuditLog.action:
+  // 'deletion' | 'amendment'
+  requestType String
+  reason      String?
+  // 'pending' | 'approved' | 'denied'
+  status     String @default("pending")
+  loggedById String
+  loggedBy   User   @relation("PatientDataRequestLoggedBy", fields: [loggedById], references: [id])
+
+  resolvedAt     DateTime?
+  resolvedById   String?
+  resolvedBy     User?     @relation("PatientDataRequestResolvedBy", fields: [resolvedById], references: [id])
+  resolutionNote String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([patientId])
+  @@map("patient_data_requests")
 }

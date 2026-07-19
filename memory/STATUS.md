@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-07-18 (end of session)
+**Last updated:** 2026-07-19 (end of session)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -56,14 +56,31 @@ decision" sections.
   missing `prisma generate` and missing e2e `DATABASE_URL`).
 - **Frontend CI/CD**: `deploy-web.yml` exists and is verified to run correctly up to the known
   CloudFront blocker.
+- **Minimum retention period confirmed** (2026-07-19): pilot clinic is in Pennsylvania — 49 Pa.
+  Code § 16.95 requires ≥7 years from last visit (longer for minors). Indefinite retention of
+  `clinical_notes`/`transcripts` (already-built, no auto-deletion) satisfies this. See
+  `compliance/RETENTION-POLICY.md`.
+- **Patient-initiated deletion/amendment requests** (2026-07-19): log-and-route-for-review flow —
+  `POST`/`GET`/`PATCH /patients/:id/data-requests` — deliberately never deletes/anonymizes data
+  (HIPAA only grants a right to *request* amendment, and PA's retention floor above forbids
+  outright deletion anyway). New `PatientDataRequest` model + two new `AuditLog` action strings.
+- **Account offboarding** (2026-07-19): `PATCH /users/:id/deactivate` / `.../reactivate`
+  (admin-only, own-clinic-only) — disables the Cognito user + signs out active sessions +
+  flags `User.deactivatedAt`. Never hard-deletes the row (would orphan
+  `ClinicalNote.signedById`/`AuditLog.actorId`). `UsersService.findByCognitoSub` now rejects a
+  deactivated caller everywhere in one place, since every clinic-scoped service resolves the
+  caller through it first.
+- **`GET /clinics` clinic-scoping fix** (2026-07-19): now returns only the caller's own clinic;
+  `GET /clinics/:id` 404s on any other clinic's id.
+- **AWS Config S3 bucket lifecycle** (2026-07-19): `config-bucket-501264525435` had no lifecycle
+  rule at all (unbounded growth) — applied a 365-day expiration rule directly via
+  `aws s3api put-bucket-lifecycle-configuration` (account-baseline bucket, not CDK-managed),
+  matching the CloudTrail bucket's existing retention. Verified live.
 
 ## Known gaps, not blocking, not started
 
-- `RETENTION-POLICY.md`'s own open items: minimum retention period per state law (not just the
-  expiration rules already built), patient-deletion request flow, account offboarding.
-- `GET /clinics` (list all clinics) isn't clinic-scoped — low severity, no PHI in that model
-  (just clinic names), not fixed.
-- AWS Config's S3 bucket lifecycle configuration was never verified.
+None currently identified — the three items previously listed here (retention-policy open items,
+`GET /clinics` scoping, AWS Config bucket lifecycle) were all closed out 2026-07-19, above.
 
 ## How to resume in a new session
 

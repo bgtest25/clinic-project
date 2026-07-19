@@ -1,6 +1,6 @@
 # Havenote — Data Retention & Deletion Policy
 
-**Status:** describes system behavior as actually implemented, verified 2026-07-18. Not a
+**Status:** describes system behavior as actually implemented, verified 2026-07-19. Not a
 legally-reviewed document — see the "Open items" section for gaps that need a decision before
 the pilot, and reconcile the retention periods below against whatever minimum medical-record
 retention period applies in the pilot clinic's state before relying on them.
@@ -23,7 +23,7 @@ Security Rule expectation, not just good practice.
 | Database backups | RDS automated backups | 7 days | AWS-managed, per `backupRetention` in `database-stack.ts`. |
 | CloudTrail logs | S3 `clinic-project-cloudtrail-*` | 365 days (bucket lifecycle rule) | Automatic expiration. |
 | AWS Config history | S3 `config-bucket-*` | Not yet verified — check `aws s3api get-bucket-lifecycle-configuration --bucket config-bucket-501264525435` before relying on any assumption here. | — |
-| Clinician/account data (Cognito, `users` table) | Cognito user pool + Postgres `users` table | Indefinite while the account is active | No offboarding/deletion flow exists yet — open item, see below. |
+| Clinician/account data (Cognito, `users` table) | Cognito user pool + Postgres `users` table | Indefinite; deactivation (not deletion) on offboarding | `PATCH /users/:id/deactivate` (admin-only, own-clinic only) disables the Cognito user, signs out any active session, and sets `User.deactivatedAt` — the row itself is never deleted, since `ClinicalNote.signedById` and `AuditLog.actorId` depend on it for the legal/audit record. `PATCH /users/:id/reactivate` reverses it. |
 
 ## How deletion is verified
 
@@ -34,14 +34,40 @@ backstops) are AWS-managed and not individually logged in the application's own 
 level of granularity is ever required, CloudTrail's S3 data events would need to be enabled for this
 bucket (currently only management events are captured account-wide).
 
-## Open items (not yet decided or built)
+## Minimum retention requirement (resolved 2026-07-19)
 
-- **Minimum retention requirement**: this policy describes maximums/expirations, not a *minimum* required
-  retention for clinical records. Many US states require clinical records be kept 7+ years (longer for
-  minors) — nothing in the system currently enforces a floor, though nothing auto-deletes clinical notes
-  either, so this is a "confirm it meets the requirement," not "fix a bug."
-- **Patient-initiated deletion requests**: no flow exists for a patient (via the clinic) to request
-  deletion/amendment beyond what HIPAA already requires the covered entity to support. Needs a decision
-  before pilot.
-- **Account offboarding**: no code path removes a clinician's data on account closure.
-- **AWS Config bucket lifecycle**: unverified as of this writing — check before pilot.
+The pilot clinic is in **Pennsylvania**. Physician offices there must retain a patient's medical
+record for **at least 7 years from the date of the last medical service**, and for a minor patient
+**until 1 year after they reach the age of majority**, even if that exceeds 7 years (49 Pa. Code
+§ 16.95). This is a floor, not a ceiling — nothing above describes an obligation to *delete* at any
+point.
+
+The system already satisfies this trivially: `clinical_notes` and `transcripts` are retained
+**indefinitely** with no automated deletion (see the table above) — indefinite retention is always
+≥ any finite statutory minimum. This is not a legal opinion; confirm against the specific pilot
+clinic's status (hospital vs. physician office) and any applicable federal program requirements
+(e.g. Medicare/Medicaid) before relying on it, consistent with this file's own status note above.
+
+## Patient-initiated deletion/amendment requests (built 2026-07-19)
+
+HIPAA (45 CFR § 164.526) gives patients a right to *request* amendment, not a right to erasure —
+a covered entity may deny the request, and Pennsylvania's 7-year floor above means outright
+deletion generally isn't a legally available option anyway. Accordingly, this is a
+**log-and-route-for-review** flow, not a delete/anonymize action:
+
+- `POST /patients/:id/data-requests` — any clinic staff member logs an incoming request
+  (`requestType: 'deletion' | 'amendment'`, optional `reason`). Status starts `pending`.
+- `GET /patients/:id/data-requests` — lists a patient's requests, clinic-scoped.
+- `PATCH /patients/:id/data-requests/:requestId` — admin-only; resolves a request
+  (`status: 'approved' | 'denied'`, optional `resolutionNote`).
+
+No code path in this flow deletes or mutates `Patient` or clinical-record data. Every log/resolve
+action also writes an `AuditLog` row (`patient.data_request_logged` /
+`patient.data_request_resolved`).
+
+## AWS Config bucket lifecycle (resolved 2026-07-19)
+
+`config-bucket-501264525435` had no lifecycle rule (`NoSuchLifecycleConfiguration`) — config
+history was accumulating unbounded. Applied a 365-day expiration rule directly via
+`aws s3api put-bucket-lifecycle-configuration` (this bucket is account-baseline, not managed by
+this repo's CDK), matching the existing CloudTrail bucket's retention above.
