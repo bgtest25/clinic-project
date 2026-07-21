@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-07-19 (end of session)
+**Last updated:** 2026-07-21 (end of session)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -10,23 +10,33 @@ decision" sections.
 
 ## 🔴 Blocked — waiting on something outside this repo
 
-1. **Bedrock model access** — AWS support case filed, still pending as of last check. The AI
-   pipeline runs in **mock mode** (`MOCK_SOAP_NOTE=true`, default in `infra/bin/infra.ts`) —
-   every draft note is clearly labeled `[MOCK NOTE — Bedrock access pending]`, not real AI output.
+1. **Bedrock model access** — AWS support case filed, still `NOT_AUTHORIZED` as of 2026-07-21
+   (re-checked; case shows "Unassigned" — no engineer on it yet). The AI pipeline runs in
+   **mock mode** (`MOCK_SOAP_NOTE=true`, default in `infra/bin/infra.ts`) — every draft note is
+   clearly labeled `[MOCK NOTE — Bedrock access pending]`, not real AI output. The system prompt
+   itself was hardened 2026-07-21 (see below) and is already deployed — nothing left to do here
+   code-side once access clears.
    - Check status: `aws bedrock get-foundation-model-availability --model-id anthropic.claude-sonnet-5 --profile clinic-project --region us-east-1` — look for `authorizationStatus: AUTHORIZED`.
+   - `aws support describe-cases` does NOT work on this account (`SubscriptionRequiredException` —
+     no paid Support plan) — the Bedrock command above is the only real way to check.
    - Once cleared: flip the default in `infra/bin/infra.ts` (`mockSoapNote`) to `false`, then
      `cd infra && npx cdk deploy ClinicAiPipelineStack --profile clinic-project`.
 
-2. **CloudFront account verification** — AWS support case filed, still pending. Blocks the
-   frontend (`ClinicWebHostingStack`: S3 + CloudFront for `havenote.health` / `app.havenote.health`)
-   from deploying at all. The `deploy-web.yml` CI pipeline is fully built and will auto-retry on
-   the next push touching `web/**` — it just needs AWS to clear this first.
+2. **CloudFront account verification** — AWS support case filed, still blocked as of 2026-07-21
+   (re-checked twice now, same 403 both times; case also "Unassigned"). Blocks the frontend
+   (`ClinicWebHostingStack`: S3 + CloudFront for `havenote.health` / `app.havenote.health`) from
+   deploying at all. The `deploy-web.yml` CI pipeline is fully built and correctly auto-retries on
+   every push touching `web/**` — it just needs AWS to clear this first. **This has now failed
+   this exact way twice** (2026-07-19, 2026-07-21) — expect to repeat the cleanup below each time
+   until it clears.
    - Check status: try `cd infra && npx cdk deploy ClinicWebHostingStack --profile clinic-project` —
      if it still 403s with "Your account must be verified," it's still pending.
-   - If it fails, clean up before retrying: the stack lands in `ROLLBACK_COMPLETE` and the
+   - If it fails, clean up before retrying: the stack lands in a rollback/review state and the
      `clinic-project-web-*` S3 bucket survives (RemovalPolicy.RETAIN) — delete the stack
-     (`aws cloudformation delete-stack --stack-name ClinicWebHostingStack`) and the empty bucket
-     before trying again, or the retry will collide on the bucket name.
+     (`aws cloudformation delete-stack --stack-name ClinicWebHostingStack`, then
+     `aws cloudformation wait stack-delete-complete ...`) and the empty bucket
+     (`aws s3api delete-bucket --bucket clinic-project-web-501264525435`) before trying again, or
+     the retry will collide on the bucket name.
 
 3. **Legal review** — `compliance/BAA-TEMPLATE.md` and `compliance/PRIVACY-POLICY.md` are drafts,
    explicitly **not reviewed by counsel, not ready to sign/publish**. Needed before any real
@@ -76,11 +86,42 @@ decision" sections.
   rule at all (unbounded growth) — applied a 365-day expiration rule directly via
   `aws s3api put-bucket-lifecycle-configuration` (account-baseline bucket, not CDK-managed),
   matching the CloudTrail bucket's existing retention. Verified live.
+- **Admin/patient UI** (2026-07-21): the `deactivate`/`reactivate`/data-request/`GET /clinics`
+  endpoints from 2026-07-19 had zero frontend coverage until now. Added `GET /users` (new
+  backend endpoint — a roster to actually manage), `Users`/`Patients`/`PatientDetail` pages, a
+  small shared `ConfirmButton` inline-confirm component (no modal — this app has none), and the
+  clinic name in the topbar. Deployed (the `GET /users` backend piece; the frontend itself can't
+  deploy yet — see CloudFront blocker above).
+- **Web test infrastructure** (2026-07-21): `web/` had zero test tooling before this — no script,
+  no files. Vitest + React Testing Library now set up, 38 tests across 7 files. `Login.tsx`
+  (Cognito SDK depth) and `Recording.tsx` (MediaRecorder/getUserMedia, not implemented in jsdom)
+  deliberately excluded — good candidates for later, not attempted here.
+  `NewEncounter.tsx`/`Metrics.tsx`/`NoteReview.tsx` also still uncovered, lower priority.
+- **SOAP-note prompt hardened** (2026-07-21): replaced the single generic paragraph with
+  field-specific guidance (what belongs in each SOAP section, explicit handling of
+  incomplete/garbled transcript segments, tightened anti-hallucination/output-format rules).
+  Validated against synthetic urgent-care transcripts via a mocked-Bedrock Jest suite (live
+  Bedrock still blocked). Deployed to `ClinicAiPipelineStack` already — inert until Bedrock
+  access clears and `MOCK_SOAP_NOTE` flips off.
+- **Real production bug found + fixed via a live smoke test** (2026-07-21): deactivate/reactivate
+  was 500ing in production — the ECS task role's IAM grant never got the
+  `AdminDisableUser`/`AdminEnableUser`/`AdminUserGlobalSignOut` actions the 2026-07-19 session's
+  code needed. Invisible to unit tests (they mock the Cognito SDK client), only caught by running
+  the actual app against the real API. Fixed in `infra/lib/compute-stack.ts`, redeployed, verified
+  clean end-to-end with zero console errors. A follow-up audit of every other AWS SDK call in
+  `api/src/**` and `infra/lambda/**` against their actual IAM grants found **no other instances**
+  of this bug class — this was an isolated gap, not a systemic pattern.
+- **Data-request resolution note now displayed** (2026-07-21): the note captured on approve/deny
+  was written to the DB but never shown anywhere afterward — added a Resolution column to
+  `PatientDetail.tsx`.
 
 ## Known gaps, not blocking, not started
 
-None currently identified — the three items previously listed here (retention-policy open items,
-`GET /clinics` scoping, AWS Config bucket lifecycle) were all closed out 2026-07-19, above.
+- Web test coverage for `NewEncounter.tsx`, `Metrics.tsx`, `NoteReview.tsx` — good next candidates,
+  not yet built. `Login.tsx`/`Recording.tsx` are deliberately excluded, not just deferred (see above).
+- No additional synthetic-transcript scenarios beyond the four covering common-case/edge-case
+  variety validated 2026-07-21 — more (e.g. multi-complaint visits, pediatric/minor consent) would
+  further stress-test the prompt, not required before Bedrock clears.
 
 ## How to resume in a new session
 
