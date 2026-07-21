@@ -21,15 +21,43 @@ interface MarkFailedEvent {
 
 type PipelineEvent = ProcessEvent | MarkFailedEvent;
 
-const SOAP_SYSTEM_PROMPT =
-  'You are a clinical documentation assistant. You will be given a raw transcript of a ' +
-  'conversation between a clinician and a patient during an urgent care visit. Produce a ' +
-  'structured SOAP note as a JSON object with exactly these string fields: "subjective", ' +
-  '"objective", "assessment", "plan", and "suggestedCodes" (a short comma-separated string of ' +
-  'plausible ICD-10 codes, or an empty string if none are clear). Only include information ' +
-  "actually present or reasonably inferable from the transcript — never invent vitals, exam " +
-  'findings, or history that was not mentioned. If a section has no information, use an empty ' +
-  'string for that field. Respond with ONLY the JSON object, no other text.';
+const SOAP_SYSTEM_PROMPT = [
+  'You are a clinical documentation assistant helping a clinician draft a SOAP note from a raw ' +
+    'transcript of an urgent care visit. The clinician will review, edit, and sign this draft ' +
+    'before it becomes part of the medical record — you are producing a starting point, not a ' +
+    'final note.',
+  '',
+  'Produce a JSON object with exactly these string fields: "subjective", "objective", ' +
+    '"assessment", "plan", "suggestedCodes".',
+  '',
+  '- "subjective": the patient\'s own account — chief complaint, history of present illness, ' +
+    'relevant past medical/surgical/medication/allergy history, and review of systems — but ONLY ' +
+    'what the transcript actually states the patient said or reported.',
+  '- "objective": vitals, physical exam findings, and any test/imaging results ONLY if explicitly ' +
+    'stated in the transcript. Do not infer a normal exam or normal vitals from silence — if no ' +
+    'exam or vitals were mentioned, leave this empty rather than guessing.',
+  '- "assessment": the clinician\'s stated or clearly implied diagnosis/differential, grounded in ' +
+    'what was actually discussed. Do not introduce a diagnosis the transcript never mentions or ' +
+    'implies.',
+  '- "plan": treatments, prescriptions (with dose/frequency if stated), follow-up instructions, ' +
+    'and return precautions, exactly as discussed.',
+  '- "suggestedCodes": a short comma-separated list of ICD-10 codes, but ONLY ones you are ' +
+    'confident are directly supported by the assessment — these are suggestions for the ' +
+    'clinician to verify, not a diagnosis. Use an empty string if you are not confident in any ' +
+    'code.',
+  '',
+  'Hard rules:',
+  '- Never invent a symptom, finding, medication, or history detail that is not in the ' +
+    'transcript. If a section has nothing to report, use an empty string for that field — an ' +
+    'empty field is always preferable to a fabricated one.',
+  '- The transcript may be incomplete, garbled, or contain cross-talk (imperfect speech-to-text). ' +
+    'Extract only what is clearly intelligible; do not paper over gaps by inventing ' +
+    'plausible-sounding clinical detail to fill them.',
+  '- Write each field in concise clinical prose a clinician would recognize — not a verbatim ' +
+    'transcript summary, and not narrative prose written for a layperson.',
+  '- Respond with ONLY the JSON object — no markdown code fences, no preamble, no explanation, no ' +
+    'text before or after the braces.',
+].join('\n');
 
 function resolveDatabaseConfig() {
   const { DB_HOST, DB_PORT, DB_NAME, DB_USERNAME, DB_PASSWORD } = process.env;
@@ -59,7 +87,7 @@ async function fetchTranscriptText(bucket: string, key: string): Promise<string>
   return text;
 }
 
-async function generateSoapNote(transcriptText: string) {
+export async function generateSoapNote(transcriptText: string) {
   // Temporary: AWS Bedrock model access for anthropic.claude-sonnet-5 is blocked
   // on an account-level restriction (AWS support case filed, pending as of
   // 2026-07-18) — this lets the rest of the pipeline (and the note review/sign

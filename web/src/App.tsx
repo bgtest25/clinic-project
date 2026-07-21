@@ -3,24 +3,31 @@ import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { apiFetch } from './api/client';
 import { BrandMark } from './icons';
-import type { Me } from './api/types';
+import type { Clinic, Me } from './api/types';
 import { Dashboard } from './pages/Dashboard';
 import { InviteClinician } from './pages/InviteClinician';
 import { Login } from './pages/Login';
 import { Metrics } from './pages/Metrics';
 import { NewEncounter } from './pages/NewEncounter';
+import { PatientDetail } from './pages/PatientDetail';
+import { Patients } from './pages/Patients';
 import { Recording } from './pages/Recording';
+import { Users } from './pages/Users';
 
 type View =
   | { mode: 'dashboard' }
   | { mode: 'new' }
   | { mode: 'encounter'; id: string }
   | { mode: 'invite' }
-  | { mode: 'metrics' };
+  | { mode: 'metrics' }
+  | { mode: 'users' }
+  | { mode: 'patients' }
+  | { mode: 'patient'; id: string };
 
 function AuthenticatedApp({ token }: { token: string }) {
   const { logout } = useAuth();
   const [me, setMe] = useState<Me | null>(null);
+  const [clinic, setClinic] = useState<Clinic | null>(null);
   const [view, setView] = useState<View>({ mode: 'dashboard' });
   const [error, setError] = useState<string | null>(null);
 
@@ -28,6 +35,13 @@ function AuthenticatedApp({ token }: { token: string }) {
     apiFetch<Me>('/users/me', token)
       .then(setMe)
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load your account'));
+  }, [token]);
+
+  useEffect(() => {
+    // Decorative only — never block the app if this fails.
+    apiFetch<Clinic[]>('/clinics', token)
+      .then((clinics) => setClinic(clinics[0] ?? null))
+      .catch(() => {});
   }, [token]);
 
   if (error) {
@@ -53,6 +67,7 @@ function AuthenticatedApp({ token }: { token: string }) {
         <div className="topbar-user">
           <span>
             <strong>{me.name}</strong>
+            {clinic && <span className="topbar-clinic"> · {clinic.name}</span>}
           </span>
           <button className="btn btn-ghost" onClick={logout}>
             Sign out
@@ -67,6 +82,8 @@ function AuthenticatedApp({ token }: { token: string }) {
           onSelect={(id) => setView({ mode: 'encounter', id })}
           onInvite={() => setView({ mode: 'invite' })}
           onMetrics={() => setView({ mode: 'metrics' })}
+          onUsers={() => setView({ mode: 'users' })}
+          onPatients={() => setView({ mode: 'patients' })}
         />
       )}
       {view.mode === 'invite' && (
@@ -74,6 +91,24 @@ function AuthenticatedApp({ token }: { token: string }) {
       )}
       {view.mode === 'metrics' && (
         <Metrics token={token} me={me} onBack={() => setView({ mode: 'dashboard' })} />
+      )}
+      {view.mode === 'users' && (
+        <Users token={token} me={me} onBack={() => setView({ mode: 'dashboard' })} />
+      )}
+      {view.mode === 'patients' && (
+        <Patients
+          token={token}
+          onBack={() => setView({ mode: 'dashboard' })}
+          onSelect={(id) => setView({ mode: 'patient', id })}
+        />
+      )}
+      {view.mode === 'patient' && (
+        <PatientDetail
+          token={token}
+          me={me}
+          patientId={view.id}
+          onBack={() => setView({ mode: 'patients' })}
+        />
       )}
       {view.mode === 'new' && (
         <NewEncounter

@@ -74,3 +74,41 @@ export interface MetricsSummary {
   satisfactionResponseCount: number;
   avgEditsPerNote: number | null;
 }
+
+export interface User extends Me {
+  deactivatedAt: string | null;
+  deactivatedById: string | null;
+}
+
+export interface DataRequest {
+  id: string;
+  patientId: string;
+  requestType: string;
+  reason: string | null;
+  status: string;
+  loggedById: string;
+  resolvedAt: string | null;
+  resolvedById: string | null;
+  resolutionNote: string | null;
+  createdAt: string;
+}
+
+export interface Clinic {
+  id: string;
+  name: string;
+}
+
+export interface CreateDataRequestPayload {
+  requestType: 'deletion' | 'amendment';
+  reason?: string;
+}
+
+export interface ResolveDataRequestPayload {
+  status: 'approved' | 'denied';
+  resolutionNote?: string;
+}
+
+export interface UpdatePatientPayload {
+  name?: string;
+  dateOfBirth?: string;
+}

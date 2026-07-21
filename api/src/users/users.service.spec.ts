@@ -20,11 +20,25 @@ describe('UsersService', () => {
 
   beforeEach(() => {
     prisma = {
-      user: { findUniqueOrThrow: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+      user: { findUniqueOrThrow: jest.fn(), findFirst: jest.fn(), findMany: jest.fn(), update: jest.fn() },
       auditLog: { create: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
     service = new UsersService(prisma);
+  });
+
+  describe('findAll', () => {
+    it('returns clinic-scoped users ordered by name', async () => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(actor);
+      const users = [{ id: 'user-2', clinicId: 'clinic-a', name: 'Bob' }];
+      prisma.user.findMany.mockResolvedValue(users);
+
+      await expect(service.findAll('sub-1')).resolves.toBe(users);
+      expect(prisma.user.findMany).toHaveBeenCalledWith({
+        where: { clinicId: 'clinic-a' },
+        orderBy: { name: 'asc' },
+      });
+    });
   });
 
   describe('findByCognitoSub', () => {

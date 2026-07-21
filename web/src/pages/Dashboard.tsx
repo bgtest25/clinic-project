@@ -10,6 +10,8 @@ export function Dashboard({
   onNew,
   onInvite,
   onMetrics,
+  onUsers,
+  onPatients,
 }: {
   token: string;
   me: Me;
@@ -17,6 +19,8 @@ export function Dashboard({
   onNew: () => void;
   onInvite: () => void;
   onMetrics: () => void;
+  onUsers: () => void;
+  onPatients: () => void;
 }) {
   const [encounters, setEncounters] = useState<EncounterListItem[] | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +39,9 @@ export function Dashboard({
           <p>Resume an in-progress visit or start a new one.</p>
         </div>
         <div className="dashboard-header-actions">
+          <button className="btn btn-secondary" onClick={onPatients}>
+            Patients
+          </button>
           {me.role === 'ADMIN' && (
             <>
               <button className="btn btn-secondary" onClick={onMetrics}>
@@ -42,6 +49,9 @@ export function Dashboard({
               </button>
               <button className="btn btn-secondary" onClick={onInvite}>
                 Invite clinician
+              </button>
+              <button className="btn btn-secondary" onClick={onUsers}>
+                Manage users
               </button>
             </>
           )}

@@ -15,6 +15,12 @@ export class UsersController {
     return this.usersService.findByCognitoSub(req.user.sub);
   }
 
+  @Get()
+  @Roles('admin')
+  findAll(@Req() req: any) {
+    return this.usersService.findAll(req.user.sub);
+  }
+
   @Post()
   @Roles('admin')
   invite(@Body() dto: CreateUserDto) {

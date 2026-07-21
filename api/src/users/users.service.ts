@@ -38,6 +38,15 @@ export class UsersService {
     return user;
   }
 
+  // Admin-only clinic roster (enforced by the controller's @Roles('admin')).
+  async findAll(cognitoSub: string) {
+    const actor = await this.findByCognitoSub(cognitoSub);
+    return this.prisma.user.findMany({
+      where: { clinicId: actor.clinicId },
+      orderBy: { name: 'asc' },
+    });
+  }
+
   // Admin-provisioned only (selfSignUpEnabled: false on the pool) — creates
   // the Cognito account first (temp password + invite email are Cognito's
   // own default behavior, no email infra of our own needed), then mirrors it

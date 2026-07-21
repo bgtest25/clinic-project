@@ -76,6 +76,11 @@
   font-weight: 600;
 }
 
+.topbar-clinic {
+  color: var(--color-text-secondary);
+  font-weight: 400;
+}
+
 /* ---------- buttons ---------- */
 
 .btn {
@@ -144,6 +149,23 @@
 
 .btn-block {
   width: 100%;
+}
+
+.btn-sm {
+  padding: 0.4rem 0.75rem;
+  font-size: 0.82rem;
+}
+
+.confirm-inline {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.confirm-inline-label {
+  font-size: 0.82rem;
+  color: var(--color-text-secondary);
+  font-weight: 600;
 }
 
 .link-button {
@@ -355,6 +377,27 @@
   color: var(--color-warning-text);
 }
 
+.status-badge.status-pending {
+  background: var(--color-warning-soft);
+  color: var(--color-warning-text);
+}
+
+.status-badge.status-approved,
+.status-badge.status-active {
+  background: var(--color-success-soft);
+  color: var(--color-success-text);
+}
+
+.status-badge.status-denied {
+  background: var(--color-danger-soft);
+  color: var(--color-danger-text);
+}
+
+.status-badge.status-inactive {
+  background: var(--color-surface-muted);
+  color: var(--color-text-muted);
+}
+
 /* ---------- dashboard ---------- */
 
 .dashboard-header {
@@ -420,6 +463,34 @@
 .patient-name {
   font-weight: 600;
   color: var(--color-text);
+}
+
+.table-primary-cell {
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.data-requests-card {
+  margin-top: 1.5rem;
+}
+
+.request-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.request-note-field {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.4rem;
+  font-weight: 400;
+}
+
+.request-note-field input {
+  width: 180px;
+  padding: 0.4rem 0.6rem;
 }
 
 .empty-state {
