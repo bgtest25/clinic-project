@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiFetch } from '../api/client';
 import type { DataRequest, Me, Patient } from '../api/types';
@@ -115,9 +115,21 @@ describe('PatientDetail', () => {
     fireEvent.click(screen.getByText('Confirm'));
 
     expect(await screen.findByText('denied')).toBeInTheDocument();
+    expect(screen.getByText('Retention required')).toBeInTheDocument();
     expect(apiFetch).toHaveBeenCalledWith('/patients/pat-1/data-requests/req-1', 'tok', {
       method: 'PATCH',
       body: JSON.stringify({ status: 'denied', resolutionNote: 'Retention required' }),
     });
+  });
+
+  it('shows a dash for the resolution column on a still-pending request', async () => {
+    mockLoads();
+    render(<PatientDetail token="tok" me={admin} patientId="pat-1" onBack={vi.fn()} />);
+    await screen.findByText('pending');
+
+    const row = screen.getByText('pending').closest('tr')!;
+    const cells = within(row).getAllByRole('cell');
+    // Type, Reason, Status, Resolution, Logged — Resolution is the 4th cell.
+    expect(cells[3]).toHaveTextContent('—');
   });
 });

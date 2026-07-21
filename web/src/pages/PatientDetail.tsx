@@ -189,6 +189,7 @@ export function PatientDetail({
                   <th>Type</th>
                   <th>Reason</th>
                   <th>Status</th>
+                  <th>Resolution</th>
                   <th>Logged</th>
                   {me.role === 'ADMIN' && <th>Actions</th>}
                 </tr>
@@ -201,6 +202,7 @@ export function PatientDetail({
                     <td>
                       <span className={`status-badge status-${r.status}`}>{r.status}</span>
                     </td>
+                    <td>{r.status === 'pending' ? '—' : r.resolutionNote ?? '—'}</td>
                     <td>{new Date(r.createdAt).toLocaleDateString()}</td>
                     {me.role === 'ADMIN' && (
                       <td>
