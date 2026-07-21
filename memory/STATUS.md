@@ -93,10 +93,10 @@ decision" sections.
   clinic name in the topbar. Deployed (the `GET /users` backend piece; the frontend itself can't
   deploy yet — see CloudFront blocker above).
 - **Web test infrastructure** (2026-07-21): `web/` had zero test tooling before this — no script,
-  no files. Vitest + React Testing Library now set up, 38 tests across 7 files. `Login.tsx`
-  (Cognito SDK depth) and `Recording.tsx` (MediaRecorder/getUserMedia, not implemented in jsdom)
-  deliberately excluded — good candidates for later, not attempted here.
-  `NewEncounter.tsx`/`Metrics.tsx`/`NoteReview.tsx` also still uncovered, lower priority.
+  no files. Vitest + React Testing Library now set up; grew from 38 to **55 tests across 10 files**
+  same day, once `NewEncounter.tsx`/`Metrics.tsx`/`NoteReview.tsx` coverage was added too. Every
+  page now has coverage except `Login.tsx` (Cognito SDK depth) and `Recording.tsx`
+  (MediaRecorder/getUserMedia, not implemented in jsdom) — both deliberately excluded, not deferred.
 - **SOAP-note prompt hardened** (2026-07-21): replaced the single generic paragraph with
   field-specific guidance (what belongs in each SOAP section, explicit handling of
   incomplete/garbled transcript segments, tightened anti-hallucination/output-format rules).
@@ -117,8 +117,6 @@ decision" sections.
 
 ## Known gaps, not blocking, not started
 
-- Web test coverage for `NewEncounter.tsx`, `Metrics.tsx`, `NoteReview.tsx` — good next candidates,
-  not yet built. `Login.tsx`/`Recording.tsx` are deliberately excluded, not just deferred (see above).
 - No additional synthetic-transcript scenarios beyond the four covering common-case/edge-case
   variety validated 2026-07-21 — more (e.g. multi-complaint visits, pediatric/minor consent) would
   further stress-test the prompt, not required before Bedrock clears.
