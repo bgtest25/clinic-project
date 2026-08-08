@@ -114,12 +114,18 @@ decision" sections.
 - **Data-request resolution note now displayed** (2026-07-21): the note captured on approve/deny
   was written to the DB but never shown anywhere afterward — added a Resolution column to
   `PatientDetail.tsx`.
+- **4 more synthetic-transcript scenarios added** (2026-08-08): `generate-soap-note.test.ts` grew
+  from 3 to 7 transcript fixtures (5→9 tests) — pediatric single-complaint (guardian-reported
+  otitis media), multi-complaint adult (unrelated back pain + med refill), pediatric
+  multi-complaint (fever + rash), and adolescent confidential (guardian steps out, direct
+  suicidality screening). Same pattern as the original three: mocked-Bedrock only, since live
+  Bedrock is still blocked — these document expected behavior for replay against the real model
+  once access clears. Closes the last open "known gap."
 
 ## Known gaps, not blocking, not started
 
-- No additional synthetic-transcript scenarios beyond the four covering common-case/edge-case
-  variety validated 2026-07-21 — more (e.g. multi-complaint visits, pediatric/minor consent) would
-  further stress-test the prompt, not required before Bedrock clears.
+- None currently open — the last remaining gap (more synthetic-transcript scenarios) was closed
+  2026-08-08 below.
 
 ## How to resume in a new session
 
