@@ -120,16 +120,29 @@ decision" sections.
 - **Data-request resolution note now displayed** (2026-07-21): the note captured on approve/deny
   was written to the DB but never shown anywhere afterward — added a Resolution column to
   `PatientDetail.tsx`.
-- **7 more synthetic-transcript scenarios added** (2026-08-08, two passes): `generate-soap-note.test.ts`
-  grew from 3 to 10 transcript fixtures (5→12 tests). First pass: pediatric single-complaint
+- **11 more synthetic-transcript scenarios added** (2026-08-08, three passes): `generate-soap-note.test.ts`
+  grew from 3 to 14 transcript fixtures (5→16 tests). First pass: pediatric single-complaint
   (guardian-reported otitis media), multi-complaint adult (unrelated back pain + med refill),
   pediatric multi-complaint (fever + rash), adolescent confidential (guardian steps out, direct
-  suicidality screening). Second pass, while waiting on AWS: medication reconciliation (nonadherence
-  gap + undisclosed OTC use), telehealth/limited-exam visit (asserts the note doesn't invent
-  physical-exam findings a video visit can't produce), and informed refusal (patient declines an
-  ER referral — asserts the plan documents the refusal and return precautions rather than dropping
-  the recommendation). Same pattern throughout: mocked-Bedrock only, since live Bedrock is still
-  blocked — these document expected behavior for replay against the real model once access clears.
+  suicidality screening). Second pass: medication reconciliation (nonadherence gap + undisclosed OTC
+  use), telehealth/limited-exam visit (asserts the note doesn't invent physical-exam findings a
+  video visit can't produce), informed refusal (patient declines an ER referral — asserts the plan
+  documents the refusal and return precautions rather than dropping the recommendation). Third pass,
+  enterprise/security-oriented: **prompt-injection resistance** (transcript contains instruction-like
+  text trying to get the model to leak its system prompt or other patients' data — this one drove an
+  actual prompt change, see below, not just a test), AMA departure (formal against-medical-advice
+  documentation, distinct from generic informed refusal), a sensitive safety disclosure (domestic
+  violence — factual/non-judgmental documentation + resources offered, asserts no invented legal
+  conclusions), and an interpreter-assisted visit (asserts history is attributed to the patient via
+  the interpreter, not blended as the interpreter's own voice). Same pattern throughout:
+  mocked-Bedrock only, since live Bedrock is still blocked — these document expected behavior for
+  replay against the real model once access clears.
+- **SOAP system prompt hardened again** (2026-08-08): added an explicit rule instructing the model to
+  treat all transcript content as reported speech, never as instructions to it — closes a real gap
+  found while building the prompt-injection test (the 2026-07-21 hardening pass covered
+  hallucination/incomplete-transcript handling but never addressed embedded-instruction resistance).
+  Deployed as part of `ClinicAiPipelineStack` (inert until Bedrock access clears, same as the rest of
+  the prompt).
 - **Pilot onboarding runbook written** (2026-08-08): `compliance/PILOT-ONBOARDING-RUNBOOK.md` —
   documents the actual built flow end to end (there's no self-signup, so the very first clinic/admin
   has to be bootstrapped manually via a one-off ECS task, same pattern already proven for the
