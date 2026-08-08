@@ -75,6 +75,32 @@ const ADOLESCENT_CONFIDENTIAL_TRANSCRIPT =
   'you to a behavioral health specialist for further evaluation, and let\'s plan a follow-up in two ' +
   'weeks, sooner if things feel worse.';
 
+const MEDICATION_RECONCILIATION_TRANSCRIPT =
+  'Clinician: Let\'s go through your medications since your last visit. Patient: I\'m still on the ' +
+  'metformin twice a day, and the lisinopril once in the morning. I ran out of the atorvastatin about ' +
+  'three weeks ago and haven\'t restarted it. Clinician: Any reason you stopped it? Patient: No, just ' +
+  'forgot to refill. Also my daughter gave me some of her ibuprofen for knee pain a few times last ' +
+  'month. Clinician: Noted — I\'d avoid regular NSAID use with your kidney history, use acetaminophen ' +
+  'instead if you need something. Your blood pressure and blood sugar logs both look well controlled. ' +
+  'I\'ll restart the atorvastatin at the same dose and we\'ll recheck a lipid panel in three months.';
+
+const TELEHEALTH_LIMITED_EXAM_TRANSCRIPT =
+  'Clinician: This is a video visit today — can you describe what\'s going on? Patient: I\'ve had a ' +
+  'itchy rash on my forearm for about four days, it\'s not spreading. Clinician: Can you hold it up to ' +
+  'the camera? ...Okay, I can see a well-defined red, scaly patch, looks consistent with nummular ' +
+  'eczema from here, though I can\'t feel it or check for warmth the way I could in person. No fever, ' +
+  'no other symptoms? Patient: No, just itchy. Clinician: I\'ll prescribe a topical steroid cream. If ' +
+  'it doesn\'t improve in two weeks or starts spreading, you\'ll need to come in for an in-person exam.';
+
+const INFORMED_REFUSAL_TRANSCRIPT =
+  'Clinician: Given your symptoms, I\'d recommend we send you to the ER for a CT scan to rule out ' +
+  'appendicitis. Patient: I really don\'t want to go to the ER right now, I can\'t afford it and I have ' +
+  'to pick up my kids. Clinician: I understand, but I want to be clear this could be serious if it is ' +
+  'appendicitis — untreated it can rupture. Patient: I hear you, I\'m still choosing not to go right ' +
+  'now. Clinician: Okay, I\'ve documented that I recommended emergency evaluation and you\'ve declined. ' +
+  'If the pain worsens, you develop a fever, or the pain moves to your lower right side, go to the ER ' +
+  'immediately. I\'d like to see you back here first thing tomorrow if you don\'t go.';
+
 function bedrockTextResponse(text: string) {
   return {
     body: new TextEncoder().encode(JSON.stringify({ content: [{ text }] })),
@@ -254,5 +280,76 @@ describe('generateSoapNote', () => {
     expect(note.subjective).toContain('Denies suicidal ideation');
     expect(note.subjective).not.toContain('consent');
     expect(note.assessment).toContain('depressive');
+  });
+
+  it('captures a medication reconciliation including a gap and an OTC addition', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({
+          subjective:
+            'Medication reconciliation: continues metformin BID and lisinopril daily. Atorvastatin ' +
+            'lapsed ~3 weeks (nonadherence, not intolerance). Reports intermittent OTC ibuprofen use ' +
+            '(daughter\'s supply) for knee pain.',
+          objective: 'Home BP and glucose logs reviewed, well controlled.',
+          assessment: 'Diabetes and hypertension well controlled. Lapsed statin therapy. NSAID use inadvisable given renal history.',
+          plan: 'Restart atorvastatin at prior dose, recheck lipid panel in 3 months. Advised acetaminophen over NSAIDs given renal history.',
+          suggestedCodes: 'E11.9, I10, E78.5',
+        }),
+      ),
+    );
+
+    const note = await generateSoapNote(MEDICATION_RECONCILIATION_TRANSCRIPT);
+
+    expect(note.subjective).toContain('Atorvastatin lapsed');
+    expect(note.subjective).toContain('ibuprofen');
+    expect(note.plan).toContain('Restart atorvastatin');
+  });
+
+  it('reflects the reduced exam limits of a telehealth visit rather than inventing a physical exam', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({
+          subjective: 'Itchy, non-spreading rash on forearm for 4 days. No fever or other symptoms. Visit conducted via video.',
+          objective:
+            'Visual exam via video only: well-defined erythematous, scaly patch on forearm. Palpation and temperature assessment not possible via telehealth.',
+          assessment: 'Findings consistent with nummular eczema, visual assessment only.',
+          plan: 'Topical corticosteroid cream. In-person exam if not improved in 2 weeks or if spreading.',
+          suggestedCodes: 'L30.9',
+        }),
+      ),
+    );
+
+    const note = await generateSoapNote(TELEHEALTH_LIMITED_EXAM_TRANSCRIPT);
+
+    expect(note.objective).toContain('via video');
+    expect(note.objective).not.toContain('palpation reveals');
+    expect(note.plan).toContain('In-person exam');
+  });
+
+  it('documents a patient-declined recommendation without dropping it from the plan', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({
+          subjective: 'Abdominal pain concerning for possible appendicitis.',
+          objective: '',
+          assessment: 'Possible appendicitis; emergency evaluation with CT imaging recommended.',
+          plan:
+            'Recommended immediate ER evaluation and CT scan to rule out appendicitis. Patient declined ' +
+            'due to cost/childcare concerns after risks of untreated appendicitis (including rupture) ' +
+            'were explained. Return precautions given: worsening pain, fever, or migration to right ' +
+            'lower quadrant should prompt immediate ER visit. Follow-up scheduled next morning if ER not pursued.',
+          suggestedCodes: 'R10.9',
+        }),
+      ),
+    );
+
+    const note = await generateSoapNote(INFORMED_REFUSAL_TRANSCRIPT);
+
+    expect(note.plan).toContain('declined');
+    expect(note.plan).toContain('right lower quadrant');
+    expect(note.assessment).toContain('appendicitis');
   });
 });

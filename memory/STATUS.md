@@ -120,13 +120,22 @@ decision" sections.
 - **Data-request resolution note now displayed** (2026-07-21): the note captured on approve/deny
   was written to the DB but never shown anywhere afterward — added a Resolution column to
   `PatientDetail.tsx`.
-- **4 more synthetic-transcript scenarios added** (2026-08-08): `generate-soap-note.test.ts` grew
-  from 3 to 7 transcript fixtures (5→9 tests) — pediatric single-complaint (guardian-reported
-  otitis media), multi-complaint adult (unrelated back pain + med refill), pediatric
-  multi-complaint (fever + rash), and adolescent confidential (guardian steps out, direct
-  suicidality screening). Same pattern as the original three: mocked-Bedrock only, since live
-  Bedrock is still blocked — these document expected behavior for replay against the real model
-  once access clears. Closes the last open "known gap."
+- **7 more synthetic-transcript scenarios added** (2026-08-08, two passes): `generate-soap-note.test.ts`
+  grew from 3 to 10 transcript fixtures (5→12 tests). First pass: pediatric single-complaint
+  (guardian-reported otitis media), multi-complaint adult (unrelated back pain + med refill),
+  pediatric multi-complaint (fever + rash), adolescent confidential (guardian steps out, direct
+  suicidality screening). Second pass, while waiting on AWS: medication reconciliation (nonadherence
+  gap + undisclosed OTC use), telehealth/limited-exam visit (asserts the note doesn't invent
+  physical-exam findings a video visit can't produce), and informed refusal (patient declines an
+  ER referral — asserts the plan documents the refusal and return precautions rather than dropping
+  the recommendation). Same pattern throughout: mocked-Bedrock only, since live Bedrock is still
+  blocked — these document expected behavior for replay against the real model once access clears.
+- **Pilot onboarding runbook written** (2026-08-08): `compliance/PILOT-ONBOARDING-RUNBOOK.md` —
+  documents the actual built flow end to end (there's no self-signup, so the very first clinic/admin
+  has to be bootstrapped manually via a one-off ECS task, same pattern already proven for the
+  `testclinician` test account), clinician invite → first-login MFA setup → the full
+  record→review→sign→export workflow, admin operations, and a pre-launch checklist tied to the two
+  open AWS blockers plus legal sign-off.
 
 ## Known gaps, not blocking, not started
 

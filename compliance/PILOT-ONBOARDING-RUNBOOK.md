@@ -1,0 +1,94 @@
+# Havenote — Pilot Onboarding Runbook
+
+**Status:** operational draft. Covers everything that's actually built and live as of 2026-08-08.
+Not legally reviewed — see `BAA-TEMPLATE.md` / `PRIVACY-POLICY.md` for what's still pending counsel.
+This document assumes the two AWS blockers (Bedrock model access, CloudFront account verification)
+have cleared — see `../memory/STATUS.md` for current status before using this for a real launch.
+
+## 0. Pre-launch checklist
+
+- [ ] Bedrock model access `AUTHORIZED` (`aws bedrock get-foundation-model-availability --model-id anthropic.claude-sonnet-5 --profile clinic-project --region us-east-1`)
+- [ ] `infra/bin/infra.ts` `mockSoapNote` flipped to `false`, `ClinicAiPipelineStack` redeployed
+- [ ] CloudFront verification cleared, `ClinicWebHostingStack` deployed successfully, `app.havenote.health` resolving
+- [ ] `compliance/BAA-TEMPLATE.md` and `compliance/PRIVACY-POLICY.md` reviewed by counsel and signed with the pilot clinic
+- [ ] Pilot clinic's actual name/address/state confirmed (retention rules in `RETENTION-POLICY.md` are Pennsylvania-specific — re-verify if the pilot clinic isn't in PA)
+- [ ] `INCIDENT-RESPONSE-RUNBOOK.md` roles filled in (Security Officer / Privacy Officer / on-call engineer — currently placeholders)
+
+## 1. Bootstrap the first clinic + admin (one-time, manual)
+
+There is no self-signup and no UI for creating the very first clinic or admin — every path in the
+app (`POST /clinics`, `POST /users`) requires an already-authenticated admin. The very first one has
+to be created directly against the database and Cognito, the same way the `testclinician` test
+account was seeded during Phase 2 development:
+
+1. Insert the `Clinic` row directly via Prisma (name, address, etc.).
+2. Create the Cognito user: `AdminCreateUserCommand` (email, name attributes, `DesiredDeliveryMediums: ['EMAIL']` sends Cognito's own invite email with a temp password) against user pool
+   `us-east-1_odhVx41g7`, then `AdminAddUserToGroupCommand` into the `admin` group.
+3. Insert the matching `User` row (`cognitoSub` from step 2's response, `role: 'ADMIN'`, the new
+   clinic's id).
+
+Run all three from inside the VPC — a one-off ECS task against the `clinic-project-cluster` running
+the real API image (same pattern `deploy-api.yml`'s migration step uses: `register-task-definition`
+with a command override, `run-task`, `wait tasks-stopped`) is the proven way to reach both RDS
+(private-isolated subnet) and Cognito with the right IAM role. Do **not** reuse the `testclinician`
+account for the real pilot — that's test debris (see `../memory/STATUS.md`), create a real admin
+tied to the actual pilot clinic.
+
+## 2. Admin invites clinicians
+
+From here on it's self-service through the app:
+
+1. Admin logs into `app.havenote.health`, goes to **Users**, uses the invite flow (`InviteClinician`
+   page → `POST /users`). Cognito sends the new clinician a temp password by email.
+2. Repeat per clinician. Roles are `ADMIN` or `CLINICIAN` — pick based on who needs the Users/Metrics
+   admin views vs. just the visit workflow.
+
+## 3. Clinician first login
+
+1. Clinician goes to the login page, enters the emailed temp password.
+2. **Forced password reset** (Cognito `NEW_PASSWORD_REQUIRED` challenge) — sets a permanent password.
+3. **Mandatory MFA setup** (the user pool requires it, no way to skip) — the app shows a TOTP secret
+   to add to an authenticator app (Google Authenticator, Authy, 1Password all work), then confirms
+   with the 6-digit code. After first-time setup, subsequent logins just prompt for the 6-digit code.
+
+Worth walking the pilot clinic's staff through this live once — MFA setup is the one step in the
+whole flow most likely to trip up a non-technical first-time user.
+
+## 4. Day-to-day clinician workflow
+
+1. **Start a visit**: "Start a new visit" → patient name + date of birth → creates the `Patient` and
+   `Encounter` records.
+2. **Consent**: explicit "I confirm consent was given" step — must be clicked before recording is
+   allowed. This is logged (`consentCapturedAt`), not just a UI gate.
+3. **Record**: tap to start/stop. Browser mic capture (`MediaRecorder`), foreground-only — closing
+   the tab or navigating away mid-recording loses the recording, there's no background capture.
+4. **Upload + processing**: automatic on stop — presigned S3 upload, then the visit shows
+   "Processing in the background" while Transcribe Medical → Bedrock run (polls every 4s). This
+   typically takes under a minute for a normal-length visit based on Phase 2 testing.
+5. **Review**: draft SOAP note (Subjective/Objective/Assessment/Plan + suggested codes) shown next to
+   the raw transcript. Fully editable before signing.
+6. **Sign**: locks the note. Editing a signed note creates a versioned amendment, not a silent
+   overwrite (`note.version` increments, `Edit (creates an amendment)`).
+7. **Export**: "Copy note" (plain text) or "Download PDF" — both available pre- or post-sign.
+8. **Feedback**: after signing, a 5-star + optional comment prompt on the AI draft's quality — this
+   is what feeds the admin Metrics dashboard's satisfaction number. One-time only per note.
+
+## 5. Admin operations
+
+- **Users**: roster, invite new clinicians, deactivate/reactivate (never hard-delete — see
+  `../memory/STATUS.md`'s account-offboarding note for why).
+- **Patients / Patient detail**: roster + per-patient visit history; patient-initiated
+  deletion/amendment requests are logged here (approve/deny + resolution note, never auto-deletes —
+  required by the PA retention floor, see `RETENTION-POLICY.md`).
+- **Metrics**: review time, edit count, and satisfaction rating aggregated across the clinic — the
+  main lever for judging whether the AI drafts are actually saving clinician time during the pilot.
+
+## 6. Known limitations going into the pilot
+
+- Web-only — no native app, no offline recording, no background audio capture.
+- `Login.tsx` and `Recording.tsx` have zero automated test coverage (Cognito SDK / MediaRecorder
+  depth aren't meaningfully testable under jsdom) — these are the two components most worth a manual
+  smoke test before real patient use, not just trusting the green CI checkmark.
+- Every draft note is labeled `[MOCK NOTE — Bedrock access pending]` until Bedrock access is live —
+  do not let a clinician sign a mock note believing it's real AI output; verify the mock banner is
+  gone (see checklist item 0) before the first real patient visit.
