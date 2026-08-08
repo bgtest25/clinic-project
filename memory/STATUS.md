@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-07-21 (end of session)
+**Last updated:** 2026-08-08 (mid-session — Business Support enabled, new CloudFront case opened)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -10,27 +10,33 @@ decision" sections.
 
 ## 🔴 Blocked — waiting on something outside this repo
 
-1. **Bedrock model access** — AWS support case filed, still `NOT_AUTHORIZED` as of 2026-07-21
-   (re-checked; case shows "Unassigned" — no engineer on it yet). The AI pipeline runs in
-   **mock mode** (`MOCK_SOAP_NOTE=true`, default in `infra/bin/infra.ts`) — every draft note is
-   clearly labeled `[MOCK NOTE — Bedrock access pending]`, not real AI output. The system prompt
-   itself was hardened 2026-07-21 (see below) and is already deployed — nothing left to do here
-   code-side once access clears.
+1. **Bedrock model access** — still `NOT_AUTHORIZED` as of 2026-08-08. Case `178433501800988`:
+   a genuine past-due balance ($53.76) was found and paid 2026-08-08 (the agent's request for
+   payment was legitimate — confirmed via the real case correspondence, not phishing, despite an
+   unusually warm tone), and the case was replied to confirming payment. Status now
+   `customer-action-completed` — waiting on the agent to submit the actual activation request next.
+   The AI pipeline runs in **mock mode** (`MOCK_SOAP_NOTE=true`, default in `infra/bin/infra.ts`) —
+   every draft note is clearly labeled `[MOCK NOTE — Bedrock access pending]`, not real AI output.
+   The system prompt itself was hardened 2026-07-21 (see below) and is already deployed — nothing
+   left to do here code-side once access clears.
    - Check status: `aws bedrock get-foundation-model-availability --model-id anthropic.claude-sonnet-5 --profile clinic-project --region us-east-1` — look for `authorizationStatus: AUTHORIZED`.
-   - `aws support describe-cases` does NOT work on this account (`SubscriptionRequiredException` —
-     no paid Support plan) — the Bedrock command above is the only real way to check.
+   - **Account upgraded to Business Support 2026-08-08** — `aws support describe-cases --profile clinic-project --region us-east-1 --include-resolved-cases --max-results 10` now works (previously threw `SubscriptionRequiredException` on Basic support) and is the better way to check real case status/correspondence, not just the raw Bedrock API 403.
    - Once cleared: flip the default in `infra/bin/infra.ts` (`mockSoapNote`) to `false`, then
      `cd infra && npx cdk deploy ClinicAiPipelineStack --profile clinic-project`.
 
-2. **CloudFront account verification** — AWS support case filed, still blocked as of 2026-07-21
-   (re-checked twice now, same 403 both times; case also "Unassigned"). Blocks the frontend
-   (`ClinicWebHostingStack`: S3 + CloudFront for `havenote.health` / `app.havenote.health`) from
-   deploying at all. The `deploy-web.yml` CI pipeline is fully built and correctly auto-retries on
-   every push touching `web/**` — it just needs AWS to clear this first. **This has now failed
-   this exact way twice** (2026-07-19, 2026-07-21) — expect to repeat the cleanup below each time
-   until it clears.
-   - Check status: try `cd infra && npx cdk deploy ClinicWebHostingStack --profile clinic-project` —
-     if it still 403s with "Your account must be verified," it's still pending.
+2. **CloudFront account verification** — the *original* case (`178440028900396`) was actually
+   **denied and closed 2026-07-28** ("unable to approve the verification request at this time...
+   resubmit once the account has more usage/billing history") — this wasn't visible until Business
+   Support was enabled 2026-08-08 and gave API access to case correspondence; every re-check
+   between 7/28 and 8/8 was correctly hitting the 403 because there was no longer an active case,
+   not because it was "still pending." **New case opened 2026-08-08**:
+   `case-501264525435-muen-2026-de7f9790e656deb8`, referencing the denial and citing since-then
+   account history (cleared past-due balance, Business Support upgrade, continued real usage
+   across RDS/ECS/S3/Lambda/Step Functions/Cognito). Blocks the frontend (`ClinicWebHostingStack`:
+   S3 + CloudFront for `havenote.health` / `app.havenote.health`) from deploying at all. The
+   `deploy-web.yml` CI pipeline is fully built and correctly auto-retries on every push touching
+   `web/**` — it just needs AWS to approve this first.
+   - Check status: prefer `aws support describe-cases --profile clinic-project --region us-east-1 --include-resolved-cases --max-results 10` and look at case `de7f9790e656deb8`'s correspondence directly — this is what revealed the *original* case had been silently denied/closed weeks before anyone noticed, since a raw 403 alone can't distinguish "still pending" from "denied, no active case." The `cdk deploy ClinicWebHostingStack --profile clinic-project` attempt still works as a live functional check, just don't treat its 403 alone as proof the case is still open.
    - If it fails, clean up before retrying: the stack lands in a rollback/review state and the
      `clinic-project-web-*` S3 bucket survives (RemovalPolicy.RETAIN) — delete the stack
      (`aws cloudformation delete-stack --stack-name ClinicWebHostingStack`, then
