@@ -51,9 +51,11 @@ export class ClinicDatabaseStack extends cdk.Stack {
       vpc,
       vpcSubnets: { subnetType: ec2.SubnetType.PRIVATE_ISOLATED },
       securityGroups: [this.dbSecurityGroup],
-      // Flipped to true ahead of the pilot (Phase 5) — was single-AZ during
-      // build to control cost.
-      multiAz: true,
+      // Reverted to single-AZ 2026-08-11 — pilot is still blocked on the Bedrock/
+      // CloudFront AWS cases with zero real traffic, so the Multi-AZ standby (~half
+      // of the RDS bill) isn't buying anything yet. Flip back to true again once the
+      // pilot is actually about to go live.
+      multiAz: false,
       allocatedStorage: 20,
       storageEncrypted: true,
       storageEncryptionKey: dbKey,

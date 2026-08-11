@@ -225,6 +225,28 @@ decision" sections.
   (triggered by an earlier unrelated push) — waited for that to clear, then retried. Verified live
   via `aws cloudformation describe-stacks` (`CREATE_COMPLETE`) and `aws configservice
   describe-config-rules` (all 16 rules present).
+- **Cost audit + RDS reverted to single-AZ (2026-08-11)**: pulled real Cost Explorer data
+  (`get-cost-and-usage`, actuals not estimates) — ~$98/mo infra run-rate, breakdown: NAT Gateway
+  ~$31/mo (almost entirely the flat hourly charge, real data transfer is negligible), RDS ~$25/mo
+  (97% of the instance-hour cost was the Multi-AZ premium), ALB ~$15/mo (LCU/real-traffic cost was
+  $0.002 — essentially zero real requests), ~$10/mo in continuously-allocated public IPv4 addresses,
+  everything else small. Plus AWS Business Support (~$65+/mo extrapolated from the first 10 days),
+  enabled 2026-08-08 specifically for case-correspondence visibility — worth downgrading once both
+  open cases close, not before.
+  Reverted `infra/lib/database-stack.ts` `multiAz` from `true` back to `false` (was already
+  single-AZ during build; only flipped to Multi-AZ "ahead of the pilot," which is still blocked
+  indefinitely) — saves ~$12-13/mo, fully reversible. Before deploying, checked AWS's own
+  CloudFormation docs for `AWS::RDS::DBInstance` `MultiAZ`: update requires "Some interruptions,"
+  explicitly **not** replacement (the CDK/CloudFormation changeset had flagged it as
+  `Replacement: Conditional`, which is a generic per-property classification, not evidence this
+  specific change would recreate the instance — confirmed via AWS docs before deploying, not
+  assumed). Deployed via `cdk deploy ClinicDatabaseStack`, took ~5.8 min (RDS removing the
+  standby), `UPDATE_COMPLETE`. Verified live: `aws rds describe-db-instances` shows
+  `MultiAZ: false`, `Status: available`; `api.havenote.health/health` still returns 200 — no
+  disruption. NAT Gateway teardown (the bigger ~$31/mo lever) deliberately **not** done — it would
+  break the live ECS task/Lambda's outbound access (ECR pulls, Secrets Manager, S3, Cognito) for a
+  savings that doesn't clearly beat VPC-endpoint costs at this traffic volume; revisit only if the
+  two AWS blockers drag on for weeks with genuinely no one using the app in between.
 
 ## How to resume in a new session
 
