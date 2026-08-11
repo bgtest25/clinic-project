@@ -23,6 +23,7 @@ export interface ClinicAiPipelineStackProps extends cdk.StackProps {
 
 export class ClinicAiPipelineStack extends cdk.Stack {
   public readonly stateMachine: sfn.StateMachine;
+  public readonly processTranscriptFn: lambdaNode.NodejsFunction;
 
   constructor(scope: Construct, id: string, props: ClinicAiPipelineStackProps) {
     super(scope, id, props);
@@ -51,7 +52,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       removalPolicy: cdk.RemovalPolicy.RETAIN,
     });
 
-    const processTranscriptFn = new lambdaNode.NodejsFunction(this, 'ProcessTranscriptFn', {
+    this.processTranscriptFn = new lambdaNode.NodejsFunction(this, 'ProcessTranscriptFn', {
       functionName: 'clinic-project-process-transcript',
       entry: 'lambda/process-transcript/index.ts',
       handler: 'handler',
@@ -79,20 +80,20 @@ export class ClinicAiPipelineStack extends cdk.Stack {
     // Manual statements, not `mediaBucket.grantRead(...)` — see the matching
     // comment in compute-stack.ts on why the convenience grant methods are
     // avoided once the bucket has a customer-managed KMS key attached.
-    processTranscriptFn.addToRolePolicy(
+    this.processTranscriptFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['s3:GetObject'],
         resources: [mediaBucket.arnForObjects('*')],
       }),
     );
-    processTranscriptFn.addToRolePolicy(
+    this.processTranscriptFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['kms:Decrypt', 'kms:DescribeKey'],
         resources: [mediaBucketKey.keyArn],
       }),
     );
 
-    processTranscriptFn.addToRolePolicy(
+    this.processTranscriptFn.addToRolePolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel'],
         resources: [`arn:aws:bedrock:${this.region}::foundation-model/${bedrockModelId}`],
@@ -110,7 +111,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
     // (ProcessTranscript) marks failure on its own already — see its try/catch —
     // so it doesn't need this same treatment.
     const markFailedFromJobStatus = new tasks.LambdaInvoke(this, 'MarkFailedFromJobStatus', {
-      lambdaFunction: processTranscriptFn,
+      lambdaFunction: this.processTranscriptFn,
       payload: sfn.TaskInput.fromObject({
         mode: 'markFailed',
         encounterId: sfn.JsonPath.stringAt('$.encounterId'),
@@ -120,7 +121,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
     }).next(transcriptionFailed);
 
     const markFailedFromException = new tasks.LambdaInvoke(this, 'MarkFailedFromException', {
-      lambdaFunction: processTranscriptFn,
+      lambdaFunction: this.processTranscriptFn,
       payload: sfn.TaskInput.fromObject({
         mode: 'markFailed',
         encounterId: sfn.JsonPath.stringAt('$.encounterId'),
@@ -168,7 +169,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
     getTranscriptionStatus.addCatch(markFailedFromException, { resultPath: '$.errorInfo' });
 
     const processTranscriptTask = new tasks.LambdaInvoke(this, 'ProcessTranscript', {
-      lambdaFunction: processTranscriptFn,
+      lambdaFunction: this.processTranscriptFn,
       payload: sfn.TaskInput.fromObject({
         encounterId: sfn.JsonPath.stringAt('$.encounterId'),
         bucket: mediaBucket.bucketName,

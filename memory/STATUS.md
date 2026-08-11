@@ -176,6 +176,37 @@ decision" sections.
 - Also checked while at it: AWS Health has two other open events (`me-central-1`/`me-south-1`
   `MULTIPLE_SERVICES_OPERATIONAL_ISSUE`, both `PUBLIC` scope, not account-specific) — unrelated to
   this account, no action needed. All other CloudFormation stacks are healthy (`UPDATE_COMPLETE`).
+- **CloudTrail S3 bucket had no lifecycle rule** (found 2026-08-11): `clinic-project-cloudtrail-501264525435`
+  had zero lifecycle configuration — despite this repo's own 2026-07-19 note claiming the
+  config-bucket fix was "matching the CloudTrail bucket's existing retention" (that claim turned
+  out to be stale/false — no rule existed when checked). 25,514 objects / ~113MB accumulated since
+  account creation (2026-07-17), unbounded, plus versioning is enabled so noncurrent versions were
+  also piling up forever. Applied via `aws s3api put-bucket-lifecycle-configuration`: 365-day
+  expiration (matching config-bucket), 90-day noncurrent-version expiration, 7-day
+  abort-incomplete-multipart-upload. Verified live. Account-baseline bucket, not CDK-managed.
+- Rest of S3 checked clean: media bucket (`clinic-project-media-*`) is KMS-encrypted with public
+  access blocked and its existing 30/90-day raw-audio/transcript backstop lifecycle rules intact;
+  config-bucket's 365-day rule (2026-07-19 fix) still in place; CDK bootstrap assets bucket is
+  standard/healthy; no leftover `clinic-project-web-*` bucket (confirms the CloudFront
+  rollback cleanup fully succeeded, no name collision risk on the next deploy attempt).
+- **Full resource sweep (2026-08-11)**: ECS API service, RDS, Cognito, ECR, Route53, IAM all
+  checked healthy. Two real gaps found: GuardDuty flagged 2,741 root-credential API calls
+  (`GetFoundationModelAvailability`) — root has no access keys, so this is a browser tab left open
+  on the Bedrock console logged in as root; not a security incident (root has MFA), just a habit
+  to break — use `clinic-admin` for console work going forward. And **zero CloudWatch alarms and
+  zero AWS Config rules existed** — the Config recorder itself was confirmed genuinely healthy
+  (`recording: true`), just with no rules attached; no Security Hub either. Nothing alerted on
+  infra failures before this.
+- **Baseline CloudWatch alarm set built and deployed (2026-08-11)**: new `infra/lib/monitoring-stack.ts`
+  (`ClinicMonitoringStack`) — SNS topic `clinic-project-alerts` emailing
+  `barsehgbor2026@outlook.com` (needs the confirmation-subscription email clicked), with 9 alarms:
+  RDS CPU/free-storage/freeable-memory, ALB unhealthy-hosts/5xx, ECS service CPU, Lambda
+  errors/throttles, Step Functions execution failed/timed-out. Required exposing
+  `processTranscriptFn` as a public property on `ClinicAiPipelineStack` (was previously a local
+  const). Validated via `tsc` + `cdk synth` before deploying; deployed via
+  `cdk deploy ClinicMonitoringStack --profile clinic-project`, all 14 resources
+  `CREATE_COMPLETE`. Config rules (the other gap from the sweep) intentionally left for a
+  separate pass — not yet scoped/built.
 
 ## How to resume in a new session
 

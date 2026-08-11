@@ -10,6 +10,7 @@ import { ClinicAiPipelineStack } from '../lib/ai-pipeline-stack';
 import { ClinicComputeStack } from '../lib/compute-stack';
 import { ClinicCicdStack } from '../lib/cicd-stack';
 import { ClinicWebHostingStack } from '../lib/web-hosting-stack';
+import { ClinicMonitoringStack } from '../lib/monitoring-stack';
 
 const app = new cdk.App();
 
@@ -27,6 +28,7 @@ const bedrockModelId = app.node.tryGetContext('bedrockModelId') ?? 'anthropic.cl
 // placeholder note instead of a real Bedrock InvokeModel call. Flip the
 // default to 'false' (or pass `-c mockSoapNote=false`) once access is granted.
 const mockSoapNote = (app.node.tryGetContext('mockSoapNote') ?? 'true') === 'true';
+const alertEmail = app.node.tryGetContext('alertEmail') ?? 'barsehgbor2026@outlook.com';
 
 const network = new ClinicNetworkStack(app, 'ClinicNetworkStack', { env });
 const dns = new ClinicDnsStack(app, 'ClinicDnsStack', { env });
@@ -73,4 +75,13 @@ new ClinicCicdStack(app, 'ClinicCicdStack', {
 new ClinicWebHostingStack(app, 'ClinicWebHostingStack', {
   env,
   hostedZone: dns.hostedZone,
+});
+
+new ClinicMonitoringStack(app, 'ClinicMonitoringStack', {
+  env,
+  dbInstance: database.instance,
+  apiService: compute.service,
+  processTranscriptFn: aiPipeline.processTranscriptFn,
+  pipelineStateMachine: aiPipeline.stateMachine,
+  alertEmail,
 });
