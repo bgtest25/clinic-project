@@ -55,7 +55,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       functionName: 'clinic-project-process-transcript',
       entry: 'lambda/process-transcript/index.ts',
       handler: 'handler',
-      runtime: lambda.Runtime.NODEJS_20_X,
+      runtime: lambda.Runtime.NODEJS_22_X,
       timeout: cdk.Duration.minutes(5),
       memorySize: 512,
       vpc,

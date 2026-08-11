@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-08 (mid-session — Business Support enabled, new CloudFront case opened)
+**Last updated:** 2026-08-11 (status check only — both AWS cases still open, no access change)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -10,11 +10,14 @@ decision" sections.
 
 ## 🔴 Blocked — waiting on something outside this repo
 
-1. **Bedrock model access** — still `NOT_AUTHORIZED` as of 2026-08-08. Case `178433501800988`:
-   a genuine past-due balance ($53.76) was found and paid 2026-08-08 (the agent's request for
-   payment was legitimate — confirmed via the real case correspondence, not phishing, despite an
-   unusually warm tone), and the case was replied to confirming payment. Status now
-   `customer-action-completed` — waiting on the agent to submit the actual activation request next.
+1. **Bedrock model access** — still `NOT_AUTHORIZED` as of 2026-08-11 (confirmed live via
+   `get-foundation-model-availability`). Case `178433501800988`: a genuine past-due balance
+   ($53.76) was found and paid 2026-08-08 (the agent's request for payment was legitimate —
+   confirmed via the real case correspondence, not phishing, despite an unusually warm tone).
+   You sent an urgent follow-up 2026-08-10 pushing for the activation request to be submitted.
+   AWS replied 2026-08-11: case is being **escalated/transferred to a specialized team** to
+   review the activation request — status `unassigned`, no authorization yet, just moved to the
+   next queue.
    The AI pipeline runs in **mock mode** (`MOCK_SOAP_NOTE=true`, default in `infra/bin/infra.ts`) —
    every draft note is clearly labeled `[MOCK NOTE — Bedrock access pending]`, not real AI output.
    The system prompt itself was hardened 2026-07-21 (see below) and is already deployed — nothing
@@ -36,6 +39,9 @@ decision" sections.
    S3 + CloudFront for `havenote.health` / `app.havenote.health`) from deploying at all. The
    `deploy-web.yml` CI pipeline is fully built and correctly auto-retries on every push touching
    `web/**` — it just needs AWS to approve this first.
+   Status as of 2026-08-11: case still `unassigned`. AWS auto-acknowledged 2026-08-09 that it was
+   forwarded to the "program support team." You sent an urgent follow-up 2026-08-10; no response
+   since.
    - Check status: prefer `aws support describe-cases --profile clinic-project --region us-east-1 --include-resolved-cases --max-results 10` and look at case `de7f9790e656deb8`'s correspondence directly — this is what revealed the *original* case had been silently denied/closed weeks before anyone noticed, since a raw 403 alone can't distinguish "still pending" from "denied, no active case." The `cdk deploy ClinicWebHostingStack --profile clinic-project` attempt still works as a live functional check, just don't treat its 403 alone as proof the case is still open.
    - If it fails, clean up before retrying: the stack lands in a rollback/review state and the
      `clinic-project-web-*` S3 bucket survives (RemovalPolicy.RETAIN) — delete the stack
@@ -154,6 +160,22 @@ decision" sections.
 
 - None currently open — the last remaining gap (more synthetic-transcript scenarios) was closed
   2026-08-08 below.
+
+## Housekeeping while waiting on AWS cases (2026-08-11)
+
+- **Lambda Node.js 20.x runtime deprecation fixed**: AWS Health flagged an `ACTION_REQUIRED`
+  event (Node.js 20.x EOL'd 2026-04-30, security patches stopped) against
+  `clinic-project-process-transcript`, the only affected function. Bumped
+  `infra/lib/ai-pipeline-stack.ts` from `NODEJS_20_X` to `NODEJS_22_X`, validated via `tsc` +
+  `cdk synth`, deployed via `cdk deploy ClinicAiPipelineStack --profile clinic-project`, and
+  confirmed live (`aws lambda get-function` shows `nodejs22.x`).
+- **Orphaned `ClinicComplianceStack` deleted**: found sitting in `REVIEW_IN_PROGRESS` since
+  2026-07-18 — an empty stack shell (changeset created, never executed) with zero resources and
+  no reference anywhere in `infra/`. Deleted via `aws cloudformation delete-stack`; not part of
+  the current architecture (compliance docs live in `compliance/*.md`, not a CDK stack).
+- Also checked while at it: AWS Health has two other open events (`me-central-1`/`me-south-1`
+  `MULTIPLE_SERVICES_OPERATIONAL_ISSUE`, both `PUBLIC` scope, not account-specific) — unrelated to
+  this account, no action needed. All other CloudFormation stacks are healthy (`UPDATE_COMPLETE`).
 
 ## How to resume in a new session
 
