@@ -11,6 +11,7 @@ import { ClinicComputeStack } from '../lib/compute-stack';
 import { ClinicCicdStack } from '../lib/cicd-stack';
 import { ClinicWebHostingStack } from '../lib/web-hosting-stack';
 import { ClinicMonitoringStack } from '../lib/monitoring-stack';
+import { ClinicConfigRulesStack } from '../lib/config-rules-stack';
 
 const app = new cdk.App();
 
@@ -77,11 +78,16 @@ new ClinicWebHostingStack(app, 'ClinicWebHostingStack', {
   hostedZone: dns.hostedZone,
 });
 
-new ClinicMonitoringStack(app, 'ClinicMonitoringStack', {
+const monitoring = new ClinicMonitoringStack(app, 'ClinicMonitoringStack', {
   env,
   dbInstance: database.instance,
   apiService: compute.service,
   processTranscriptFn: aiPipeline.processTranscriptFn,
   pipelineStateMachine: aiPipeline.stateMachine,
   alertEmail,
+});
+
+new ClinicConfigRulesStack(app, 'ClinicConfigRulesStack', {
+  env,
+  alarmTopic: monitoring.alarmTopic,
 });

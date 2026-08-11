@@ -207,6 +207,24 @@ decision" sections.
   `cdk deploy ClinicMonitoringStack --profile clinic-project`, all 14 resources
   `CREATE_COMPLETE`. Config rules (the other gap from the sweep) intentionally left for a
   separate pass — not yet scoped/built.
+- **Baseline AWS Config rule pack built and deployed (2026-08-11)**: new
+  `infra/lib/config-rules-stack.ts` (`ClinicConfigRulesStack`) — 16 AWS managed Config rules
+  (S3 public-read/public-write/SSE/SSL-only, RDS storage-encrypted/public-access/multi-AZ, IAM
+  root-MFA/user-MFA/root-access-key-check/access-keys-rotated, VPC default-SG-closed,
+  restricted-incoming-traffic on ports 5432/3389/22, Lambda public-access-prohibited,
+  CloudTrail-enabled, GuardDuty-enabled-centralized), plus an EventBridge rule routing any
+  NON_COMPLIANT transition into the same `clinic-project-alerts` SNS topic the CloudWatch alarms
+  use — Config rules were otherwise going to record compliance silently with nothing paging
+  anyone. Required an `AWS::SNS::TopicPolicy` update on `ClinicMonitoringStack` (SNS topic lives
+  there; the policy granting `events.amazonaws.com` publish gets attached in the owning stack, not
+  the consuming one) — deploy this stack together with `ClinicMonitoringStack` if either changes.
+  Hit and fixed a real bug: the `AccessKeysRotated` L2 construct's documented 90-day default
+  `maxAge` doesn't actually get passed to CloudFormation in this CDK version — deploying without
+  explicitly setting `maxAge` fails with `"required parameter [maxAccessKeyAge] is not present"`.
+  First deploy attempt also collided with the CI pipeline mid-deploying `ClinicComputeStack`
+  (triggered by an earlier unrelated push) — waited for that to clear, then retried. Verified live
+  via `aws cloudformation describe-stacks` (`CREATE_COMPLETE`) and `aws configservice
+  describe-config-rules` (all 16 rules present).
 
 ## How to resume in a new session
 
