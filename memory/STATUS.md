@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-11 (status check only — both AWS cases still open, no access change)
+**Last updated:** 2026-08-12 (status check only — CloudFront case explains root cause + escalates, Bedrock unchanged)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -39,9 +39,12 @@ decision" sections.
    S3 + CloudFront for `havenote.health` / `app.havenote.health`) from deploying at all. The
    `deploy-web.yml` CI pipeline is fully built and correctly auto-retries on every push touching
    `web/**` — it just needs AWS to approve this first.
-   Status as of 2026-08-11: case still `unassigned`. AWS auto-acknowledged 2026-08-09 that it was
-   forwarded to the "program support team." You sent an urgent follow-up 2026-08-10; no response
-   since.
+   Status as of 2026-08-12: case now `opened` (was `unassigned`). Agent (Tharun) explained the real
+   root cause: **CloudFront is blocked by default for all AWS accounts under 1 year old**, a
+   fraud-prevention policy, not something specific to this account. He's escalated internally to
+   request the restriction be lifted early, "no fixed time-frame." Note: this account was created
+   2026-07-16, so the restriction would likely lapse on its own around **2027-07-16** regardless of
+   case outcome — a real fallback if the case stalls, though a year is a long way off to just wait.
    - Check status: prefer `aws support describe-cases --profile clinic-project --region us-east-1 --include-resolved-cases --max-results 10` and look at case `de7f9790e656deb8`'s correspondence directly — this is what revealed the *original* case had been silently denied/closed weeks before anyone noticed, since a raw 403 alone can't distinguish "still pending" from "denied, no active case." The `cdk deploy ClinicWebHostingStack --profile clinic-project` attempt still works as a live functional check, just don't treat its 403 alone as proof the case is still open.
    - If it fails, clean up before retrying: the stack lands in a rollback/review state and the
      `clinic-project-web-*` S3 bucket survives (RemovalPolicy.RETAIN) — delete the stack
