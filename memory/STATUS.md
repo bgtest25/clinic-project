@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-14 (interim swap: Bedrock → direct Anthropic API, CloudFront → Vercel — see below)
+**Last updated:** 2026-08-14 (interim swap LIVE end-to-end: Bedrock → direct Anthropic API, CloudFront → Vercel — see below)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -8,48 +8,61 @@ build plan, see `../ROADMAP.md`. For AWS-account-specific details (nameservers, 
 verification commands), see ROADMAP.md's "Account baseline status" and "Media bucket encryption
 decision" sections.
 
-## 🟡 Interim swap in place (2026-08-14) — pilot no longer waiting on AWS
+## 🟢 Interim swap LIVE (2026-08-14) — pilot no longer waiting on AWS
 
 Both AWS cases below remain open and unchanged (checked directly same day: Bedrock still
 `NOT_AUTHORIZED`, CloudFront case still `opened`, no new correspondence on either since
 2026-08-11/12) — this doesn't cancel either case, it routes around them so the pilot can go
-live now instead of waiting on an AWS timeline neither case has one for.
+live now instead of waiting on an AWS timeline neither case has one for. Both sides are now
+fully live and verified, not just code-ready.
 
-- **AI provider: Bedrock → direct Anthropic API.** `infra/lambda/process-transcript/index.ts`'s
-  `generateSoapNote` now calls `api.anthropic.com/v1/messages` via `fetch` instead of
+- **AI provider: Bedrock → direct Anthropic API — LIVE.** `infra/lambda/process-transcript/index.ts`'s
+  `generateSoapNote` calls `api.anthropic.com/v1/messages` via `fetch` instead of
   `BedrockRuntimeClient` — same system prompt, same `messages` shape, same downstream JSON
   parsing, only the transport changed. `infra/lib/ai-pipeline-stack.ts` imports (doesn't create)
-  a Secrets Manager secret `clinic-project/anthropic-api-key` and wires it into the Lambda's
-  `ANTHROPIC_API_KEY` env var the same way `DB_PASSWORD` is already wired (CloudFormation dynamic
-  reference, resolved at deploy time — no runtime IAM grant needed, confirmed this matches the
-  existing DB-secret pattern which also has none). `bedrock:InvokeModel` IAM grant removed.
-  `infra/bin/infra.ts`'s context var renamed `bedrockModelId` → `anthropicModelId` (default
-  `'claude-sonnet-5'`). All 17 infra tests pass (`generate-soap-note.test.ts`'s Bedrock-SDK mock
-  swapped for a `global.fetch` mock — mechanical harness change, all 14 transcript fixtures
-  untouched). `tsc --noEmit` and `cdk synth --all` both clean.
-  **Still needed before this goes live (manual, outside this session):** create an Anthropic API
-  key with billing at console.anthropic.com, then
-  `aws secretsmanager create-secret --name clinic-project/anthropic-api-key --secret-string '{"apiKey":"sk-ant-..."}' --profile clinic-project --region us-east-1`,
-  then deploy `cd infra && npx cdk deploy ClinicAiPipelineStack --profile clinic-project -c mockSoapNote=false`.
-  Until then `mockSoapNote` stays default `true` and every note is still `[MOCK NOTE]`-labeled.
-- **Frontend hosting: CloudFront → Vercel.** `ClinicWebHostingStack` (S3+CloudFront+ACM) is left
-  completely untouched in code — it's just not deployed while Vercel is in use, so it's ready to
-  reactivate as-is once CloudFront clears. Added `web/vercel.json` (SPA rewrite, same job
-  CloudFront's 403/404→`/index.html` error responses did). Rewrote `.github/workflows/deploy-web.yml`
-  to build `web/dist` exactly as before, then `vercel deploy dist --prod` instead of
-  `cdk deploy ClinicWebHostingStack` — no AWS credentials needed in that workflow anymore.
-  Added two **live, deployed** Route53 records in `infra/lib/dns-stack.ts` (`ClinicDnsStack`,
-  deployed 2026-08-14, verified via `list-resource-record-sets`): apex `havenote.health` A record
-  → Vercel's `76.76.21.21`, `app.havenote.health` CNAME → `cname.vercel-dns.com`. Commented as
-  temporary — remove both and let `ClinicWebHostingStack`'s CloudFront alias records take over
-  again once that case clears.
-  **Still needed before this goes live (manual, outside this session — needs your Vercel
-  account/browser login):** `vercel login`, then from `web/`: `vercel link` (or create the
-  project via the Vercel dashboard); add `havenote.health` and `app.havenote.health` as custom
-  domains in the Vercel project settings (triggers Vercel's own cert issuance now that DNS points
-  at it); add `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` as GitHub Actions repo secrets.
-  Until those secrets exist, `deploy-web.yml` will fail at the Vercel deploy step.
-- Code changes are **uncommitted** as of this update — not pushed, not asked to commit yet.
+  a Secrets Manager secret `clinic-project/anthropic-api-key` (created 2026-08-14, real key, by
+  you directly via CLI — never pasted into chat) and wires it into the Lambda's `ANTHROPIC_API_KEY`
+  env var the same way `DB_PASSWORD` is already wired (CloudFormation dynamic reference, resolved
+  at deploy time). `bedrock:InvokeModel` IAM grant removed. `ClinicAiPipelineStack` deployed
+  2026-08-14 with `mockSoapNote=false` — confirmed live via `aws lambda get-function-configuration`:
+  `MOCK_SOAP_NOTE: false`, `ANTHROPIC_MODEL_ID: claude-sonnet-5`, `ANTHROPIC_API_KEY` present
+  (real-length value, not the placeholder). Notes are no longer mock-labeled going forward. All 17
+  infra tests pass, `tsc --noEmit` and `cdk synth --all` both clean.
+  **Not yet done:** an actual end-to-end test (record → transcribe → real SOAP note) through a real
+  encounter — needs the app used live, deliberately not faked against the live DB. Next natural
+  step whenever a real/test encounter is run.
+- **Frontend hosting: CloudFront → Vercel — LIVE.** `ClinicWebHostingStack` (S3+CloudFront+ACM) is
+  left completely untouched in code — not deployed while Vercel is in use, ready to reactivate
+  as-is once CloudFront clears. Added `web/vercel.json` (SPA rewrite, same job CloudFront's
+  403/404→`/index.html` error responses did). Two **live** Route53 records in
+  `infra/lib/dns-stack.ts` (`ClinicDnsStack`, deployed 2026-08-14): apex `havenote.health` A
+  record → Vercel's `76.76.21.21`, `app.havenote.health` CNAME → `cname.vercel-dns.com` — commented
+  as temporary, remove both and let `ClinicWebHostingStack`'s CloudFront alias records take over
+  again once that case clears. Vercel project `web` created under team `barseh-gbors-projects`
+  (org `team_3V0ecTxzBottkE4Ro8JFs6tU`, project `prj_srcEXDEXvX3RiDrqgIlrZVRnR8TQ`); both domains
+  added and certs issued; `VITE_API_URL`/`VITE_COGNITO_USER_POOL_ID`/`VITE_COGNITO_CLIENT_ID` set
+  as Vercel Production env vars (not secrets — same public values `deploy-web.yml` used to inline
+  directly). `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` set as GitHub Actions repo secrets.
+  Both domains confirmed live: `https://havenote.health` and `https://app.havenote.health` return
+  200 over HTTPS with valid certs and serve the real app (`<title>Havenote</title>`, correct
+  API/Cognito config baked in).
+  **`deploy-web.yml` CI pipeline verified working end-to-end** (2026-08-14, run `31803579701`,
+  triggered by a real push to `main`, concluded `success`) — build `web/dist` locally (unchanged
+  step), `vercel pull` to fetch the project link + env vars, copy that `.vercel` link into `dist/`,
+  then `vercel deploy --prod` from inside `dist/` with no positional path argument. Two real
+  mistakes hit and fixed while setting this up, worth knowing if this breaks again:
+  1. Passing a bare directory (`vercel deploy dist --prod`) makes the Vercel CLI treat that
+     directory as a brand-new project root instead of the already-linked one — created a stray
+     `dist` project the first time; deleted via `vercel project rm dist`. Fixed by copying the
+     `.vercel` link folder into the built directory first, then deploying from inside it with no
+     positional path.
+  2. The documented `vercel pull` → `vercel build` → `vercel deploy --prebuilt` CI pattern hung
+     indefinitely on GitHub Actions (had to be cancelled after ~29 min) with a freshly-`npx`-fetched
+     CLI v59.0.0, even though the identical commands succeeded locally in under a minute — the
+     broken deployment never got promoted to the live domains, so production was never affected.
+     Fixed by reverting to a plain `vercel deploy --prod` (no `--prebuilt`) pinned to CLI v50.11.0
+     (the version proven to work locally) — see the comment block in `deploy-web.yml` for the
+     full reasoning if this needs revisiting.
 - Full plan: `C:\Users\barse\.claude\plans\zany-noodling-forest.md`.
 
 ## 🔴 Blocked — waiting on something outside this repo
