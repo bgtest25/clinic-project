@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { apiFetch } from '../api/client';
 import type { Me, MetricsSummary } from '../api/types';
+import { Skeleton } from '../components/Skeleton';
 
 function formatDuration(seconds: number | null): string {
   if (seconds === null) return '—';
@@ -42,7 +43,16 @@ export function Metrics({ token, me, onBack }: { token: string; me: Me; onBack: 
       </div>
 
       {error && <p className="error">{error}</p>}
-      {!error && !summary && <p className="status-line">Loading…</p>}
+      {!error && !summary && (
+        <div className="stat-grid">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div className="card stat-tile" key={i}>
+              <Skeleton className="skeleton-line" style={{ width: '60%', height: '0.8rem' }} />
+              <Skeleton className="skeleton-line" style={{ width: '40%', height: '1.9rem' }} />
+            </div>
+          ))}
+        </div>
+      )}
 
       {summary && (
         <div className="stat-grid">

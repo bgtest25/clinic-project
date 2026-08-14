@@ -1,18 +1,28 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api/client';
-import type { EncounterDetail } from '../api/types';
-import { MicIcon, StopIcon } from '../icons';
+import type { Clinic, EncounterDetail, Patient } from '../api/types';
+import { MicIcon, PauseIcon, ResumeIcon, StopIcon } from '../icons';
+import { LevelMeter } from '../components/LevelMeter';
+import { withRetry } from '../utils/retry';
 import { NoteReview } from './NoteReview';
 
 type RecordingState = 'loading' | 'idle' | 'recording' | 'uploading' | 'processing' | 'review' | 'error';
 
+function formatElapsed(seconds: number): string {
+  const m = Math.floor(seconds / 60);
+  const s = seconds % 60;
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
+
 export function Recording({
   token,
   encounterId,
+  clinic,
   onBack,
 }: {
   token: string;
   encounterId: string;
+  clinic: Clinic | null;
   onBack: () => void;
 }) {
   const [consentGiven, setConsentGiven] = useState(false);
@@ -20,13 +30,21 @@ export function Recording({
   const [error, setError] = useState<string | null>(null);
   const [encounterStatus, setEncounterStatus] = useState<string>('');
   const [transcript, setTranscript] = useState<string | null>(null);
+  const [patient, setPatient] = useState<Patient | null>(null);
+  const [visitDate, setVisitDate] = useState<string | null>(null);
+  const [isPaused, setIsPaused] = useState(false);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [uploadStatus, setUploadStatus] = useState<string | null>(null);
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const streamRef = useRef<MediaStream | null>(null);
 
   function applyEncounterDetail(latest: EncounterDetail) {
     setEncounterStatus(latest.status);
     setConsentGiven(!!latest.consentCapturedAt);
+    setPatient(latest.patient);
+    setVisitDate(latest.visitDate);
     if (latest.status === 'IN_REVIEW' || latest.status === 'SIGNED') {
       setTranscript(latest.transcript?.rawText ?? null);
       setState('review');
@@ -70,6 +88,12 @@ export function Recording({
     return () => clearInterval(interval);
   }, [state, encounterId, token]);
 
+  useEffect(() => {
+    if (state !== 'recording' || isPaused) return;
+    const interval = setInterval(() => setElapsedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(interval);
+  }, [state, isPaused]);
+
   async function handleConsent() {
     setError(null);
     try {
@@ -84,6 +108,7 @@ export function Recording({
     setError(null);
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
       const recorder = new MediaRecorder(stream, { mimeType: 'audio/webm' });
       chunksRef.current = [];
       recorder.ondataavailable = (e) => {
@@ -95,6 +120,8 @@ export function Recording({
       };
       mediaRecorderRef.current = recorder;
       recorder.start();
+      setElapsedSeconds(0);
+      setIsPaused(false);
       setState('recording');
     } catch {
       setError('Could not access the microphone — check browser permissions.');
@@ -105,27 +132,53 @@ export function Recording({
     mediaRecorderRef.current?.stop();
   }
 
+  function togglePause() {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder) return;
+    if (isPaused) {
+      recorder.resume();
+      setIsPaused(false);
+    } else {
+      recorder.pause();
+      setIsPaused(true);
+    }
+  }
+
   async function handleUpload(blob: Blob) {
     setState('uploading');
+    setUploadStatus(null);
     try {
-      const { uploadUrl } = await apiFetch<{ uploadUrl: string; s3Key: string }>(
-        `/encounters/${encounterId}/recording/start-upload`,
-        token,
-        { method: 'POST' },
+      const { uploadUrl } = await withRetry(
+        () =>
+          apiFetch<{ uploadUrl: string; s3Key: string }>(`/encounters/${encounterId}/recording/start-upload`, token, {
+            method: 'POST',
+          }),
+        { onRetry: (attempt, total) => setUploadStatus(`Retrying upload request (${attempt}/${total})…`) },
       );
 
-      const putRes = await fetch(uploadUrl, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'audio/webm' },
-        body: blob,
-      });
-      if (!putRes.ok) throw new Error(`Upload failed (${putRes.status})`);
+      await withRetry(
+        async () => {
+          const putRes = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'audio/webm' },
+            body: blob,
+          });
+          if (!putRes.ok) throw new Error(`Upload failed (${putRes.status})`);
+        },
+        { onRetry: (attempt, total) => setUploadStatus(`Retrying audio upload (${attempt}/${total})…`) },
+      );
 
-      await apiFetch(`/encounters/${encounterId}/recording/complete`, token, { method: 'POST' });
+      await withRetry(
+        () => apiFetch(`/encounters/${encounterId}/recording/complete`, token, { method: 'POST' }),
+        { onRetry: (attempt, total) => setUploadStatus(`Retrying (${attempt}/${total})…`) },
+      );
+
+      setUploadStatus(null);
       setState('processing');
       setEncounterStatus('TRANSCRIBING');
     } catch (err) {
       setState('error');
+      setUploadStatus(null);
       setError(err instanceof Error ? err.message : 'Upload failed');
     }
   }
@@ -142,7 +195,14 @@ export function Recording({
             ← Back to visits
           </button>
         </div>
-        <NoteReview token={token} encounterId={encounterId} transcript={transcript} />
+        <NoteReview
+          token={token}
+          encounterId={encounterId}
+          transcript={transcript}
+          patient={patient}
+          visitDate={visitDate}
+          clinic={clinic}
+        />
       </div>
     );
   }
@@ -154,7 +214,7 @@ export function Recording({
       </button>
       <div className="card">
         <div className="review-header">
-          <h1>Visit recording</h1>
+          <h1>Visit recording{patient ? ` — ${patient.name}` : ''}</h1>
           <span className={`status-badge status-${encounterStatus.toLowerCase()}`}>
             {encounterStatus.replace('_', ' ')}
           </span>
@@ -180,21 +240,36 @@ export function Recording({
 
         {state === 'recording' && (
           <div className="record-stage">
-            <button
-              className="record-button is-recording"
-              onClick={stopRecording}
-              aria-label="Stop recording"
-            >
-              <StopIcon />
-            </button>
-            <p className="record-caption">Recording — tap to stop</p>
+            <span className="record-elapsed">{formatElapsed(elapsedSeconds)}</span>
+            {streamRef.current && <LevelMeter stream={streamRef.current} active={!isPaused} />}
+            <div className="record-controls">
+              <button
+                className="record-button is-recording"
+                onClick={stopRecording}
+                aria-label="Stop recording"
+              >
+                <StopIcon />
+              </button>
+              <button
+                className="btn btn-secondary record-pause-button"
+                onClick={togglePause}
+                type="button"
+                aria-label={isPaused ? 'Resume recording' : 'Pause recording'}
+              >
+                {isPaused ? <ResumeIcon /> : <PauseIcon />}
+                {isPaused ? 'Resume' : 'Pause'}
+              </button>
+            </div>
+            <p className="record-caption">
+              {isPaused ? 'Paused — tap resume to continue' : 'Recording — tap stop when finished'}
+            </p>
           </div>
         )}
 
         {state === 'uploading' && (
           <div className="processing-state">
             <span className="spinner" />
-            Uploading…
+            {uploadStatus ?? 'Uploading…'}
           </div>
         )}
 

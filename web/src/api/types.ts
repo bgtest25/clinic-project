@@ -52,6 +52,7 @@ export interface ClinicalNote {
 }
 
 export interface EncounterDetail extends Encounter {
+  patient: Patient;
   transcript: Transcript | null;
   clinicalNotes: ClinicalNote[];
 }

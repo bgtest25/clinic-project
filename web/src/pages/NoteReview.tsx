@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
-import type { ClinicalNote } from '../api/types';
-import { CheckIcon, StarIcon } from '../icons';
+import type { Clinic, ClinicalNote, Patient } from '../api/types';
+import { CheckIcon, PrintIcon, StarIcon } from '../icons';
+import { CodePicker } from '../components/CodePicker';
+import { TemplateMenu } from '../components/TemplateMenu';
+import { Skeleton } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
+import type { TemplateField } from '../utils/templates';
 
 type FormState = {
   subjective: string;
@@ -35,11 +40,18 @@ export function NoteReview({
   token,
   encounterId,
   transcript,
+  patient = null,
+  visitDate = null,
+  clinic = null,
 }: {
   token: string;
   encounterId: string;
   transcript: string | null;
+  patient?: Patient | null;
+  visitDate?: string | null;
+  clinic?: Clinic | null;
 }) {
+  const { showToast } = useToast();
   const [note, setNote] = useState<ClinicalNote | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [editing, setEditing] = useState(false);
@@ -72,6 +84,7 @@ export function NoteReview({
       });
       setNote(updated);
       setForm(toForm(updated));
+      showToast('Draft saved.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to save the note');
     } finally {
@@ -94,6 +107,7 @@ export function NoteReview({
       setNote(signed);
       setForm(toForm(signed));
       setEditing(false);
+      showToast('Note signed.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to sign the note');
     } finally {
@@ -120,6 +134,7 @@ export function NoteReview({
         body: JSON.stringify({ rating: feedbackRating, comment: feedbackComment || undefined }),
       });
       setNote(updated);
+      showToast('Feedback submitted.');
     } catch (err) {
       setFeedbackError(err instanceof Error ? err.message : 'Failed to submit feedback');
     } finally {
@@ -145,6 +160,10 @@ export function NoteReview({
     }
   }
 
+  function handlePrint() {
+    window.print();
+  }
+
   if (error && !note) {
     return (
       <div className="page">
@@ -154,7 +173,16 @@ export function NoteReview({
   }
 
   if (!note || !form) {
-    return <div className="page">Loading note…</div>;
+    return (
+      <div className="page page-wide">
+        <div className="card" aria-label="Loading note" role="status">
+          <Skeleton className="skeleton-line" style={{ width: '40%', height: '1.5rem', marginBottom: '1rem' }} />
+          <Skeleton className="skeleton-line" style={{ height: '5rem', marginBottom: '0.75rem' }} />
+          <Skeleton className="skeleton-line" style={{ height: '5rem', marginBottom: '0.75rem' }} />
+          <Skeleton className="skeleton-line" style={{ height: '5rem' }} />
+        </div>
+      </div>
+    );
   }
 
   const isMock = NOTE_FIELDS.some((field) => form[field].includes(MOCK_MARKER));
@@ -162,6 +190,37 @@ export function NoteReview({
 
   return (
     <div className="page page-wide">
+      <div className="print-header">
+        {clinic && <p className="print-clinic-name">{clinic.name}</p>}
+        {patient && (
+          <p>
+            Patient: {patient.name} · DOB {new Date(patient.dateOfBirth).toLocaleDateString()}
+          </p>
+        )}
+        {visitDate && <p>Visit date: {new Date(visitDate).toLocaleDateString()}</p>}
+        <p>
+          Status: {note.status}
+          {note.signedAt ? ` · Signed ${new Date(note.signedAt).toLocaleString()}` : ''}
+        </p>
+      </div>
+
+      {/* Print-only: textareas only print their visible scrolled area, so the printable
+          note body is rendered as plain text here rather than reusing .note-form. */}
+      <div className="print-note-body">
+        {NOTE_FIELDS.map((field) => (
+          <div className="print-note-section" key={field}>
+            <h3>{SECTION_TITLES[field]}</h3>
+            <p>{form[field] || '—'}</p>
+          </div>
+        ))}
+        {form.suggestedCodes && (
+          <div className="print-note-section">
+            <h3>Suggested codes</h3>
+            <p>{form.suggestedCodes}</p>
+          </div>
+        )}
+      </div>
+
       <div className="review-header">
         <h1>
           Visit note
@@ -241,7 +300,21 @@ export function NoteReview({
         <div className="card note-form">
           {NOTE_FIELDS.map((field) => (
             <label key={field} className="field">
-              <span className="note-section-label">{field}</span>
+              <span className="note-section-label-row">
+                <span className="note-section-label">{field}</span>
+                {!locked && (
+                  <TemplateMenu
+                    field={field as TemplateField}
+                    currentText={form[field]}
+                    onInsert={(phrase) =>
+                      setForm({
+                        ...form,
+                        [field]: form[field] ? `${form[field]}\n${phrase}` : phrase,
+                      })
+                    }
+                  />
+                )}
+              </span>
               <textarea
                 value={form[field]}
                 disabled={locked}
@@ -250,14 +323,14 @@ export function NoteReview({
               />
             </label>
           ))}
-          <label className="field">
+          <div className="field">
             <span className="note-section-label">Suggested codes</span>
-            <input
+            <CodePicker
               value={form.suggestedCodes}
               disabled={locked}
-              onChange={(e) => setForm({ ...form, suggestedCodes: e.target.value })}
+              onChange={(codes) => setForm({ ...form, suggestedCodes: codes })}
             />
-          </label>
+          </div>
 
           {error && <p className="error">{error}</p>}
 
@@ -281,6 +354,9 @@ export function NoteReview({
             </button>
             <button className="btn btn-ghost" onClick={handleDownloadPdf} type="button">
               Download PDF
+            </button>
+            <button className="btn btn-ghost" onClick={handlePrint} type="button">
+              <PrintIcon /> Print
             </button>
           </div>
         </div>

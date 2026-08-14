@@ -44,7 +44,7 @@ describe('Dashboard', () => {
   it('shows a loading state before the encounters resolve', () => {
     vi.mocked(apiFetch).mockReturnValue(new Promise(() => {}));
     renderDashboard(clinician);
-    expect(screen.getByText('Loading…')).toBeInTheDocument();
+    expect(screen.getByRole('status', { name: 'Loading' })).toBeInTheDocument();
   });
 
   it('shows an empty state when there are no encounters', async () => {

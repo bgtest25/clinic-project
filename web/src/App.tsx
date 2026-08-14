@@ -1,8 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
+import { useIdleTimer } from './auth/useIdleTimer';
 import { apiFetch } from './api/client';
-import { BrandMark } from './icons';
+import { BrandMark, SearchIcon } from './icons';
 import type { Clinic, Me } from './api/types';
 import { Dashboard } from './pages/Dashboard';
 import { InviteClinician } from './pages/InviteClinician';
@@ -13,23 +15,57 @@ import { PatientDetail } from './pages/PatientDetail';
 import { Patients } from './pages/Patients';
 import { Recording } from './pages/Recording';
 import { Users } from './pages/Users';
+import { IdleWarningModal } from './components/IdleWarningModal';
+import { ToastProvider } from './components/Toast';
 
-type View =
-  | { mode: 'dashboard' }
-  | { mode: 'new' }
-  | { mode: 'encounter'; id: string }
-  | { mode: 'invite' }
-  | { mode: 'metrics' }
-  | { mode: 'users' }
-  | { mode: 'patients' }
-  | { mode: 'patient'; id: string };
+const IDLE_WARNING_MS = 13 * 60 * 1000;
+const IDLE_LOGOUT_MS = 15 * 60 * 1000;
+
+function RecordingRoute({ token, clinic }: { token: string; clinic: Clinic | null }) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  if (!id) return <Navigate to="/" replace />;
+  return <Recording token={token} encounterId={id} clinic={clinic} onBack={() => navigate('/')} />;
+}
+
+function PatientDetailRoute({ token, me }: { token: string; me: Me }) {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  if (!id) return <Navigate to="/patients" replace />;
+  return <PatientDetail token={token} me={me} patientId={id} onBack={() => navigate('/patients')} />;
+}
+
+function TopbarSearch() {
+  const navigate = useNavigate();
+  const [value, setValue] = useState('');
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    navigate(`/patients?q=${encodeURIComponent(value)}`);
+  }
+
+  return (
+    <form className="topbar-search" onSubmit={handleSubmit} role="search">
+      <SearchIcon />
+      <input
+        type="search"
+        placeholder="Search patients…"
+        value={value}
+        onChange={(e) => setValue(e.target.value)}
+        aria-label="Search patients"
+      />
+    </form>
+  );
+}
 
 function AuthenticatedApp({ token }: { token: string }) {
   const { logout } = useAuth();
+  const navigate = useNavigate();
   const [me, setMe] = useState<Me | null>(null);
   const [clinic, setClinic] = useState<Clinic | null>(null);
-  const [view, setView] = useState<View>({ mode: 'dashboard' });
   const [error, setError] = useState<string | null>(null);
+
+  const idle = useIdleTimer({ warningMs: IDLE_WARNING_MS, logoutMs: IDLE_LOGOUT_MS, onTimeout: logout });
 
   useEffect(() => {
     apiFetch<Me>('/users/me', token)
@@ -59,11 +95,13 @@ function AuthenticatedApp({ token }: { token: string }) {
 
   return (
     <div>
+      {idle.warning && <IdleWarningModal secondsLeft={idle.secondsLeft} onStay={idle.reset} onSignOut={logout} />}
       <header className="topbar">
         <span className="brand">
           <BrandMark />
           Havenote
         </span>
+        <TopbarSearch />
         <div className="topbar-user">
           <span>
             <strong>{me.name}</strong>
@@ -74,53 +112,46 @@ function AuthenticatedApp({ token }: { token: string }) {
           </button>
         </div>
       </header>
-      {view.mode === 'dashboard' && (
-        <Dashboard
-          token={token}
-          me={me}
-          onNew={() => setView({ mode: 'new' })}
-          onSelect={(id) => setView({ mode: 'encounter', id })}
-          onInvite={() => setView({ mode: 'invite' })}
-          onMetrics={() => setView({ mode: 'metrics' })}
-          onUsers={() => setView({ mode: 'users' })}
-          onPatients={() => setView({ mode: 'patients' })}
+      <Routes>
+        <Route
+          path="/"
+          element={
+            <Dashboard
+              token={token}
+              me={me}
+              onNew={() => navigate('/new')}
+              onSelect={(id) => navigate(`/encounters/${id}`)}
+              onInvite={() => navigate('/invite')}
+              onMetrics={() => navigate('/metrics')}
+              onUsers={() => navigate('/users')}
+              onPatients={() => navigate('/patients')}
+            />
+          }
         />
-      )}
-      {view.mode === 'invite' && (
-        <InviteClinician token={token} me={me} onBack={() => setView({ mode: 'dashboard' })} />
-      )}
-      {view.mode === 'metrics' && (
-        <Metrics token={token} me={me} onBack={() => setView({ mode: 'dashboard' })} />
-      )}
-      {view.mode === 'users' && (
-        <Users token={token} me={me} onBack={() => setView({ mode: 'dashboard' })} />
-      )}
-      {view.mode === 'patients' && (
-        <Patients
-          token={token}
-          onBack={() => setView({ mode: 'dashboard' })}
-          onSelect={(id) => setView({ mode: 'patient', id })}
+        <Route path="/invite" element={<InviteClinician token={token} me={me} onBack={() => navigate('/')} />} />
+        <Route path="/metrics" element={<Metrics token={token} me={me} onBack={() => navigate('/')} />} />
+        <Route path="/users" element={<Users token={token} me={me} onBack={() => navigate('/')} />} />
+        <Route
+          path="/patients"
+          element={
+            <Patients token={token} onBack={() => navigate('/')} onSelect={(id) => navigate(`/patients/${id}`)} />
+          }
         />
-      )}
-      {view.mode === 'patient' && (
-        <PatientDetail
-          token={token}
-          me={me}
-          patientId={view.id}
-          onBack={() => setView({ mode: 'patients' })}
+        <Route path="/patients/:id" element={<PatientDetailRoute token={token} me={me} />} />
+        <Route
+          path="/new"
+          element={
+            <NewEncounter
+              token={token}
+              me={me}
+              onBack={() => navigate('/')}
+              onCreated={(encounter) => navigate(`/encounters/${encounter.id}`)}
+            />
+          }
         />
-      )}
-      {view.mode === 'new' && (
-        <NewEncounter
-          token={token}
-          me={me}
-          onBack={() => setView({ mode: 'dashboard' })}
-          onCreated={(encounter) => setView({ mode: 'encounter', id: encounter.id })}
-        />
-      )}
-      {view.mode === 'encounter' && (
-        <Recording token={token} encounterId={view.id} onBack={() => setView({ mode: 'dashboard' })} />
-      )}
+        <Route path="/encounters/:id" element={<RecordingRoute token={token} clinic={clinic} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
     </div>
   );
 }
@@ -134,8 +165,12 @@ function Shell() {
 
 export default function App() {
   return (
-    <AuthProvider>
-      <Shell />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <ToastProvider>
+          <Shell />
+        </ToastProvider>
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

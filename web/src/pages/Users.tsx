@@ -3,6 +3,7 @@ import { apiFetch } from '../api/client';
 import type { Me, User } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { EmptyIcon } from '../icons';
+import { SkeletonTable } from '../components/Skeleton';
 
 export function Users({ token, me, onBack }: { token: string; me: Me; onBack: () => void }) {
   const [users, setUsers] = useState<User[] | null>(null);
@@ -44,7 +45,7 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
       {error && <p className="error">{error}</p>}
       {actionError && <p className="error">{actionError}</p>}
 
-      {!error && !users && <p className="status-line">Loading…</p>}
+      {!error && !users && <SkeletonTable rows={4} cols={5} />}
 
       {users && users.length === 0 && (
         <div className="card empty-state">

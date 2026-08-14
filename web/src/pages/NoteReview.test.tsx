@@ -1,10 +1,20 @@
 import { fireEvent, render, screen } from '@testing-library/react';
+import type { ComponentProps } from 'react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { apiDownload, apiFetch } from '../api/client';
 import type { ClinicalNote } from '../api/types';
+import { ToastProvider } from '../components/Toast';
 import { NoteReview } from './NoteReview';
 
 vi.mock('../api/client', () => ({ apiFetch: vi.fn(), apiDownload: vi.fn() }));
+
+function renderNoteReview(props: ComponentProps<typeof NoteReview>) {
+  return render(
+    <ToastProvider>
+      <NoteReview {...props} />
+    </ToastProvider>,
+  );
+}
 
 const draftNote: ClinicalNote = {
   id: 'note-1',
@@ -39,7 +49,7 @@ describe('NoteReview', () => {
 
   it('loads the note and pre-fills the editable form', async () => {
     vi.mocked(apiFetch).mockResolvedValue(draftNote);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript="raw transcript text" />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: 'raw transcript text' });
 
     expect(await screen.findByDisplayValue('Cough for 3 days.')).toBeInTheDocument();
     expect(screen.getByDisplayValue('Viral URI.')).toBeInTheDocument();
@@ -48,7 +58,7 @@ describe('NoteReview', () => {
 
   it('shows an error state if the note fails to load', async () => {
     vi.mocked(apiFetch).mockRejectedValue(new Error('boom'));
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     expect(await screen.findByText('boom')).toBeInTheDocument();
   });
 
@@ -57,13 +67,13 @@ describe('NoteReview', () => {
       ...draftNote,
       subjective: '[MOCK NOTE — Bedrock access pending] ...',
     });
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     expect(await screen.findByText(/placeholder content/)).toBeInTheDocument();
   });
 
   it('saves an edited draft', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     await screen.findByDisplayValue('Cough for 3 days.');
 
     const updated = { ...draftNote, subjective: 'Cough for 4 days.' };
@@ -89,21 +99,21 @@ describe('NoteReview', () => {
 
   it('signs the note, showing the signed banner and locking the fields', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     await screen.findByDisplayValue('Cough for 3 days.');
 
     vi.mocked(apiFetch).mockResolvedValueOnce(draftNote); // the PATCH save-before-sign call
     vi.mocked(apiFetch).mockResolvedValueOnce(signedNote); // the POST sign call
     fireEvent.click(screen.getByText('Sign note'));
 
-    await screen.findByText(/Signed/);
+    await screen.findByText(/Signed/, { selector: '.signed-banner' });
     expect(screen.getByDisplayValue('Cough for 3 days.')).toBeDisabled();
     expect(apiFetch).toHaveBeenLastCalledWith('/encounters/enc-1/note/sign', 'tok', { method: 'POST' });
   });
 
   it('unlocks into an amendment when Edit is clicked on a signed note', async () => {
     vi.mocked(apiFetch).mockResolvedValue(signedNote);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
 
     await screen.findByText('Edit (creates an amendment)');
     fireEvent.click(screen.getByText('Edit (creates an amendment)'));
@@ -113,7 +123,7 @@ describe('NoteReview', () => {
 
   it('submits satisfaction feedback for a signed note', async () => {
     vi.mocked(apiFetch).mockResolvedValueOnce(signedNote);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     await screen.findByText('How was this draft?');
 
     fireEvent.click(screen.getByLabelText('4 stars'));
@@ -132,7 +142,7 @@ describe('NoteReview', () => {
   it('downloads the PDF via apiDownload with the right filename', async () => {
     vi.mocked(apiFetch).mockResolvedValue(draftNote);
     vi.mocked(apiDownload).mockResolvedValue(undefined);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     await screen.findByDisplayValue('Cough for 3 days.');
 
     fireEvent.click(screen.getByText('Download PDF'));
@@ -145,12 +155,37 @@ describe('NoteReview', () => {
     Object.assign(navigator, { clipboard: { writeText } });
 
     vi.mocked(apiFetch).mockResolvedValue(draftNote);
-    render(<NoteReview token="tok" encounterId="enc-1" transcript={null} />);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
     await screen.findByDisplayValue('Cough for 3 days.');
 
     fireEvent.click(screen.getByText('Copy note'));
 
     await screen.findByText('Copied!');
     expect(writeText).toHaveBeenCalledWith(expect.stringContaining('Subjective:\nCough for 3 days.'));
+  });
+
+  it('adds an ICD-10 code chip via the code picker', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(draftNote);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+    await screen.findByDisplayValue('Cough for 3 days.');
+
+    const codeInput = screen.getByPlaceholderText('Search a code or description…');
+    fireEvent.change(codeInput, { target: { value: 'sinusitis' } });
+    fireEvent.click(await screen.findByText('Acute sinusitis, unspecified'));
+
+    expect(screen.getByText('J06.9')).toBeInTheDocument();
+    expect(screen.getByText('J01.90')).toBeInTheDocument();
+  });
+
+  it('inserts a saved phrase from the template menu', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(draftNote);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+    await screen.findByDisplayValue('Cough for 3 days.');
+
+    const [planToggle] = screen.getAllByText('Insert phrase ▾').slice(-1);
+    fireEvent.click(planToggle);
+    fireEvent.click(screen.getByText(/Follow up in 2 weeks/));
+
+    expect(screen.getByDisplayValue(/Rest and fluids\.\s*Follow up in 2 weeks/)).toBeInTheDocument();
   });
 });
