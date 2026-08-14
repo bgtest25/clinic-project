@@ -3,6 +3,7 @@ import type { CognitoUser } from 'amazon-cognito-identity-js';
 import { confirmMfaSetup, login, submitMfaCode, submitNewPassword, type LoginResult } from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark } from '../icons';
+import { ThemeToggle } from '../components/ThemeToggle';
 
 type Stage =
   | { step: 'credentials' }
@@ -194,6 +195,7 @@ export function Login() {
 
   return (
     <div className="auth-shell">
+      <ThemeToggle className="auth-theme-toggle" />
       <div className="auth-card card">
         <span className="brand">
           <BrandMark />

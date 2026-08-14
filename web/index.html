@@ -6,6 +6,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="description" content="Havenote — clinical visit recording and AI-assisted documentation." />
     <title>Havenote</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('havenote-theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: dark)').matches
+                ? 'dark'
+                : 'light';
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {
+          // localStorage/matchMedia unavailable — fall back to the CSS media query alone.
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

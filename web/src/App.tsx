@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from './auth/AuthContext';
 import { useIdleTimer } from './auth/useIdleTimer';
 import { apiFetch } from './api/client';
 import { BrandMark, SearchIcon } from './icons';
+import { ThemeToggle } from './components/ThemeToggle';
 import type { Clinic, Me } from './api/types';
 import { Dashboard } from './pages/Dashboard';
 import { InviteClinician } from './pages/InviteClinician';
@@ -107,6 +108,7 @@ function AuthenticatedApp({ token }: { token: string }) {
             <strong>{me.name}</strong>
             {clinic && <span className="topbar-clinic"> · {clinic.name}</span>}
           </span>
+          <ThemeToggle />
           <button className="btn btn-ghost" onClick={logout}>
             Sign out
           </button>

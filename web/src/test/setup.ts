@@ -6,6 +6,17 @@ import { afterEach, vi } from 'vitest';
 URL.createObjectURL = vi.fn(() => 'blob:mock');
 URL.revokeObjectURL = vi.fn();
 
+// jsdom doesn't implement matchMedia at all — needed for useTheme and anything
+// that renders ThemeToggle.
+window.matchMedia =
+  window.matchMedia ||
+  vi.fn().mockImplementation((query: string) => ({
+    matches: false,
+    media: query,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+  }));
+
 // React Testing Library doesn't auto-unmount between tests under Vitest
 // unless this is registered globally — without it, DOM from one test leaks
 // into the next within the same file, causing "found multiple elements".

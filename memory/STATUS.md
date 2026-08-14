@@ -171,6 +171,45 @@ untested leg — `MediaRecorder` → presigned S3 upload → this same Lambda, t
 tested and looks good. The full "record → transcribe → real SOAP note" chain is now verified
 end to end, including the browser, not just the backend pieces tested earlier today.
 
+**UI wording cleanup (2026-08-14):** replaced em dashes with periods or a colon in user-facing
+copy across 8 files: `Recording.tsx`, `NoteReview.tsx`, `Patients.tsx`, `Dashboard.tsx`,
+`PatientDetail.tsx`, `Login.tsx`, `InviteClinician.tsx`, `CodePicker.tsx`. Covered the microphone
+error text, recording status/header text, empty-state messages, the mock-note notice, the
+code-picker caption, the first-sign-in prompt, the invite-confirmation banner, and the
+data-requests notice. Pure wording, no behavior change. Left the standalone `—` used as an
+empty-value placeholder in tables and stat tiles (`Metrics.tsx`, `PatientDetail.tsx`,
+`NoteReview.tsx`) alone, since that's a different convention (a dash standing in for "no value"),
+not prose punctuation. 62 tests still pass.
+Deployed via the normal `deploy-web.yml` → Vercel pipeline, commit `c949bc2`, run `31839328319`
+succeeded, confirmed live (`havenote.health` → 200).
+
+**New brand mark shipped (2026-08-14):** replaced `BrandMark` (`icons.tsx`) and `public/favicon.svg`.
+Old mark was generic note-lines plus a heartbeat squiggle, read as "health app" in general, not
+specific to Havenote. New mark is a voice waveform resolving into note-lines: a spoken visit on the
+left settling into a structured note on the right, the actual product in one glyph, and a nod to
+the name itself (haven for the note). Same `currentColor`/stroke pattern as before, so it inherits
+the existing `.brand-mark`/`.auth-card .brand-mark` badge styling with no CSS changes. Reviewed
+first as a live mockup (against the app's real tokens, badge sizes, topbar/login/favicon contexts)
+before wiring it in. 62 tests still pass. Deployed via the same `deploy-web.yml` pipeline, commit
+`6d2c164`, run `31841051102` succeeded, confirmed live (`havenote.health/favicon.svg` serves the
+new SVG).
+
+**Light/dark mode toggle added (2026-08-14):** `index.css` already had dark tokens behind a bare
+`prefers-color-scheme` media query, so the app already followed the OS theme, but there was no way
+to override it. Added an explicit toggle: new `useTheme` hook (`web/src/theme/useTheme.ts`,
+localStorage key `havenote-theme`) defaults to the system theme and stays live-synced to OS changes
+until the user picks explicitly, at which point that choice sticks. New `ThemeToggle` component
+(sun/moon icon button) wired into the topbar and all four `Login.tsx` auth-card stages (fixed
+top-right, since Login has no shared header). CSS restructured to the standard three-state token
+pattern: bare `:root` (light default), `@media (prefers-color-scheme: dark)` guarded as
+`:root:not([data-theme='light'])` (follow OS when no explicit choice), and `:root[data-theme='dark']`
+(explicit choice wins either direction). Added a synchronous inline script in `index.html` that
+stamps `data-theme` before first paint, so there's no flash of the wrong theme on load. Added a
+`matchMedia` shim to `test/setup.ts` (jsdom doesn't implement it at all) plus 5 new tests for the
+hook (system default, stored-preference precedence, toggle+persist, sticking after an explicit
+choice, live-following before one). 67 tests pass, `tsc --noEmit` and lint clean, verified via a
+local production build before shipping.
+
 ## 🔴 Blocked — waiting on something outside this repo
 
 1. **Bedrock model access** — routed around 2026-08-14 via direct Anthropic API, see 🟡 above; this
