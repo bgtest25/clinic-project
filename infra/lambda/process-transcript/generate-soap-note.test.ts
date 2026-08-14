@@ -132,7 +132,10 @@ const INTERPRETER_ASSISTED_TRANSCRIPT =
 function anthropicTextResponse(text: string) {
   return {
     ok: true,
-    json: async () => ({ content: [{ text }] }),
+    // Real responses can include a leading `thinking`-type block before the
+    // `text` block (see index.ts) — asserting that shape here too so a
+    // regression back to `content[0]` would fail this suite.
+    json: async () => ({ content: [{ type: 'thinking', thinking: '' }, { type: 'text', text }] }),
   };
 }
 

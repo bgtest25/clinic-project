@@ -129,8 +129,12 @@ export async function generateSoapNote(transcriptText: string) {
     throw new Error(`Anthropic API request failed: ${response.status} ${await response.text()}`);
   }
 
-  const responseBody = (await response.json()) as { content?: Array<{ text?: string }> };
-  const text: string | undefined = responseBody?.content?.[0]?.text;
+  const responseBody = (await response.json()) as { content?: Array<{ type?: string; text?: string }> };
+  // Extended thinking puts a `thinking`-type block before the `text` block,
+  // so content[0] isn't reliably the answer — found live 2026-08-14, the
+  // first real (non-mock) invocation returned a thinking block at index 0
+  // and this threw "No text content" despite the model answering correctly.
+  const text: string | undefined = responseBody?.content?.find((block) => block.type === 'text')?.text;
   if (!text) throw new Error('No text content in Anthropic API response');
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);

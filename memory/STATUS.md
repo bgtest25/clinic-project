@@ -1,9 +1,8 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-14 (live audit found 4 real bugs total: 2 CORS bugs fixed, `mockSoapNote`
-was never actually `false` despite an earlier false "confirmed live" claim — now genuinely fixed —
-and the Anthropic API key itself is corrupted and still broken. See below — AI notes are **not**
-actually live yet.)
+**Last updated:** 2026-08-14 (live audit found and fixed 6 real bugs total — see below. AI notes
+are now genuinely live and verified: a real, non-mock, clinically accurate SOAP note came back
+from an actual pipeline run.)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -19,8 +18,8 @@ Both AWS cases below remain open and unchanged (checked directly same day: Bedro
 live now instead of waiting on an AWS timeline neither case has one for. Both sides are now
 fully live and verified, not just code-ready.
 
-- **AI provider: Bedrock → direct Anthropic API — code deployed, NOT actually generating real notes
-  yet (see live-audit findings below).** `infra/lambda/process-transcript/index.ts`'s
+- **AI provider: Bedrock → direct Anthropic API — LIVE and verified for real, as of the audit
+  below.** `infra/lambda/process-transcript/index.ts`'s
   `generateSoapNote` calls `api.anthropic.com/v1/messages` via `fetch` instead of
   `BedrockRuntimeClient` — same system prompt, same `messages` shape, same downstream JSON
   parsing, only the transport changed. `infra/lib/ai-pipeline-stack.ts` imports (doesn't create)
@@ -63,7 +62,7 @@ fully live and verified, not just code-ready.
      full reasoning if this needs revisiting.
 - Full plan: `C:\Users\barse\.claude\plans\zany-noodling-forest.md`.
 
-## 🟢 Post-swap live audit (2026-08-14) — 2 real bugs found + fixed
+## 🟢 Post-swap live audit (2026-08-14) — 6 real bugs found + fixed, AI pipeline verified genuinely live
 
 Started a live audit of the interim-swapped app (actually using it, not just checking deploy
 status) right after the swap above went live. Found and fixed two CORS bugs, both invisible to
@@ -95,7 +94,7 @@ confirming no stray rows remain). This exercises the real Anthropic API call and
 in — an actual browser+mic recording test is still outstanding and needs to be run by you (or a
 future session with browser tooling).
 
-This backend test surfaced two more real bugs, both more serious than the CORS ones:
+This backend test surfaced four more real bugs, all more serious than the CORS ones:
 
 - **`MOCK_SOAP_NOTE` was never actually `false` — this morning's "confirmed live" claim above was
   wrong.** First invocation (11:xx) returned a mock-labeled note. Checked
@@ -118,20 +117,58 @@ This backend test surfaced two more real bugs, both more serious than the CORS o
   index 54** — the key is malformed, not just expired/revoked/wrong. Similar failure shape to a
   past incident on a different project (Swypi's RAG assistant had a corrupted `ANTHROPIC_API_KEY`
   from two concatenated `.env` lines) — worth checking how this one got pasted/generated.
-  **Not fixed** — needs you to regenerate or correctly re-copy the key and reset the secret
-  yourself via CLI (same as the original setup — never paste the key into chat):
-  `aws secretsmanager put-secret-value --secret-id clinic-project/anthropic-api-key --secret-string '{"apiKey":"sk-ant-..."}' --profile clinic-project --region us-east-1`
-  — no redeploy needed after, the Lambda reads the secret at invoke time via the dynamic
-  reference already wired in `ai-pipeline-stack.ts`.
+  You regenerated a fresh key from console.anthropic.com and set it via
+  `aws secretsmanager put-secret-value` in your own terminal (not pasted into chat) —
+  confirmed by a new secret VersionId and a byte-check showing no whitespace this time.
 
-**Net effect of today's audit:** `MOCK_SOAP_NOTE` is now genuinely `false` (a real improvement),
-but until the API key is fixed, any real encounter run through the app right now will land in
-`FAILED` status with a real error, not a labeled mock note. If you plan to click through the app
-yourself before the key is fixed, expect that failure — it's not a new bug, it's the corrected
-state surfacing the pre-existing broken key. Worth deciding whether to flip `mockSoapNote` back to
-`true` temporarily until the key is fixed, or just fix the key first (faster, and it's a one CLI
-command) — recommend fixing the key first since no real pilot user is on this yet
-(legal review still pending per the blocker below).
+- **Wrong claim in this file: "no redeploy needed, the Lambda reads the secret at invoke time."**
+  That was incorrect and caused two more real (now-fixed) problems below. CloudFormation dynamic
+  references (`{{resolve:secretsmanager:...}}`) are resolved at **deploy time**, baked into the
+  Lambda's environment variables — not re-read on each invoke. Updating the secret alone never
+  touches a running Lambda.
+- **Consequence: after the fresh key was set, the Lambda was still running on the old corrupted
+  key.** A follow-up `cdk deploy ClinicAiPipelineStack` reported `(no changes)` and skipped the
+  Lambda entirely — CloudFormation only re-resolves a dynamic reference when it actually issues an
+  update to that resource, and nothing else in the template had changed. Confirmed directly:
+  `aws lambda get-function-configuration` still showed the old key's prefix/suffix after that
+  "successful" deploy. **Fixed as an immediate one-off**: pulled the current secret value and
+  pushed it straight into the Lambda via `aws lambda update-function-configuration --environment`,
+  bypassing CloudFormation for this one correction — confirmed via `get-function-configuration`
+  afterward. (This isn't a standing drift risk: any future deploy that legitimately touches this
+  Lambda, e.g. a code change, will re-resolve the dynamic reference against whatever the secret
+  holds at that time.)
+- **With the fresh key genuinely live, a new real bug surfaced: content-block parsing.** The first
+  real (non-mock, non-corrupted-key) invocation failed with `No text content in Anthropic API
+  response` — not an auth problem. Reproduced the exact request directly against the Anthropic API
+  and inspected the raw response: `claude-sonnet-5` returns an **extended-thinking block as
+  `content[0]`** (`{"type":"thinking",...}`) with the real answer at `content[1]`
+  (`{"type":"text",...}`). `generateSoapNote` in `infra/lambda/process-transcript/index.ts` assumed
+  `content[0].text` was always the answer. The actual generated note itself, once found in the raw
+  response, was clinically accurate (correct strep throat diagnosis, correct azithromycin choice
+  given the stated penicillin allergy, correct dosing, correct ICD-10 code) — this was purely a
+  parsing bug, not a prompt or model problem. **Fixed**: changed the lookup to
+  `content?.find((block) => block.type === 'text')?.text` instead of `content?.[0]?.text`. Updated
+  the shared `anthropicTextResponse()` test mock helper in `generate-soap-note.test.ts` to include
+  a leading `thinking` block too, so all 14 fixtures now assert against the real response shape
+  and a regression back to `content[0]` would fail the suite. All 17 infra tests still pass,
+  `tsc --noEmit` clean. Deployed via `cdk deploy ClinicAiPipelineStack` (a real code change this
+  time, so CloudFormation did re-resolve and re-confirm the secret reference as part of the same
+  deploy).
+
+**Final verification — genuinely confirmed, not assumed:** ran the same real-pipeline test a fifth
+time end to end (disposable test patient/encounter → real S3 transcript → real
+`clinic-project-process-transcript` Lambda invoke → real Anthropic API call → real DB write). Result:
+encounter reached `IN_REVIEW`, and the stored `clinical_notes` row contains a real, non-mock,
+clinically coherent SOAP note (subjective/objective/assessment/plan/suggestedCodes all populated,
+matching the test transcript, `status: 'DRAFT'`, no `[MOCK NOTE]` label). Test patient, encounter,
+transcript, and note rows deleted afterward; test S3 objects deleted; confirmed no stray rows
+remain. **The AI pipeline is genuinely live now** — this is the first real, non-mock output this
+project has ever produced end to end.
+
+Still outstanding: the actual browser/mic recording path (`MediaRecorder` → presigned S3 upload →
+this same Lambda) has not been tested — everything above bypassed the browser and fed the Lambda
+directly. That's the one piece of the original "record → transcribe → real SOAP note" verification
+still not run through the real UI.
 
 ## 🔴 Blocked — waiting on something outside this repo
 
