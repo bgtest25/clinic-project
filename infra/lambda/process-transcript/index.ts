@@ -1,10 +1,8 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
-import { BedrockRuntimeClient, InvokeModelCommand } from '@aws-sdk/client-bedrock-runtime';
 import { Client } from 'pg';
 import { randomUUID } from 'crypto';
 
 const s3 = new S3Client({});
-const bedrock = new BedrockRuntimeClient({});
 
 interface ProcessEvent {
   mode?: 'process';
@@ -96,7 +94,7 @@ export async function generateSoapNote(transcriptText: string) {
   // Temporary: AWS Bedrock model access for anthropic.claude-sonnet-5 is blocked
   // on an account-level restriction (AWS support case filed, pending as of
   // 2026-07-18) — this lets the rest of the pipeline (and the note review/sign
-  // UI) be built and exercised end-to-end without a real InvokeModel call.
+  // UI) be built and exercised end-to-end without a real model call.
   // Remove this branch once MOCK_SOAP_NOTE is no longer set to 'true' in the stack.
   if (process.env.MOCK_SOAP_NOTE === 'true') {
     return {
@@ -108,25 +106,35 @@ export async function generateSoapNote(transcriptText: string) {
     };
   }
 
-  const command = new InvokeModelCommand({
-    modelId: process.env.BEDROCK_MODEL_ID,
-    contentType: 'application/json',
-    accept: 'application/json',
+  // Interim substitute for Bedrock (blocked on AWS account verification, see
+  // STATUS.md) — calls the Anthropic API directly instead. Same model family,
+  // same system prompt, same messages shape; only the transport differs.
+  // Revert to BedrockRuntimeClient.send(InvokeModelCommand) once Bedrock access clears.
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'content-type': 'application/json',
+      'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+      'anthropic-version': '2023-06-01',
+    },
     body: JSON.stringify({
-      anthropic_version: 'bedrock-2023-05-31',
+      model: process.env.ANTHROPIC_MODEL_ID,
       max_tokens: 1500,
       system: SOAP_SYSTEM_PROMPT,
       messages: [{ role: 'user', content: `Transcript:\n\n${transcriptText}` }],
     }),
   });
 
-  const response = await bedrock.send(command);
-  const responseBody = JSON.parse(new TextDecoder().decode(response.body));
+  if (!response.ok) {
+    throw new Error(`Anthropic API request failed: ${response.status} ${await response.text()}`);
+  }
+
+  const responseBody = (await response.json()) as { content?: Array<{ text?: string }> };
   const text: string | undefined = responseBody?.content?.[0]?.text;
-  if (!text) throw new Error('No text content in Bedrock response');
+  if (!text) throw new Error('No text content in Anthropic API response');
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error(`Bedrock response was not JSON: ${text}`);
+  if (!jsonMatch) throw new Error(`Anthropic API response was not JSON: ${text}`);
   return JSON.parse(jsonMatch[0]) as {
     subjective?: string;
     objective?: string;

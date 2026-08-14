@@ -1,6 +1,6 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-12 (status check only — CloudFront case explains root cause + escalates, Bedrock unchanged)
+**Last updated:** 2026-08-14 (interim swap: Bedrock → direct Anthropic API, CloudFront → Vercel — see below)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -8,9 +8,55 @@ build plan, see `../ROADMAP.md`. For AWS-account-specific details (nameservers, 
 verification commands), see ROADMAP.md's "Account baseline status" and "Media bucket encryption
 decision" sections.
 
+## 🟡 Interim swap in place (2026-08-14) — pilot no longer waiting on AWS
+
+Both AWS cases below remain open and unchanged (checked directly same day: Bedrock still
+`NOT_AUTHORIZED`, CloudFront case still `opened`, no new correspondence on either since
+2026-08-11/12) — this doesn't cancel either case, it routes around them so the pilot can go
+live now instead of waiting on an AWS timeline neither case has one for.
+
+- **AI provider: Bedrock → direct Anthropic API.** `infra/lambda/process-transcript/index.ts`'s
+  `generateSoapNote` now calls `api.anthropic.com/v1/messages` via `fetch` instead of
+  `BedrockRuntimeClient` — same system prompt, same `messages` shape, same downstream JSON
+  parsing, only the transport changed. `infra/lib/ai-pipeline-stack.ts` imports (doesn't create)
+  a Secrets Manager secret `clinic-project/anthropic-api-key` and wires it into the Lambda's
+  `ANTHROPIC_API_KEY` env var the same way `DB_PASSWORD` is already wired (CloudFormation dynamic
+  reference, resolved at deploy time — no runtime IAM grant needed, confirmed this matches the
+  existing DB-secret pattern which also has none). `bedrock:InvokeModel` IAM grant removed.
+  `infra/bin/infra.ts`'s context var renamed `bedrockModelId` → `anthropicModelId` (default
+  `'claude-sonnet-5'`). All 17 infra tests pass (`generate-soap-note.test.ts`'s Bedrock-SDK mock
+  swapped for a `global.fetch` mock — mechanical harness change, all 14 transcript fixtures
+  untouched). `tsc --noEmit` and `cdk synth --all` both clean.
+  **Still needed before this goes live (manual, outside this session):** create an Anthropic API
+  key with billing at console.anthropic.com, then
+  `aws secretsmanager create-secret --name clinic-project/anthropic-api-key --secret-string '{"apiKey":"sk-ant-..."}' --profile clinic-project --region us-east-1`,
+  then deploy `cd infra && npx cdk deploy ClinicAiPipelineStack --profile clinic-project -c mockSoapNote=false`.
+  Until then `mockSoapNote` stays default `true` and every note is still `[MOCK NOTE]`-labeled.
+- **Frontend hosting: CloudFront → Vercel.** `ClinicWebHostingStack` (S3+CloudFront+ACM) is left
+  completely untouched in code — it's just not deployed while Vercel is in use, so it's ready to
+  reactivate as-is once CloudFront clears. Added `web/vercel.json` (SPA rewrite, same job
+  CloudFront's 403/404→`/index.html` error responses did). Rewrote `.github/workflows/deploy-web.yml`
+  to build `web/dist` exactly as before, then `vercel deploy dist --prod` instead of
+  `cdk deploy ClinicWebHostingStack` — no AWS credentials needed in that workflow anymore.
+  Added two **live, deployed** Route53 records in `infra/lib/dns-stack.ts` (`ClinicDnsStack`,
+  deployed 2026-08-14, verified via `list-resource-record-sets`): apex `havenote.health` A record
+  → Vercel's `76.76.21.21`, `app.havenote.health` CNAME → `cname.vercel-dns.com`. Commented as
+  temporary — remove both and let `ClinicWebHostingStack`'s CloudFront alias records take over
+  again once that case clears.
+  **Still needed before this goes live (manual, outside this session — needs your Vercel
+  account/browser login):** `vercel login`, then from `web/`: `vercel link` (or create the
+  project via the Vercel dashboard); add `havenote.health` and `app.havenote.health` as custom
+  domains in the Vercel project settings (triggers Vercel's own cert issuance now that DNS points
+  at it); add `VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID` as GitHub Actions repo secrets.
+  Until those secrets exist, `deploy-web.yml` will fail at the Vercel deploy step.
+- Code changes are **uncommitted** as of this update — not pushed, not asked to commit yet.
+- Full plan: `C:\Users\barse\.claude\plans\zany-noodling-forest.md`.
+
 ## 🔴 Blocked — waiting on something outside this repo
 
-1. **Bedrock model access** — still `NOT_AUTHORIZED` as of 2026-08-11 (confirmed live via
+1. **Bedrock model access** — routed around 2026-08-14 via direct Anthropic API, see 🟡 above; this
+   case stays open/tracked in parallel, revert path documented above once it clears. Still
+   `NOT_AUTHORIZED` as of 2026-08-11 (confirmed live via
    `get-foundation-model-availability`). Case `178433501800988`: a genuine past-due balance
    ($53.76) was found and paid 2026-08-08 (the agent's request for payment was legitimate —
    confirmed via the real case correspondence, not phishing, despite an unusually warm tone).
@@ -27,7 +73,9 @@ decision" sections.
    - Once cleared: flip the default in `infra/bin/infra.ts` (`mockSoapNote`) to `false`, then
      `cd infra && npx cdk deploy ClinicAiPipelineStack --profile clinic-project`.
 
-2. **CloudFront account verification** — the *original* case (`178440028900396`) was actually
+2. **CloudFront account verification** — routed around 2026-08-14 via Vercel, see 🟡 above; this
+   case stays open/tracked in parallel, revert path documented above once it clears. The
+   *original* case (`178440028900396`) was actually
    **denied and closed 2026-07-28** ("unable to approve the verification request at this time...
    resubmit once the account has more usage/billing history") — this wasn't visible until Business
    Support was enabled 2026-08-08 and gave API access to case correspondence; every re-check

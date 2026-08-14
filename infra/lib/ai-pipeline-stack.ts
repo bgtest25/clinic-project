@@ -17,7 +17,7 @@ export interface ClinicAiPipelineStackProps extends cdk.StackProps {
   mediaBucketKey: kms.Key;
   dbSecurityGroup: ec2.SecurityGroup;
   dbSecret: secretsmanager.ISecret;
-  bedrockModelId: string;
+  anthropicModelId: string;
   mockSoapNote: boolean;
 }
 
@@ -27,7 +27,18 @@ export class ClinicAiPipelineStack extends cdk.Stack {
 
   constructor(scope: Construct, id: string, props: ClinicAiPipelineStackProps) {
     super(scope, id, props);
-    const { vpc, mediaBucket, mediaBucketKey, dbSecurityGroup, dbSecret, bedrockModelId, mockSoapNote } = props;
+    const { vpc, mediaBucket, mediaBucketKey, dbSecurityGroup, dbSecret, anthropicModelId, mockSoapNote } = props;
+
+    // Interim substitute for Bedrock (blocked on AWS account verification, see
+    // STATUS.md) — imported, not created by CDK, so the real key is never
+    // written into a CloudFormation template or synthesized asset. Create it
+    // out of band: `aws secretsmanager create-secret --name clinic-project/anthropic-api-key
+    // --secret-string '{"apiKey":"sk-ant-..."}' --profile clinic-project --region us-east-1`
+    const anthropicApiKeySecret = secretsmanager.Secret.fromSecretNameV2(
+      this,
+      'AnthropicApiKeySecret',
+      'clinic-project/anthropic-api-key',
+    );
 
     const lambdaSg = new ec2.SecurityGroup(this, 'ProcessTranscriptSg', {
       vpc,
@@ -64,7 +75,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       securityGroups: [lambdaSg],
       logGroup: processTranscriptLogGroup,
       environment: {
-        BEDROCK_MODEL_ID: bedrockModelId,
+        ANTHROPIC_MODEL_ID: anthropicModelId,
         MOCK_SOAP_NOTE: mockSoapNote ? 'true' : 'false',
         // Dynamic CloudFormation references, resolved server-side at deploy time —
         // never appear as plaintext in the template, same effect as ECS's `secrets:`
@@ -74,6 +85,7 @@ export class ClinicAiPipelineStack extends cdk.Stack {
         DB_NAME: dbSecret.secretValueFromJson('dbname').unsafeUnwrap(),
         DB_USERNAME: dbSecret.secretValueFromJson('username').unsafeUnwrap(),
         DB_PASSWORD: dbSecret.secretValueFromJson('password').unsafeUnwrap(),
+        ANTHROPIC_API_KEY: anthropicApiKeySecret.secretValueFromJson('apiKey').unsafeUnwrap(),
       },
     });
 
@@ -90,13 +102,6 @@ export class ClinicAiPipelineStack extends cdk.Stack {
       new iam.PolicyStatement({
         actions: ['kms:Decrypt', 'kms:DescribeKey'],
         resources: [mediaBucketKey.keyArn],
-      }),
-    );
-
-    this.processTranscriptFn.addToRolePolicy(
-      new iam.PolicyStatement({
-        actions: ['bedrock:InvokeModel'],
-        resources: [`arn:aws:bedrock:${this.region}::foundation-model/${bedrockModelId}`],
       }),
     );
 
