@@ -1,8 +1,9 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-14 (live audit found and fixed 6 real bugs total — see below. AI notes
+**Last updated:** 2026-08-14 (live audit found and fixed 6 real bugs total, see below. AI notes
 are now genuinely live and verified: a real, non-mock, clinically accurate SOAP note came back
-from an actual pipeline run.)
+from an actual pipeline run. Browser/mic recording path also confirmed working by direct test on
+the live site, closing out the last untested leg of the record-to-note flow.)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -165,10 +166,10 @@ transcript, and note rows deleted afterward; test S3 objects deleted; confirmed 
 remain. **The AI pipeline is genuinely live now** — this is the first real, non-mock output this
 project has ever produced end to end.
 
-Still outstanding: the actual browser/mic recording path (`MediaRecorder` → presigned S3 upload →
-this same Lambda) has not been tested — everything above bypassed the browser and fed the Lambda
-directly. That's the one piece of the original "record → transcribe → real SOAP note" verification
-still not run through the real UI.
+**Browser/mic recording path confirmed (2026-08-14, by you directly on the live site):** the last
+untested leg — `MediaRecorder` → presigned S3 upload → this same Lambda, through the real UI —
+tested and looks good. The full "record → transcribe → real SOAP note" chain is now verified
+end to end, including the browser, not just the backend pieces tested earlier today.
 
 ## 🔴 Blocked — waiting on something outside this repo
 
