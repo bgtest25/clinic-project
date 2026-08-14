@@ -49,7 +49,7 @@ export function InviteClinician({
           They'll get an email with a temporary password and set up their own login on first sign-in.
         </p>
 
-        {invitedEmail && <p className="signed-banner">Invited {invitedEmail} — check their inbox.</p>}
+        {invitedEmail && <p className="signed-banner">Invited {invitedEmail}. Check their inbox.</p>}
 
         <form onSubmit={handleSubmit} className="form-stack form-stack-spaced">
           <label className="field">

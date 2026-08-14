@@ -172,7 +172,7 @@ export function PatientDetail({
         <div className="card data-requests-card">
           <h1>Data requests</h1>
           <p className="auth-subtitle">
-            Deletion and amendment requests are logged for review — nothing here deletes or changes
+            Deletion and amendment requests are logged for review. Nothing here deletes or changes
             clinical records automatically.
           </p>
 

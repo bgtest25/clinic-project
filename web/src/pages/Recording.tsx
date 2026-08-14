@@ -124,7 +124,7 @@ export function Recording({
       setIsPaused(false);
       setState('recording');
     } catch {
-      setError('Could not access the microphone — check browser permissions.');
+      setError('Could not access the microphone. Check browser permissions.');
     }
   }
 
@@ -214,7 +214,7 @@ export function Recording({
       </button>
       <div className="card">
         <div className="review-header">
-          <h1>Visit recording{patient ? ` — ${patient.name}` : ''}</h1>
+          <h1>Visit recording{patient ? `: ${patient.name}` : ''}</h1>
           <span className={`status-badge status-${encounterStatus.toLowerCase()}`}>
             {encounterStatus.replace('_', ' ')}
           </span>
@@ -261,7 +261,7 @@ export function Recording({
               </button>
             </div>
             <p className="record-caption">
-              {isPaused ? 'Paused — tap resume to continue' : 'Recording — tap stop when finished'}
+              {isPaused ? 'Paused. Tap resume to continue.' : 'Recording. Tap stop when finished.'}
             </p>
           </div>
         )}
@@ -276,7 +276,7 @@ export function Recording({
         {state === 'processing' && (
           <div className="processing-state">
             <span className="spinner" />
-            Processing in the background — the draft note will be ready for review shortly.
+            Processing in the background. The draft note will be ready for review shortly.
           </div>
         )}
 

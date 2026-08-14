@@ -233,7 +233,7 @@ export function NoteReview({
 
       {isMock && (
         <p className="notice">
-          This is placeholder content — Bedrock model access is still pending, so the pipeline generated a
+          This is placeholder content. Bedrock model access is still pending, so the pipeline generated a
           mock note instead of a real AI draft.
         </p>
       )}

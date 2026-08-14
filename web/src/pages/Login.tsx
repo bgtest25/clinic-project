@@ -96,7 +96,7 @@ export function Login() {
             Havenote
           </span>
           <h1>Set your password</h1>
-          <p className="auth-subtitle">This is your first sign-in — choose a permanent password.</p>
+          <p className="auth-subtitle">This is your first sign-in. Choose a permanent password.</p>
           <form onSubmit={handleNewPassword} className="form-stack">
             <label className="field">
               New password

@@ -182,7 +182,7 @@ export function Dashboard({
           <div className="empty-state-icon">
             <EmptyIcon />
           </div>
-          <p>No visits yet — start your first one above.</p>
+          <p>No visits yet. Start your first one above.</p>
         </div>
       )}
 

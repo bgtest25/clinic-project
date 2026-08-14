@@ -100,7 +100,7 @@ export function CodePicker({
         </div>
       )}
       <p className="code-picker-caption">
-        Curated common-code list for quick entry — not the full ICD-10-CM set. Verify before billing.
+        Curated common-code list for quick entry, not the full ICD-10-CM set. Verify before billing.
       </p>
     </div>
   );

@@ -54,7 +54,7 @@ export function Patients({
           <div className="empty-state-icon">
             <EmptyIcon />
           </div>
-          <p>No patients yet — they're created automatically when you start a new visit.</p>
+          <p>No patients yet. They're created automatically when you start a new visit.</p>
         </div>
       )}
 
