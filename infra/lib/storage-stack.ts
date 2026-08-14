@@ -41,6 +41,19 @@ export class ClinicStorageStack extends cdk.Stack {
       blockPublicAccess: s3.BlockPublicAccess.BLOCK_ALL,
       versioned: true,
       enforceSSL: true,
+      // Recording.tsx uploads audio directly to S3 via a presigned PUT URL
+      // (see recordings.service.ts) — without this, the browser blocks the
+      // upload as cross-origin before it ever reaches S3, surfacing as a
+      // generic "Load failed"/"Failed to fetch" with no server-side trace.
+      // Same origin list as the API's CORS allowlist in api/src/main.ts.
+      cors: [
+        {
+          allowedMethods: [s3.HttpMethods.PUT],
+          allowedOrigins: ['https://havenote.health', 'https://app.havenote.health', 'http://localhost:5173'],
+          allowedHeaders: ['*'],
+          maxAge: 3000,
+        },
+      ],
       lifecycleRules: [
         {
           id: 'expire-raw-audio-backstop',
