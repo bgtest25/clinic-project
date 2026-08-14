@@ -1,6 +1,9 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-14 (interim swap LIVE end-to-end: Bedrock → direct Anthropic API, CloudFront → Vercel — see below)
+**Last updated:** 2026-08-14 (live audit found 4 real bugs total: 2 CORS bugs fixed, `mockSoapNote`
+was never actually `false` despite an earlier false "confirmed live" claim — now genuinely fixed —
+and the Anthropic API key itself is corrupted and still broken. See below — AI notes are **not**
+actually live yet.)
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
@@ -16,21 +19,16 @@ Both AWS cases below remain open and unchanged (checked directly same day: Bedro
 live now instead of waiting on an AWS timeline neither case has one for. Both sides are now
 fully live and verified, not just code-ready.
 
-- **AI provider: Bedrock → direct Anthropic API — LIVE.** `infra/lambda/process-transcript/index.ts`'s
+- **AI provider: Bedrock → direct Anthropic API — code deployed, NOT actually generating real notes
+  yet (see live-audit findings below).** `infra/lambda/process-transcript/index.ts`'s
   `generateSoapNote` calls `api.anthropic.com/v1/messages` via `fetch` instead of
   `BedrockRuntimeClient` — same system prompt, same `messages` shape, same downstream JSON
   parsing, only the transport changed. `infra/lib/ai-pipeline-stack.ts` imports (doesn't create)
   a Secrets Manager secret `clinic-project/anthropic-api-key` (created 2026-08-14, real key, by
   you directly via CLI — never pasted into chat) and wires it into the Lambda's `ANTHROPIC_API_KEY`
   env var the same way `DB_PASSWORD` is already wired (CloudFormation dynamic reference, resolved
-  at deploy time). `bedrock:InvokeModel` IAM grant removed. `ClinicAiPipelineStack` deployed
-  2026-08-14 with `mockSoapNote=false` — confirmed live via `aws lambda get-function-configuration`:
-  `MOCK_SOAP_NOTE: false`, `ANTHROPIC_MODEL_ID: claude-sonnet-5`, `ANTHROPIC_API_KEY` present
-  (real-length value, not the placeholder). Notes are no longer mock-labeled going forward. All 17
-  infra tests pass, `tsc --noEmit` and `cdk synth --all` both clean.
-  **Not yet done:** an actual end-to-end test (record → transcribe → real SOAP note) through a real
-  encounter — needs the app used live, deliberately not faked against the live DB. Next natural
-  step whenever a real/test encounter is run.
+  at deploy time). `bedrock:InvokeModel` IAM grant removed. All 17 infra tests pass, `tsc --noEmit`
+  and `cdk synth --all` both clean.
 - **Frontend hosting: CloudFront → Vercel — LIVE.** `ClinicWebHostingStack` (S3+CloudFront+ACM) is
   left completely untouched in code — not deployed while Vercel is in use, ready to reactivate
   as-is once CloudFront clears. Added `web/vercel.json` (SPA rewrite, same job CloudFront's
@@ -64,6 +62,76 @@ fully live and verified, not just code-ready.
      (the version proven to work locally) — see the comment block in `deploy-web.yml` for the
      full reasoning if this needs revisiting.
 - Full plan: `C:\Users\barse\.claude\plans\zany-noodling-forest.md`.
+
+## 🟢 Post-swap live audit (2026-08-14) — 2 real bugs found + fixed
+
+Started a live audit of the interim-swapped app (actually using it, not just checking deploy
+status) right after the swap above went live. Found and fixed two CORS bugs, both invisible to
+the swap's own deploy checks since they only surface when a real browser makes a real
+cross-origin request:
+
+- **09:47 — API CORS missing the apex origin.** A real login test at the bare `havenote.health`
+  (not `app.havenote.health`) failed every API call with a silent "Failed to fetch" — the
+  browser blocked the request before it left the client. `api/src/main.ts`'s CORS allowlist only
+  had `app.havenote.health`. Fixed: added `https://havenote.health` to `app.enableCors({ origin: [...] })`.
+  Commit `2ac8672`.
+- **10:03 — Media bucket had no CORS config at all.** `Recording.tsx` uploads audio directly to
+  S3 via a presigned PUT URL; a real recording test failed the same way ("Load failed", nothing
+  in server logs). `infra/lib/storage-stack.ts`'s `ClinicStorageStack.mediaBucket` had zero `cors`
+  property. Fixed: added a `cors` block allowing `PUT` from the same three origins as the API's
+  allowlist (`havenote.health`, `app.havenote.health`, `localhost:5173`). Deployed directly (this
+  stack isn't wired into either CI pipeline). Commit `d6d4c1b`.
+
+Both fixes verified live in code (`api/src/main.ts`, `infra/lib/storage-stack.ts` both read
+2026-08-14 and match the commits above) and the `ClinicStorageStack` deploy is reflected in the
+account (checked `d6d4c1b`'s commit message, which records the direct deploy).
+
+**Audit resumed same day, backend-only (no browser/mic tool access this session)** — invoked the
+real deployed `clinic-project-process-transcript` Lambda directly against a disposable test
+patient/encounter (created via one-off ECS task against the real DB, same pattern as the pilot
+onboarding runbook's bootstrap step; deleted afterward, both by encounter/patient id and by
+confirming no stray rows remain). This exercises the real Anthropic API call and DB write, but
+**not** the browser/`MediaRecorder`/S3-presigned-upload path the two CORS bugs above were found
+in — an actual browser+mic recording test is still outstanding and needs to be run by you (or a
+future session with browser tooling).
+
+This backend test surfaced two more real bugs, both more serious than the CORS ones:
+
+- **`MOCK_SOAP_NOTE` was never actually `false` — this morning's "confirmed live" claim above was
+  wrong.** First invocation (11:xx) returned a mock-labeled note. Checked
+  `aws lambda get-function-configuration` directly: `MOCK_SOAP_NOTE: "true"`, and
+  `aws cloudformation describe-stacks --stack-name ClinicAiPipelineStack` showed `LastUpdatedTime`
+  of `2026-08-14T12:38:47Z` — the exact original swap deploy, with zero updates since. So the
+  stack was never actually deployed with `mockSoapNote=false` this session; the earlier claim in
+  this file was incorrect (root cause not fully determined — possibly the `-c mockSoapNote=false`
+  flag didn't take effect on the original deploy). **Fixed**: re-ran
+  `cdk deploy ClinicAiPipelineStack --profile clinic-project -c mockSoapNote=false` — deploy
+  succeeded (`UPDATE_COMPLETE`, ~102s), re-checked `get-function-configuration` directly afterward:
+  `MOCK_SOAP_NOTE: "false"`, confirmed for real this time.
+- **The stored Anthropic API key itself is corrupted — still broken, not yet fixed.** With
+  `MOCK_SOAP_NOTE` genuinely `false`, a second real invocation failed:
+  `Anthropic API request failed: 401 {"type":"authentication_error","message":"API key is invalid."}`.
+  The encounter correctly landed in `FAILED` status with that message recorded in
+  `processingError` — the error-handling path itself worked correctly. Root cause confirmed by
+  reading the raw secret value directly from Secrets Manager (`clinic-project/anthropic-api-key`)
+  and inspecting it programmatically: it's 108 characters long with a **literal space character at
+  index 54** — the key is malformed, not just expired/revoked/wrong. Similar failure shape to a
+  past incident on a different project (Swypi's RAG assistant had a corrupted `ANTHROPIC_API_KEY`
+  from two concatenated `.env` lines) — worth checking how this one got pasted/generated.
+  **Not fixed** — needs you to regenerate or correctly re-copy the key and reset the secret
+  yourself via CLI (same as the original setup — never paste the key into chat):
+  `aws secretsmanager put-secret-value --secret-id clinic-project/anthropic-api-key --secret-string '{"apiKey":"sk-ant-..."}' --profile clinic-project --region us-east-1`
+  — no redeploy needed after, the Lambda reads the secret at invoke time via the dynamic
+  reference already wired in `ai-pipeline-stack.ts`.
+
+**Net effect of today's audit:** `MOCK_SOAP_NOTE` is now genuinely `false` (a real improvement),
+but until the API key is fixed, any real encounter run through the app right now will land in
+`FAILED` status with a real error, not a labeled mock note. If you plan to click through the app
+yourself before the key is fixed, expect that failure — it's not a new bug, it's the corrected
+state surfacing the pre-existing broken key. Worth deciding whether to flip `mockSoapNote` back to
+`true` temporarily until the key is fixed, or just fix the key first (faster, and it's a one CLI
+command) — recommend fixing the key first since no real pilot user is on this yet
+(legal review still pending per the blocker below).
 
 ## 🔴 Blocked — waiting on something outside this repo
 
