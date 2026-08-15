@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { CognitoUser } from 'amazon-cognito-identity-js';
+import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
 import { confirmMfaSetup, login, submitMfaCode, submitNewPassword, type LoginResult } from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
@@ -14,6 +15,7 @@ type Stage =
 
 export function Login() {
   const { setToken } = useAuth();
+  const navigate = useNavigate();
   const [stage, setStage] = useState<Stage>({ step: 'credentials' });
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -40,8 +42,18 @@ export function Login() {
     };
   }, [stage, username]);
 
+  // Every entry point to a signed-in session goes through here, not setToken
+  // directly — the router otherwise stays on whatever page the previous
+  // session (e.g. an admin who just invited someone) last left it on, so a
+  // different user logging in in the same tab lands on a stale admin page
+  // instead of the dashboard.
+  function completeLogin(token: string) {
+    setToken(token);
+    navigate('/', { replace: true });
+  }
+
   function applyLoginResult(result: LoginResult) {
-    if (result.type === 'success') setToken(result.accessToken);
+    if (result.type === 'success') completeLogin(result.accessToken);
     else if (result.type === 'newPasswordRequired') setStage({ step: 'newPassword', user: result.user });
     else if (result.type === 'mfaRequired') setStage({ step: 'mfa', user: result.user });
     else setStage({ step: 'mfaSetup', user: result.user, secretCode: result.secretCode });
@@ -84,7 +96,7 @@ export function Login() {
     setError(null);
     setBusy(true);
     try {
-      setToken(await submitMfaCode(stage.user, code));
+      completeLogin(await submitMfaCode(stage.user, code));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');
     } finally {
@@ -98,7 +110,7 @@ export function Login() {
     setError(null);
     setBusy(true);
     try {
-      setToken(await confirmMfaSetup(stage.user, code));
+      completeLogin(await confirmMfaSetup(stage.user, code));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Invalid code');
     } finally {

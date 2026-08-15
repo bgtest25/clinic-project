@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
 import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
@@ -27,6 +27,15 @@ function RecordingRoute({ token, clinic }: { token: string; clinic: Clinic | nul
   const navigate = useNavigate();
   if (!id) return <Navigate to="/" replace />;
   return <Recording token={token} encounterId={id} clinic={clinic} onBack={() => navigate('/')} />;
+}
+
+// Backend routes are the real enforcement (RolesGuard reads verified
+// cognito:groups), but leaving these client-side routes unguarded meant any
+// authenticated clinician who landed here (stale URL, bookmark, back button)
+// saw a fully-rendered admin form before any request ever went out.
+function AdminRoute({ me, children }: { me: Me; children: ReactNode }) {
+  if (me.role !== 'ADMIN') return <Navigate to="/" replace />;
+  return <>{children}</>;
 }
 
 function PatientDetailRoute({ token, me }: { token: string; me: Me }) {
@@ -130,9 +139,30 @@ function AuthenticatedApp({ token }: { token: string }) {
             />
           }
         />
-        <Route path="/invite" element={<InviteClinician token={token} me={me} onBack={() => navigate('/')} />} />
-        <Route path="/metrics" element={<Metrics token={token} me={me} onBack={() => navigate('/')} />} />
-        <Route path="/users" element={<Users token={token} me={me} onBack={() => navigate('/')} />} />
+        <Route
+          path="/invite"
+          element={
+            <AdminRoute me={me}>
+              <InviteClinician token={token} me={me} onBack={() => navigate('/')} />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/metrics"
+          element={
+            <AdminRoute me={me}>
+              <Metrics token={token} me={me} onBack={() => navigate('/')} />
+            </AdminRoute>
+          }
+        />
+        <Route
+          path="/users"
+          element={
+            <AdminRoute me={me}>
+              <Users token={token} me={me} onBack={() => navigate('/')} />
+            </AdminRoute>
+          }
+        />
         <Route
           path="/patients"
           element={
