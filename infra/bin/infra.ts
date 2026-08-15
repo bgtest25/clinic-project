@@ -27,11 +27,15 @@ const apiImageTag = app.node.tryGetContext('apiImageTag') ?? 'latest';
 // STATUS.md) — this is a direct Anthropic API model id, not a Bedrock one.
 // Revert to bedrockModelId/'anthropic.claude-sonnet-5' once Bedrock clears.
 const anthropicModelId = app.node.tryGetContext('anthropicModelId') ?? 'claude-sonnet-5';
-// Default true until a real model is wired up (either Bedrock once its case
-// resolves, or the Anthropic API key secret once it's created) — the pipeline
-// runs end-to-end with a canned placeholder note instead of a real model call.
-// Flip the default to 'false' (or pass `-c mockSoapNote=false`) once ready.
-const mockSoapNote = (app.node.tryGetContext('mockSoapNote') ?? 'true') === 'true';
+// The real model has been wired up (direct Anthropic API, see STATUS.md) since
+// 2026-08-14, so 'false' is now the actual default — not a CLI flag someone
+// has to remember to repeat. A prior version of this line defaulted to 'true'
+// and relied on `-c mockSoapNote=false` being passed on every single deploy of
+// this stack; the very next deploy that day (the content[0] parsing fix)
+// omitted it and silently put the live pipeline back into mock mode for over
+// a day without anyone noticing. `-c mockSoapNote=true` still works as an
+// explicit override if mock mode is ever needed again on purpose.
+const mockSoapNote = (app.node.tryGetContext('mockSoapNote') ?? 'false') === 'true';
 const alertEmail = app.node.tryGetContext('alertEmail') ?? 'barsehgbor2026@outlook.com';
 
 const network = new ClinicNetworkStack(app, 'ClinicNetworkStack', { env });
