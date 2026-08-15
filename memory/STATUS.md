@@ -1,7 +1,45 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-15 (admin credential reset + MFA QR code added; a real clinician-invite
-smoke test then surfaced and fixed two frontend routing/access-control bugs — see below.)
+**Last updated:** 2026-08-15 (admin credential reset + MFA QR code added; a clinician-invite smoke
+test surfaced and fixed two frontend routing/access-control bugs; reviewing that same demo note
+then surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some
+point after 2026-08-14's "confirmed live" claim below. Now genuinely fixed, and fixed so it can't
+silently regress again — see below.)
+
+## 🟢 mockSoapNote regression found and fixed for good (2026-08-15)
+
+Reviewing a demo note (the one drafted for the clinician invited during the onboarding-flow audit
+above) showed `[MOCK NOTE — Bedrock access pending]` in three of its four SOAP fields. Checked the
+live Lambda directly rather than trust the file: `aws lambda get-function-configuration` showed
+`MOCK_SOAP_NOTE: "true"` — genuinely in mock mode right now, contradicting the "genuinely live"
+claim in the 2026-08-14 entry below.
+
+**Root cause:** `infra/bin/infra.ts`'s `mockSoapNote` context value defaulted to `'true'` in source
+and was only ever flipped to `false` via an ephemeral `-c mockSoapNote=false` CLI flag on one manual
+deploy (2026-08-14, documented below). CDK context passed via `-c` isn't sticky across separate CLI
+invocations — the *very next* deploy of `ClinicAiPipelineStack` that same day (the `content[0]`
+parsing fix, also documented below) didn't repeat the flag, and silently reverted the live Lambda
+back to mock output. It had been running as mock for over a day with nothing catching it — the
+2026-08-14 "final verification" test ran *before* that second deploy, not after.
+
+**Fixed properly this time:** changed the source default itself from `'true'` to `'false'`
+(`infra/bin/infra.ts`), so correctness no longer depends on remembering a CLI flag on every future
+deploy of this stack. `-c mockSoapNote=true` still works as an explicit override if mock mode is
+ever needed on purpose. Deployed via `cdk deploy ClinicAiPipelineStack --profile clinic-project`
+(no context flag needed now), confirmed live via `get-function-configuration`:
+`MOCK_SOAP_NOTE: "false"`.
+
+**Verified with a real pipeline run, not just the flag:** disposable test patient/encounter, real
+S3 transcript, direct Lambda invoke, real Anthropic call, real DB write — same rigor as
+2026-08-14's audit. Result: correct strep pharyngitis diagnosis, correctly avoided penicillin given
+the stated allergy, correct azithromycin dosing, correct ICD-10 code (J02.0). All test rows/objects
+deleted afterward, confirmed no stray data remains.
+
+**Anything drafted between the 2026-08-14 regression and this fix (2026-08-15) is mock output**,
+including the demo note that surfaced this — not real AI content, regardless of what it looks like.
+No way to pin the exact regression window without CloudTrail digging this session didn't do; if it
+matters for a specific note, check its `createdAt` against the two `ClinicAiPipelineStack`
+`LastUpdatedTime`s in git history rather than assume.
 
 ## 🟢 Admin account reset, MFA QR code, and a real onboarding-flow audit (2026-08-15)
 
