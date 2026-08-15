@@ -50,13 +50,13 @@ Havenote uses the following subprocessors to provide the service. `[Confirm each
 with legal/procurement before publishing — do not assume it's in place just because the service is
 "HIPAA-eligible."]`
 
-- **Amazon Web Services** — hosting, storage (S3, RDS), transcription (Amazon Transcribe Medical), and
-  the underlying infrastructure for the AI drafting step (Amazon Bedrock). AWS offers a BAA for
-  HIPAA-eligible services; `[confirm Havenote has executed one]`.
-- **Anthropic** — provides the Claude model used (via Amazon Bedrock) to draft clinical notes from
-  transcripts. `[Confirm Anthropic's/Bedrock's specific data-handling and BAA terms for this use case
-  before publishing this policy — do not assert terms here that haven't been verified against the
-  actual executed agreement.]`
+- **Amazon Web Services** — hosting, storage (S3, RDS), and transcription (Amazon Transcribe Medical).
+  AWS offers a BAA for HIPAA-eligible services; `[confirm Havenote has executed one]`.
+- **Anthropic** — provides the Claude model used to draft clinical notes from transcripts, called
+  directly via Anthropic's own API (not routed through Amazon Bedrock). `[Confirm Anthropic's specific
+  data-handling and BAA terms for direct API usage before publishing this policy — this is a separate
+  agreement from AWS's BAA, which does not cover this call path. Do not assert terms here that haven't
+  been verified against the actual executed agreement.]`
 
 ## Security measures
 
