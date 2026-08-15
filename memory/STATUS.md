@@ -6,6 +6,18 @@ then surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped ba
 point after 2026-08-14's "confirmed live" claim below. Now genuinely fixed, and fixed so it can't
 silently regress again — see below.)
 
+## 🟢 Branded invite email (2026-08-15)
+
+The invite email a clinic admin's invitee received was Cognito's raw default text
+("Your username is {username} and temporary password is {####}.") — no branding, no context, no
+next steps. `infra/lib/auth-stack.ts`'s `ClinicianUserPool` never set a `userInvitation` template
+at all. Added one: Havenote-branded HTML email (header, plain-English explanation, sign-in details
+in a readable card, link to havenote.health, a heads-up that first login requires setting a
+permanent password + MFA). Deployed via `cdk deploy ClinicAuthStack` — non-replacing update, only
+`AdminCreateUserConfig.InviteMessageTemplate` added, confirmed live via `describe-user-pool`.
+Sender is still Cognito's own default address (not a custom SES domain) — that's a separate,
+bigger piece of work if it's ever wanted, not done here.
+
 ## 🟢 mockSoapNote regression found and fixed for good (2026-08-15)
 
 Reviewing a demo note (the one drafted for the clinician invited during the onboarding-flow audit
