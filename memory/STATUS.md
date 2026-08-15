@@ -1,9 +1,53 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-14 (live audit found and fixed 6 real bugs total, see below. AI notes
-are now genuinely live and verified: a real, non-mock, clinically accurate SOAP note came back
-from an actual pipeline run. Browser/mic recording path also confirmed working by direct test on
-the live site, closing out the last untested leg of the record-to-note flow.)
+**Last updated:** 2026-08-15 (admin credential reset + MFA QR code added; a real clinician-invite
+smoke test then surfaced and fixed two frontend routing/access-control bugs — see below.)
+
+## 🟢 Admin account reset, MFA QR code, and a real onboarding-flow audit (2026-08-15)
+
+- **Admin account (`testclinician@example.com`) password + MFA reset.** The account's original
+  TOTP device from 2026-07-17 was still enrolled and unreachable (no admin API exists to
+  un-enroll a software token — `AdminSetUserMFAPreference(Enabled=false)` only changes a
+  preference flag, confirmed via a live `initiate-auth` test that still returned
+  `SOFTWARE_TOKEN_MFA` after calling it). Fixed by deleting and recreating the Cognito user
+  (fresh, no TOTP history), then syncing the new `sub` into `users.cognito_sub` via a one-off ECS
+  task — the API resolves every caller by matching the JWT's `sub` to that column, so skipping
+  this step would have 401'd every request despite a valid Cognito login. Verified live via a
+  direct `initiate-auth` call returning `MFA_SETUP` before handing back credentials.
+- **MFA setup screen now renders an actual QR code**, not just the raw secret as text.
+  `Login.tsx` builds a standard `otpauth://` URI from the secret Cognito returns and renders it
+  client-side via the `qrcode` npm package (no network call, no CDN) — the raw secret stays as a
+  manual-entry fallback. 67 tests pass, `tsc`/lint clean, local prod build verified before
+  shipping.
+- **Real bug found via an actual invite-and-login smoke test, not code review alone:** the admin
+  invited a real clinician (`barsehgbor@gmail.com`), who landed directly on the "Invite a
+  clinician" admin page immediately after finishing password/MFA setup — never clicked anything
+  to get there. Investigated and confirmed genuinely live:
+  - **Backend is not the problem.** `POST /users`, `GET /users`, and deactivate/reactivate are
+    all gated by `@Roles('admin')`, enforced by `RolesGuard` reading `cognito:groups` off a
+    cryptographically verified access token (`CognitoAuthGuard` via `aws-jwt-verify`) — not
+    spoofable client input. Confirmed the invited account landed only in the `clinician` Cognito
+    group, never `admin`. No privilege escalation actually occurred.
+  - **Two real frontend bugs, now fixed (commit `4dd004e`):** (1) the router never reset to `/`
+    on a fresh sign-in — logging out and a different user logging in in the same browser tab left
+    the app on whatever page the previous session was last on (the admin had been on `/invite`
+    right before this), so the new clinician inherited that URL. (2) `/invite`, `/users`, and
+    `/metrics` had zero client-side role check — `Dashboard.tsx` correctly hides the nav buttons
+    for non-admins, but the routes themselves rendered fully for any authenticated user who
+    reached them directly, role dropdown (including "Admin") and all. Fixed: `Login.tsx`'s new
+    `completeLogin()` navigates to `/` on every successful sign-in path; a new `AdminRoute`
+    wrapper in `App.tsx` redirects non-admins away from all three admin-only routes before they
+    render. 67 tests pass, `tsc`/lint clean, deployed via the normal `deploy-web.yml` pipeline,
+    confirmed live (`havenote.health` → 200).
+  - The "why is it asking for my full name" confusion was a direct consequence of the same
+    bug — that field is `InviteClinician.tsx`'s field for the *new invitee's* name, not a
+    re-ask of the logged-in user's own name; there is no such re-ask anywhere in the real login
+    flow (`Login.tsx`'s `newPassword`/`mfaSetup` stages never collect a name).
+- **Also fixed same session:** stale Bedrock references in `BAA-TEMPLATE.md` and
+  `PRIVACY-POLICY.md` — both still described the Anthropic subprocessor as routed through Amazon
+  Bedrock, which changed to a direct Anthropic API call on 2026-08-14. Matters for the pending
+  legal review: a direct API integration needs its own BAA/data-handling terms with Anthropic,
+  separate from AWS's Bedrock BAA. Commit `bbf0a79`.
 
 This file is the single source of truth for "where did we leave off." Read this first when
 resuming work — it's kept up to date at the end of every substantial session. For the full
