@@ -1,5 +1,6 @@
-import { useState, type FormEvent } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import type { CognitoUser } from 'amazon-cognito-identity-js';
+import QRCode from 'qrcode';
 import { confirmMfaSetup, login, submitMfaCode, submitNewPassword, type LoginResult } from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark } from '../icons';
@@ -21,6 +22,23 @@ export function Login() {
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (stage.step !== 'mfaSetup') {
+      setQrDataUrl(null);
+      return;
+    }
+    const label = encodeURIComponent(`Havenote:${username}`);
+    const otpauthUri = `otpauth://totp/${label}?secret=${stage.secretCode}&issuer=Havenote`;
+    let cancelled = false;
+    QRCode.toDataURL(otpauthUri, { margin: 1 }).then((dataUrl) => {
+      if (!cancelled) setQrDataUrl(dataUrl);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [stage, username]);
 
   function applyLoginResult(result: LoginResult) {
     if (result.type === 'success') setToken(result.accessToken);
@@ -168,9 +186,11 @@ export function Login() {
           </span>
           <h1>Set up your authenticator app</h1>
           <p className="auth-subtitle">
-            Add this secret to an authenticator app (Google Authenticator, Authy, 1Password), then enter the
-            code it shows.
+            Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password), then enter
+            the code it shows.
           </p>
+          {qrDataUrl && <img src={qrDataUrl} alt="Authenticator setup QR code" className="mfa-qr" />}
+          <p className="auth-subtitle">Can't scan? Enter this code manually:</p>
           <code className="secret-code">{stage.secretCode}</code>
           <form onSubmit={handleMfaSetup} className="form-stack">
             <label className="field">
