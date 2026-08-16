@@ -2,15 +2,22 @@
 
 **Status:** operational draft, not legally reviewed. The HIPAA Breach Notification Rule timelines cited
 below were verified against current HHS guidance (2026-07-18) — [HHS.gov Breach Notification
-Rule](https://www.hhs.gov/hipaa/for-professionals/breach-notification/index.html) — but the
-role/contact fields are placeholders and the whole document needs a pass with counsel and whoever holds
-the Security Officer / Privacy Officer role before the pilot.
+Rule](https://www.hhs.gov/hipaa/for-professionals/breach-notification/index.html). Role/contact
+fields filled in 2026-08-16 (see below) — the document itself still needs a pass with counsel
+before the pilot, same as `BAA-TEMPLATE.md`/`PRIVACY-POLICY.md`.
 
-## Roles (fill in before pilot)
+## Roles
 
-- **Security Officer**: `[NAME]` — makes containment/notification-scope decisions
-- **Privacy Officer**: `[NAME]` — owns breach determination and notification content
-- **On-call engineer**: `[NAME / rotation]` — first responder for detection alerts
+- **Security Officer**: Barseh Gbor (phone: 267-650-8475, email: barsehgbor@gmail.com) — makes
+  containment/notification-scope decisions
+- **Privacy Officer**: Barseh Gbor (phone: 267-650-8475, email: barsehgbor@gmail.com) — owns breach
+  determination and notification content
+- **On-call engineer**: Barseh Gbor (phone: 267-650-8475, email: barsehgbor@gmail.com) — first
+  responder for detection alerts
+
+One person currently holds all three roles — reasonable for the current team size, but there's no
+backup coverage if this person is unreachable during an actual incident. Worth splitting out once
+the team grows.
 
 ## 1. Detection sources
 
