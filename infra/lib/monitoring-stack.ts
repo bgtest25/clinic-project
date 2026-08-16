@@ -5,6 +5,7 @@ import * as cwActions from 'aws-cdk-lib/aws-cloudwatch-actions';
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as lambdaNode from 'aws-cdk-lib/aws-lambda-nodejs';
+import * as logs from 'aws-cdk-lib/aws-logs';
 import * as rds from 'aws-cdk-lib/aws-rds';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
 import * as sns from 'aws-cdk-lib/aws-sns';
@@ -101,6 +102,36 @@ export class ClinicMonitoringStack extends cdk.Stack {
       metric: apiService.service.metricCpuUtilization({ period: cdk.Duration.minutes(5) }),
       threshold: 85,
       evaluationPeriods: 3,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
+    // Application-level error visibility — ApiTarget5xxHigh above only catches
+    // requests that actually surfaced as a 5xx response; a caught-and-logged
+    // error that still returns 200, or a failure in a background/non-request
+    // code path, wouldn't trip it or any other alarm here. NestJS's default
+    // exception handler and Logger.error() both emit an "ERROR"-level line to
+    // stdout, which ECS already ships to this log group — no app code change
+    // needed to get a real signal. Deliberately kept inside CloudWatch (not a
+    // third-party error tracker like Sentry) so it doesn't introduce a new
+    // subprocessor/BAA question, consistent with the ICD-10-lookup and
+    // Anthropic-subprocessor decisions elsewhere in this project.
+    const apiLogGroup = logs.LogGroup.fromLogGroupName(this, 'ApiLogGroup', '/clinic-project/api');
+    const apiErrorLogMetric = new logs.MetricFilter(this, 'ApiErrorLogFilter', {
+      logGroup: apiLogGroup,
+      metricNamespace: 'ClinicProject',
+      metricName: 'ApiErrorLogCount',
+      filterPattern: logs.FilterPattern.anyTerm('ERROR'),
+      metricValue: '1',
+      defaultValue: 0,
+    }).metric({ period: cdk.Duration.minutes(5), statistic: 'Sum' });
+
+    alarm('ApiErrorLogsPresent', {
+      alarmDescription:
+        'API logged an ERROR-level line (unhandled exception or explicit Logger.error call)',
+      metric: apiErrorLogMetric,
+      threshold: 0,
+      evaluationPeriods: 1,
       comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
