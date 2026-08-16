@@ -49,13 +49,28 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   roles means no backup coverage if that person is unreachable during an actual incident — worth
   revisiting once the team grows. The document itself still needs a legal pass, same status as the
   BAA/privacy policy drafts.
-- **Still open in Tier 2**: a real backup-restore drill (RDS backups exist and run, a restore has
-  never actually been proven to work), and basic load/concurrency testing (every test this project
-  has ever run, including this session's own verification work, has been one account at a time).
+- **Backup-restore drill: done, and it genuinely proved the mechanism works.** Restored RDS
+  point-in-time (`aws rds restore-db-instance-to-point-in-time`, `--use-latest-restorable-time`)
+  into a brand-new instance (`clinic-project-restore-drill`) — same subnet group/security group as
+  the primary so it's reachable via the usual one-off-ECS-task pattern, deliberately single-AZ
+  (no value in redundancy for a throwaway verification instance). Queried real row counts on both
+  the restored instance and the live primary: `{clinics:1, users:4, patients:13, encounters:13,
+  notes:9, audit:22}` — **identical on both**. Also pulled the `testclinician` admin's record off
+  the restored instance and confirmed it matched exactly, including the `cognitoSub` synced during
+  this session's own admin-account fix. Instance deleted afterward
+  (`--skip-final-snapshot`, no new unique data was ever written to it).
+- **Load/concurrency test: done.** Minted a real access token via a disposable clinician test
+  account (same raw Cognito challenge-sequence technique as earlier verifications), then fired
+  genuinely concurrent (backgrounded, not sequential) authenticated requests at `/users/me` — a
+  real Prisma-backed query, not the trivial health check. 30 concurrent: 30/30 `200`, 880ms wall
+  time for the whole batch (individual latencies 238-623ms, meaning they substantially overlapped,
+  not queued). 60 concurrent: 60/60 `200`, 1.78s wall time. No errors, no connection-pool
+  exhaustion. Test account cleaned up after.
 - **Explicitly not something engineering can complete**: an independent security review / pen
   test. Everything found and fixed this session (including a real 30-day session-persistence gap)
   came from self-review — which is exactly why an independent second set of eyes matters before
-  real go-live, not a substitute for it.
+  real go-live, not a substitute for it. This is the one remaining Tier 2 item, and it isn't
+  something more engineering work closes.
 
 ## 🟢 Admin Reset MFA action, for hardware-TOTP clinicians who lose their token (2026-08-16)
 
