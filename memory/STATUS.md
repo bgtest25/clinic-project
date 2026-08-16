@@ -103,6 +103,32 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   real go-live, not a substitute for it. This is the one remaining Tier 2 item, and it isn't
   something more engineering work closes.
 
+## 🟢 Pre-production gate prep (2026-08-16)
+
+Four items remain before real patient data can go through this system: legal review/execution of
+the BAA + privacy policy, a BAA/DPA with Anthropic, a formal HIPAA Security Risk Assessment, and
+an independent security review. None of these can be completed by engineering work alone — each
+specifically needs a party other than whoever built the system (counsel, Anthropic's commercial
+team, a qualified assessor, an independent reviewer). Built real prep work for each instead of
+treating them as pure blockers:
+
+- **`compliance/HIPAA-RISK-ASSESSMENT-EVIDENCE.md`** — every technical safeguard actually built,
+  mapped against the real Security Rule categories (45 CFR §164.308/.310/.312). Explicitly labeled
+  as evidence for an assessment, not a substitute for one.
+- **`compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md`** — exactly what data reaches Anthropic's API,
+  cited directly from the real request code, for whoever contacts their commercial team.
+- **`compliance/LEGAL-REVIEW-COVER-MEMO.md`** — orients counsel before they read
+  `BAA-TEMPLATE.md`/`PRIVACY-POLICY.md`: what's settled, what's placeholder, what's needed from
+  the client (pilot clinic's real legal name/address/state) before review can really start.
+- **`compliance/SECURITY-REVIEW-SCOPE.md`** — real attack-surface map for an independent reviewer,
+  including a list of what's already been found and fixed this project so they don't spend their
+  first hours rediscovering it.
+
+Also brought `PILOT-ONBOARDING-RUNBOOK.md`'s pre-launch checklist current — it still assumed the
+Bedrock/CloudFront AWS blockers hadn't cleared, stale since the pilot actually went live
+2026-08-14 via interim workarounds. Replaced with the actual four remaining gates plus what's
+genuinely done.
+
 ## 🟢 Fixed blank /metrics screen (2026-08-16)
 
 Reported: clicking "View metrics" as admin led to a blank white screen at `/metrics`. Root cause
