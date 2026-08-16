@@ -103,6 +103,40 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   real go-live, not a substitute for it. This is the one remaining Tier 2 item, and it isn't
   something more engineering work closes.
 
+## 🟢 Fixed blank /metrics screen (2026-08-16)
+
+Reported: clicking "View metrics" as admin led to a blank white screen at `/metrics`. Root cause
+confirmed against the real live database and the real live API response, not guessed:
+`metrics.service.ts`'s raw `$queryRaw` `AVG()` results come back from Prisma as `Decimal` objects.
+`Decimal.toJSON()` returns a **string**, so the actual wire response sent
+`"avgEditsPerNote":"1"` (a JSON string) instead of a number, despite `MetricsSummary`'s TS type
+promising `number | null`. `Metrics.tsx` calls `summary.avgEditsPerNote.toFixed(1)` assuming a
+real number — `.toFixed` doesn't exist on `String.prototype`, so it threw. The clinic had already
+genuinely accumulated a `note.edit` audit entry, so this was live and reproducible, not
+theoretical — confirmed by replicating the exact query against the real DB (`constructor.name:
+Decimal`) and by simulating the real `JSON.stringify`/`JSON.parse` wire round trip to reproduce
+the exact browser-side `TypeError`. Confirmed `avgSatisfactionRating` was **not** affected —
+Prisma's ORM-level `_avg` on an `Int` column correctly returns a plain number; the bug was
+isolated to the two `$queryRaw`-derived fields.
+
+Fixed at the source: explicit `Number(...)` conversion in `metrics.service.ts`, so the API
+actually delivers what its own types promise.
+
+Also fixed the reason this was a *blank screen* instead of a visible error: **zero error
+boundaries existed anywhere in this app** (confirmed via direct search) — any uncaught render
+exception silently unmounts the whole React tree. Added `components/ErrorBoundary.tsx`, wrapped
+around `<Routes>` in `App.tsx`, keyed by pathname so navigating to a different page after a crash
+remounts cleanly; the topbar sits outside the boundary so Sign out/navigation stay usable even if
+one page crashes.
+
+51/51 API tests pass (3 new), 77/77 web tests pass (2 new), tsc/lint clean, local prod build
+verified. Deployed via both `deploy-api.yml` and `deploy-web.yml`, both succeeded.
+**Verified live against production, not just deployed**: minted a real admin token via the usual
+disposable-account Cognito challenge sequence, called the real `https://api.havenote.health`
+metrics endpoint directly, and confirmed the actual JSON response now reads
+`"avgEditsPerNote":1` — a genuine unquoted number, not the string `"1"` from before. Test account
+and DB row deleted afterward.
+
 ## 🟢 Admin Reset MFA action, for hardware-TOTP clinicians who lose their token (2026-08-16)
 
 Follow-up to the hardware-TOTP discussion (a phone-free MFA option for clinicians without
