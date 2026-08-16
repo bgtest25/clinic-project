@@ -66,6 +66,23 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   time for the whole batch (individual latencies 238-623ms, meaning they substantially overlapped,
   not queued). 60 concurrent: 60/60 `200`, 1.78s wall time. No errors, no connection-pool
   exhaustion. Test account cleaned up after.
+- **Application-level error monitoring added.** Zero error tracking of any kind existed before
+  this — checked directly, no Sentry/equivalent in either `api` or `web`'s `package.json`.
+  Deliberately went CloudWatch-native (a metric filter matching `"ERROR"` on `/clinic-project/api`,
+  feeding the existing `clinic-project-alerts` SNS topic all 9 other alarms already use) instead of
+  a third-party tool like Sentry — introducing a new external error tracker would raise the exact
+  same new-subprocessor/BAA question as the ICD-10 lookup and Anthropic switch did, and this app
+  doesn't have that question yet. Verified live: the filter genuinely exists with the right
+  pattern, the alarm is `OK` and correctly wired. Have not triggered a real error to watch it fire
+  end-to-end (would need an artificial failure condition, not proportionate here).
+  **Also fixed a real drift found along the way**: the RDS Multi-AZ flip earlier in this session
+  had been deployed directly via `cdk deploy` but never actually committed — infra and git had
+  been out of sync since. Committed now, matches what's live.
+  **Hit and resolved a real deploy issue**: an earlier `cdk deploy` got stuck locally on a
+  `cdk.out` lock from a concurrent `cdk diff`, but had already reached CloudFormation before being
+  killed locally — left `ClinicComputeStack` mid-update server-side, orphaned from local tracking.
+  Not a code problem; waited for it to settle, confirmed the API and rate limiter were still
+  healthy (still returning `429` correctly), then redeployed cleanly.
 - **Explicitly not something engineering can complete**: an independent security review / pen
   test. Everything found and fixed this session (including a real 30-day session-persistence gap)
   came from self-review — which is exactly why an independent second set of eyes matters before
