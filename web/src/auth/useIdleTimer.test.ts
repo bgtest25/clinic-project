@@ -1,10 +1,13 @@
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useIdleTimer } from './useIdleTimer';
+import { clearIdleActivity, useIdleTimer } from './useIdleTimer';
+
+const STORAGE_KEY = 'havenote-last-activity';
 
 describe('useIdleTimer', () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -66,5 +69,39 @@ describe('useIdleTimer', () => {
     });
     expect(result.current.warning).toBe(false);
     expect(onTimeout).not.toHaveBeenCalled();
+  });
+
+  it('logs out immediately on mount if the persisted activity timestamp is already stale', () => {
+    vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
+    localStorage.setItem(STORAGE_KEY, String(Date.now() - 20000));
+    const onTimeout = vi.fn();
+
+    renderHook(() => useIdleTimer({ warningMs: 5000, logoutMs: 10000, onTimeout }));
+
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs out on a visibilitychange event using the persisted timestamp, even if the interval never ran', () => {
+    // This is the actual fix: a backgrounded mobile tab can have its
+    // setInterval fully suspended by the OS for hours, so the interval below
+    // never gets a chance to fire — the visibilitychange check is what
+    // catches it on resume instead.
+    vi.setSystemTime(new Date('2026-01-02T00:00:00Z'));
+    const onTimeout = vi.fn();
+    renderHook(() => useIdleTimer({ warningMs: 5000, logoutMs: 10000, onTimeout }));
+    expect(onTimeout).not.toHaveBeenCalled();
+
+    vi.setSystemTime(new Date('2026-01-02T00:00:15Z')); // +15s, past logoutMs, timers never advanced
+    act(() => {
+      document.dispatchEvent(new Event('visibilitychange'));
+    });
+
+    expect(onTimeout).toHaveBeenCalledTimes(1);
+  });
+
+  it('clearIdleActivity removes the persisted timestamp', () => {
+    localStorage.setItem(STORAGE_KEY, '123');
+    clearIdleActivity();
+    expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
   });
 });

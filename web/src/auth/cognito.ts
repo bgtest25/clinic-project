@@ -102,5 +102,18 @@ export function getCurrentAccessToken(): Promise<string | null> {
 }
 
 export function logout() {
-  userPool.getCurrentUser()?.signOut();
+  const user = userPool.getCurrentUser();
+  // Clears this device's local tokens immediately, for instant UI feedback.
+  user?.signOut();
+  // Best-effort, fire-and-forget: revokes every token issued to this user
+  // server-side, not just this device's local copy. signOut() alone left a
+  // captured/copied token fully usable until it naturally expired (up to 30
+  // days before the token-validity fix — see auth-stack.ts). Deliberately
+  // global (all sessions), not scoped to just this device: someone clicking
+  // "Sign out," especially on a shared or lost device, almost certainly
+  // wants every session killed, not just this one.
+  user?.globalSignOut({
+    onSuccess: () => {},
+    onFailure: () => {},
+  });
 }

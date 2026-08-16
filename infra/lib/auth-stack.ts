@@ -77,6 +77,18 @@ export class ClinicAuthStack extends cdk.Stack {
     this.userPoolClient = this.userPool.addClient('ApiClient', {
       authFlows: { userPassword: true, userSrp: true },
       generateSecret: false,
+      // Cognito's default RefreshTokenValidity is 30 DAYS — confirmed live
+      // 2026-08-16 via describe-user-pool-client, and it's the actual root
+      // cause of a clinician's phone still being signed in a full day after
+      // last use with no re-entry of password or MFA. amazon-cognito-identity-js
+      // silently mints fresh access/ID tokens off the refresh token on every
+      // session check, so the refresh window — not the shorter access/ID
+      // token lifetimes below — is what actually forces real
+      // re-authentication. 12 hours covers a full clinical shift without
+      // repeated prompts, while guaranteeing at least daily re-auth+MFA.
+      accessTokenValidity: cdk.Duration.minutes(30),
+      idTokenValidity: cdk.Duration.minutes(30),
+      refreshTokenValidity: cdk.Duration.hours(12),
     });
   }
 }

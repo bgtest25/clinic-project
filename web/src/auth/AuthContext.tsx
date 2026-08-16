@@ -1,5 +1,6 @@
 import { createContext, use, useEffect, useState, type ReactNode } from 'react';
 import { getCurrentAccessToken, logout as cognitoLogout } from './cognito';
+import { clearIdleActivity } from './useIdleTimer';
 
 interface AuthContextValue {
   token: string | null;
@@ -23,6 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   function logout() {
     cognitoLogout();
+    clearIdleActivity();
     setToken(null);
   }
 
