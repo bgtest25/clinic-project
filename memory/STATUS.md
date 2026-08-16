@@ -6,6 +6,38 @@ then surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped ba
 point after 2026-08-14's "confirmed live" claim below. Now genuinely fixed, and fixed so it can't
 silently regress again — see below.)
 
+## 🟢 Speaker-diarized transcript, no longer a flat paragraph (2026-08-15)
+
+Transcribe Medical was already running with `ShowSpeakerLabels: true` (`ai-pipeline-stack.ts`), and
+`Transcript.diarizedSegments` already existed in the schema — but `process-transcript/index.ts`
+only ever read `results.transcripts[0].transcript` and wrote `{}` into that column. Verified
+against a **real** diarized transcript already sitting in this account's S3 bucket
+(`results.audio_segments` comes pre-joined with per-turn text + `speaker_label`, no manual
+correlation against `results.items` needed) — and that same real sample showed diarization on this
+account's actual recordings is genuinely noisy (one speaker's label jumping mid-conversation),
+which shaped the fix below rather than being a hypothetical concern.
+
+- Lambda now parses `audio_segments` into real `DiarizedSegment` rows, persists them in
+  `diarizedSegments`, and feeds a speaker-labeled transcript into the SOAP draft call instead of
+  the flat string. Added a system-prompt rule telling the model diarization labels can be wrong
+  and not to let a mislabeled turn misattribute a symptom or diagnosis.
+- `NoteReview.tsx`'s transcript pane gets a Speaker view / Raw text toggle, defaulting to speaker
+  view when segments exist. Labels are generic "Speaker 1/2" by design, not "Clinician/Patient" —
+  a wrong role label would be read as fact rather than the estimate it is. Raw text stays exactly
+  as before, one click away.
+- 16/16 `process-transcript` tests and 69/69 web tests pass unchanged (`generateSoapNote`'s
+  signature didn't change, so none of the 14 existing transcript fixtures needed touching).
+  Deployed `ClinicAiPipelineStack` and verified with a real Lambda invocation against the same real
+  diarized sample: `diarizedSegments` persisted correctly (16 segments, real shape), and the note
+  still generated correctly — it even preserved a real inconsistency in the source transcript
+  ("past couple of days" vs "past couple of months") rather than papering over it. Test
+  patient/encounter/transcript/note rows and the test S3 object deleted afterward. Frontend
+  deployed via the normal `deploy-web.yml` pipeline, commit `c2c281b`, confirmed live.
+
+Next up if wanted: grounding `suggestedCodes` in a real lookup (the existing
+`web/src/data/icd10-common.ts` curated list, made reachable from the Lambda) instead of model
+recall alone — deliberately not done in this pass.
+
 ## 🟢 Branded invite email (2026-08-15)
 
 The invite email a clinic admin's invitee received was Cognito's raw default text
