@@ -62,10 +62,18 @@ export class MetricsService {
 
     return {
       totalNotesSigned: Number(reviewTime?.total ?? 0),
-      avgReviewTimeSeconds: reviewTime?.avgSeconds ?? null,
+      // $queryRaw's AVG() results come back as Prisma Decimal objects, not
+      // plain numbers — found live 2026-08-16: Decimal.toJSON() returns a
+      // string, so the wire response actually sent "1" (a JSON string) for
+      // avgEditsPerNote, and the frontend's summary.avgEditsPerNote.toFixed(1)
+      // threw (no .toFixed on String.prototype) with no error boundary
+      // anywhere in the app to catch it — a blank white screen on /metrics.
+      // Explicit Number(...) here makes the actual response match what
+      // MetricsSummary's number | null types already promised.
+      avgReviewTimeSeconds: reviewTime?.avgSeconds != null ? Number(reviewTime.avgSeconds) : null,
       avgSatisfactionRating: satisfaction._avg.satisfactionRating,
       satisfactionResponseCount: satisfaction._count.satisfactionRating,
-      avgEditsPerNote: editCount?.avgEdits ?? null,
+      avgEditsPerNote: editCount?.avgEdits != null ? Number(editCount.avgEdits) : null,
     };
   }
 }

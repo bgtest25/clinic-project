@@ -1,10 +1,11 @@
 import { useEffect, useState, type FormEvent, type ReactNode } from 'react';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useParams } from 'react-router-dom';
 import './App.css';
 import { AuthProvider, useAuth } from './auth/AuthContext';
 import { useIdleTimer } from './auth/useIdleTimer';
 import { apiFetch } from './api/client';
 import { BrandMark, SearchIcon } from './icons';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { ThemeToggle } from './components/ThemeToggle';
 import type { Clinic, Me } from './api/types';
 import { Dashboard } from './pages/Dashboard';
@@ -71,6 +72,7 @@ function TopbarSearch() {
 function AuthenticatedApp({ token }: { token: string }) {
   const { logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [me, setMe] = useState<Me | null>(null);
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -123,6 +125,10 @@ function AuthenticatedApp({ token }: { token: string }) {
           </button>
         </div>
       </header>
+      {/* Keyed by pathname so navigating away from a crashed page (still
+          possible via the topbar above, which sits outside this boundary)
+          remounts cleanly instead of staying stuck on the fallback. */}
+      <ErrorBoundary key={location.pathname}>
       <Routes>
         <Route
           path="/"
@@ -184,6 +190,7 @@ function AuthenticatedApp({ token }: { token: string }) {
         <Route path="/encounters/:id" element={<RecordingRoute token={token} clinic={clinic} />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
     </div>
   );
 }
