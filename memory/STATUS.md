@@ -1,13 +1,71 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-16 (two agentic-pipeline improvements shipped: speaker-diarized
-transcripts instead of a flat paragraph, and ICD-10 suggestions grounded in a real tool-use lookup
-instead of pure model recall — both verified against real invocations, not just deployed. Before
-that, 2026-08-15: admin credential reset + MFA QR code added; a clinician-invite smoke test
+**Last updated:** 2026-08-16 (real security report: a clinician's phone stayed silently signed in
+overnight. Found and fixed a genuine 30-day session-persistence gap in Cognito's token settings,
+plus two compounding client-side gaps — see below, this is the most urgent item in this file.
+Same day, also shipped: speaker-diarized transcripts instead of a flat paragraph, and ICD-10
+suggestions grounded in a real tool-use lookup instead of pure model recall — both verified against
+real invocations, not just deployed. Before that, 2026-08-15: admin credential reset + MFA QR code added; a clinician-invite smoke test
 surfaced and fixed two frontend routing/access-control bugs; reviewing that same demo note then
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🔴 Session-persistence security gap found and fixed (2026-08-16)
+
+Reported: a clinician's phone was still signed into Havenote a full day after last use, no
+password or MFA re-entry. Confirmed live via `describe-user-pool-client`: `RefreshTokenValidity`
+was Cognito's **default 30 days**. `amazon-cognito-identity-js` silently mints fresh access/ID
+tokens off the refresh token on every session check, so a lost, stolen, or shared phone had
+standing PHI access for up to a month with zero re-authentication — MFA included. Three real,
+compounding gaps, all fixed (commit `233a559`):
+
+1. **`auth-stack.ts`**: refresh token validity was never a deliberate choice, just Cognito's
+   unbounded default. Now explicit — 30 min access/ID tokens, 12 hour refresh token (covers a
+   full clinical shift, guarantees at least daily re-auth+MFA).
+2. **`useIdleTimer.ts`**: the existing 15-minute idle-logout was pure client-side `setInterval`,
+   which mobile browsers throttle or fully suspend in a backgrounded tab — it could silently never
+   fire. Very likely the literal mechanism behind the report. Now persists the last-activity
+   timestamp to `localStorage` and checks it immediately on `visibilitychange`/`focus`, so a
+   resumed tab is caught even if its interval never ran while backgrounded.
+3. **`cognito.ts`**: `logout()` only cleared local tokens — a captured/copied token kept working
+   until natural expiry regardless of "signing out." Now also calls `globalSignOut()` (Cognito's
+   `EnableTokenRevocation` was already `true`, just never invoked), revoking every session for that
+   user, not just the current device.
+
+The new policy only applies to tokens minted after the deploy, so also ran
+`admin-user-global-sign-out` against all 4 existing Cognito users right after deploying —
+forces immediate re-authentication everywhere, closing the gap for already-active sessions too,
+not just future logins. One of the 4 accounts (`bawuluw@gmail.com`) wasn't one this session had
+prior context on — signed out along with the rest as part of the blanket fix, worth confirming
+who that is.
+
+72/72 web tests pass (3 new, covering the actual resume/visibility-change fix — not just the
+config change), 25/25 infra tests unaffected, `tsc`/lint clean, `cdk diff` confirmed non-replacing.
+Deployed and verified live via `describe-user-pool-client`. Frontend deployed via the normal
+`deploy-web.yml` pipeline, confirmed live.
+
+**Broader security-posture pass done alongside this fix** (not a from-scratch re-audit of
+everything — citing what this project has already verified live in prior sessions, plus what was
+freshly checked today):
+- **Authorization is solid, freshly re-confirmed today**: `RolesGuard` reads `cognito:groups` off
+  a cryptographically verified access token (`CognitoJwtVerifier`), not client-supplied data — this
+  is what made the 2026-08-15 admin-route-guard bug purely a frontend/UX issue, not a real
+  privilege-escalation hole. `/invite`, `/users`, `/metrics` also now have client-side `AdminRoute`
+  guards as defense in depth.
+- **Encryption**: media bucket SSE-KMS (customer-managed key), RDS encrypted, TLS everywhere —
+  established in Phase 4, not re-verified today.
+- **MFA is mandatory** pool-wide (`Mfa.REQUIRED`), not optional — confirmed live today while fixing
+  the QR-code issue.
+- **Audit logging**: application-level `AuditLog` table on every note edit/sign/deactivate/data-request,
+  plus account-wide CloudTrail — established in Phase 4/2026-07-19, not re-verified today.
+- **Infra hardening**: CloudWatch alarms + AWS Config rule pack (16 managed rules, GuardDuty
+  enabled) — built 2026-08-11, not re-verified today.
+- **Not done in this pass, worth a decision**: a self-service "sign out of all my devices" button
+  for a clinician who suspects their own device is compromised, without needing an admin. Currently
+  that capability only exists via the admin deactivate/reactivate flow. Also not done: rotating the
+  actual Cognito signing keys (not necessary here — the gap was token *lifetime*, not a key
+  compromise).
 
 ## 🟢 Grounded ICD-10 suggestions via tool use (2026-08-16)
 
