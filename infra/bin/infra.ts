@@ -36,7 +36,12 @@ const anthropicModelId = app.node.tryGetContext('anthropicModelId') ?? 'claude-s
 // a day without anyone noticing. `-c mockSoapNote=true` still works as an
 // explicit override if mock mode is ever needed again on purpose.
 const mockSoapNote = (app.node.tryGetContext('mockSoapNote') ?? 'false') === 'true';
-const alertEmail = app.node.tryGetContext('alertEmail') ?? 'barsehgbor2026@outlook.com';
+// The previous outlook.com subscription's confirmation was never clicked and
+// SNS auto-expired the pending subscription after a few days — CloudFormation
+// had no visibility into that, so it kept reporting the subscription as
+// healthy while the topic actually had zero subscribers. Switched to the same
+// address used for the incident-response runbook contacts, 2026-08-16.
+const alertEmail = app.node.tryGetContext('alertEmail') ?? 'barsehgbor@gmail.com';
 
 const network = new ClinicNetworkStack(app, 'ClinicNetworkStack', { env });
 const dns = new ClinicDnsStack(app, 'ClinicDnsStack', { env });
