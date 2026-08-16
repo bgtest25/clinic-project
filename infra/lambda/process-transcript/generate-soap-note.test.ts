@@ -1,4 +1,4 @@
-import { generateSoapNote } from './index';
+import { generateSoapNote, searchIcd10Codes } from './index';
 
 // index.ts's live-call branch uses the global fetch (Node 22 built-in) to
 // reach the Anthropic API directly — this is the interim substitute for
@@ -480,5 +480,108 @@ describe('generateSoapNote', () => {
     expect(note.subjective).toContain('via interpreter');
     expect(note.subjective).toContain('shortness of breath');
     expect(note.plan).toContain('interpreter');
+  });
+
+  it('calls search_icd10_codes and only finalizes the note after the tool round trip', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockFetch
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          stop_reason: 'tool_use',
+          content: [
+            { type: 'text', text: 'Let me verify the code for this.' },
+            {
+              type: 'tool_use',
+              id: 'toolu_1',
+              name: 'search_icd10_codes',
+              input: { query: 'streptococcal pharyngitis' },
+            },
+          ],
+        }),
+      })
+      .mockResolvedValueOnce(
+        anthropicTextResponse(
+          JSON.stringify({
+            subjective: 'Sore throat and fever for two days.',
+            objective: 'Exudate on tonsils. Positive rapid strep.',
+            assessment: 'Streptococcal pharyngitis.',
+            plan: 'Amoxicillin.',
+            suggestedCodes: 'J02.0',
+          }),
+        ),
+      );
+
+    const note = await generateSoapNote(VIRAL_URI_TRANSCRIPT);
+
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+    const [, secondInit] = mockFetch.mock.calls[1];
+    const secondBody = JSON.parse(secondInit.body);
+    expect(secondBody.messages).toContainEqual(
+      expect.objectContaining({
+        role: 'user',
+        content: expect.arrayContaining([
+          expect.objectContaining({
+            type: 'tool_result',
+            tool_use_id: 'toolu_1',
+            content: expect.stringContaining('J02.0'),
+          }),
+        ]),
+      }),
+    );
+    expect(note.suggestedCodes).toBe('J02.0');
+  });
+
+  it('advertises the ICD-10 tool on every call, including the first', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockFetch.mockResolvedValue(
+      anthropicTextResponse(
+        JSON.stringify({ subjective: '', objective: '', assessment: '', plan: '', suggestedCodes: '' }),
+      ),
+    );
+
+    await generateSoapNote(VIRAL_URI_TRANSCRIPT);
+
+    const [, init] = mockFetch.mock.calls[0];
+    const body = JSON.parse(init.body);
+    expect(body.tools).toEqual([expect.objectContaining({ name: 'search_icd10_codes' })]);
+  });
+
+  it('throws rather than looping forever if the model keeps calling tools', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        stop_reason: 'tool_use',
+        content: [{ type: 'tool_use', id: 'toolu_x', name: 'search_icd10_codes', input: { query: 'x' } }],
+      }),
+    });
+
+    await expect(generateSoapNote(VIRAL_URI_TRANSCRIPT)).rejects.toThrow('exceeded');
+    expect(mockFetch.mock.calls.length).toBeLessThanOrEqual(10);
+  });
+});
+
+describe('searchIcd10Codes', () => {
+  it('matches on description text, case-insensitively', () => {
+    const results = searchIcd10Codes('THROAT');
+    expect(results.some((r) => r.code === 'R07.0')).toBe(true);
+  });
+
+  it('matches an exact code', () => {
+    const results = searchIcd10Codes('j02.0');
+    expect(results).toEqual([expect.objectContaining({ code: 'J02.0' })]);
+  });
+
+  it('returns an empty array when nothing matches', () => {
+    expect(searchIcd10Codes('nonexistent zzz condition')).toEqual([]);
+  });
+
+  it('returns an empty array for an empty query', () => {
+    expect(searchIcd10Codes('   ')).toEqual([]);
+  });
+
+  it('caps results at 5', () => {
+    expect(searchIcd10Codes('unspecified').length).toBeLessThanOrEqual(5);
   });
 });

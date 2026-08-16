@@ -1,6 +1,7 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Client } from 'pg';
 import { randomUUID } from 'crypto';
+import { ICD10_COMMON_CODES } from './icd10-common';
 
 const s3 = new S3Client({});
 
@@ -39,10 +40,11 @@ const SOAP_SYSTEM_PROMPT = [
     'implies.',
   '- "plan": treatments, prescriptions (with dose/frequency if stated), follow-up instructions, ' +
     'and return precautions, exactly as discussed.',
-  '- "suggestedCodes": a short comma-separated list of ICD-10 codes, but ONLY ones you are ' +
-    'confident are directly supported by the assessment — these are suggestions for the ' +
-    'clinician to verify, not a diagnosis. Use an empty string if you are not confident in any ' +
-    'code.',
+  '- "suggestedCodes": a short comma-separated list of ICD-10 codes. Call the search_icd10_codes ' +
+    'tool for the condition(s) in your assessment before including any code — never include a ' +
+    'code from memory that the tool did not return. Only include codes you are confident are ' +
+    'directly supported by the assessment; these are suggestions for the clinician to verify, ' +
+    'not a diagnosis. If the tool returns no good match, use an empty string rather than guessing.',
   '',
   'Hard rules:',
   '- Never invent a symptom, finding, medication, or history detail that is not in the ' +
@@ -138,6 +140,111 @@ function formatSpeakerLabeledTranscript(segments: DiarizedSegment[], fallbackTex
   return lines.join('\n');
 }
 
+const ICD10_SEARCH_TOOL = {
+  name: 'search_icd10_codes',
+  description:
+    'Search a curated (non-exhaustive) ICD-10-CM code list for codes matching a diagnosis, ' +
+    'condition, or symptom. Returns up to 5 matches with their code and description, or an ' +
+    'empty list if nothing matches well. Always call this before including a code in ' +
+    'suggestedCodes — never suggest a code from memory alone.',
+  input_schema: {
+    type: 'object',
+    properties: {
+      query: {
+        type: 'string',
+        description: "A diagnosis, condition, or symptom to search for, e.g. 'streptococcal pharyngitis'.",
+      },
+    },
+    required: ['query'],
+  },
+};
+
+// Local, self-hosted lookup over a public CMS-published code set — deliberately not a
+// call to a third-party medical-coding API, which would introduce a new subprocessor
+// (and a new BAA requirement) touching PHI-adjacent assessment text. See STATUS.md.
+export function searchIcd10Codes(query: string) {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  return ICD10_COMMON_CODES.filter(
+    (c) =>
+      c.description.toLowerCase().includes(q) ||
+      c.category.toLowerCase().includes(q) ||
+      c.code.toLowerCase() === q,
+  ).slice(0, 5);
+}
+
+interface AnthropicContentBlock {
+  type?: string;
+  text?: string;
+  id?: string;
+  name?: string;
+  input?: { query?: string };
+}
+
+interface AnthropicResponse {
+  stop_reason?: string;
+  content?: AnthropicContentBlock[];
+}
+
+async function callAnthropicWithTools(transcriptText: string): Promise<AnthropicResponse> {
+  const messages: Array<{ role: string; content: unknown }> = [
+    { role: 'user', content: `Transcript:\n\n${transcriptText}` },
+  ];
+
+  // A real tool-use round trip is at most a couple of turns (search, maybe one
+  // refinement) — capped well above that so a misbehaving model can't loop
+  // forever burning tokens against a real bill.
+  const MAX_TOOL_ROUNDS = 4;
+
+  for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model: process.env.ANTHROPIC_MODEL_ID,
+        max_tokens: 1500,
+        system: SOAP_SYSTEM_PROMPT,
+        tools: [ICD10_SEARCH_TOOL],
+        messages,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Anthropic API request failed: ${response.status} ${await response.text()}`);
+    }
+
+    const responseBody = (await response.json()) as AnthropicResponse;
+    if (responseBody.stop_reason !== 'tool_use') return responseBody;
+
+    const toolUseBlocks = (responseBody.content ?? []).filter((b) => b.type === 'tool_use');
+    // Malformed/empty tool_use turn — nothing to act on. Return as-is rather than
+    // loop forever; the caller's own text-extraction will fail loudly on it.
+    if (toolUseBlocks.length === 0) return responseBody;
+
+    messages.push({ role: 'assistant', content: responseBody.content });
+    messages.push({
+      role: 'user',
+      content: toolUseBlocks.map((block) => {
+        const results = searchIcd10Codes(block.input?.query ?? '');
+        // Deliberately kept (not scaffolding) — this is the only visibility
+        // into whether the code-grounding tool is actually firing in
+        // production, short of reading raw Anthropic API traffic.
+        console.log(
+          'icd10_tool_call',
+          JSON.stringify({ query: block.input?.query, matchCount: results.length }),
+        );
+        return { type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(results) };
+      }),
+    });
+  }
+
+  throw new Error(`Anthropic API tool-use loop exceeded ${MAX_TOOL_ROUNDS} rounds`);
+}
+
 export async function generateSoapNote(transcriptText: string) {
   // Temporary: AWS Bedrock model access for anthropic.claude-sonnet-5 is blocked
   // on an account-level restriction (AWS support case filed, pending as of
@@ -158,26 +265,8 @@ export async function generateSoapNote(transcriptText: string) {
   // STATUS.md) — calls the Anthropic API directly instead. Same model family,
   // same system prompt, same messages shape; only the transport differs.
   // Revert to BedrockRuntimeClient.send(InvokeModelCommand) once Bedrock access clears.
-  const response = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
-      'anthropic-version': '2023-06-01',
-    },
-    body: JSON.stringify({
-      model: process.env.ANTHROPIC_MODEL_ID,
-      max_tokens: 1500,
-      system: SOAP_SYSTEM_PROMPT,
-      messages: [{ role: 'user', content: `Transcript:\n\n${transcriptText}` }],
-    }),
-  });
+  const responseBody = await callAnthropicWithTools(transcriptText);
 
-  if (!response.ok) {
-    throw new Error(`Anthropic API request failed: ${response.status} ${await response.text()}`);
-  }
-
-  const responseBody = (await response.json()) as { content?: Array<{ type?: string; text?: string }> };
   // Extended thinking puts a `thinking`-type block before the `text` block,
   // so content[0] isn't reliably the answer — found live 2026-08-14, the
   // first real (non-mock) invocation returned a thinking block at index 0
