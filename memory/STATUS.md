@@ -1,10 +1,41 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-15 (admin credential reset + MFA QR code added; a clinician-invite smoke
-test surfaced and fixed two frontend routing/access-control bugs; reviewing that same demo note
-then surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some
-point after 2026-08-14's "confirmed live" claim below. Now genuinely fixed, and fixed so it can't
-silently regress again — see below.)
+**Last updated:** 2026-08-16 (two agentic-pipeline improvements shipped: speaker-diarized
+transcripts instead of a flat paragraph, and ICD-10 suggestions grounded in a real tool-use lookup
+instead of pure model recall — both verified against real invocations, not just deployed. Before
+that, 2026-08-15: admin credential reset + MFA QR code added; a clinician-invite smoke test
+surfaced and fixed two frontend routing/access-control bugs; reviewing that same demo note then
+surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
+after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
+regress again — see below.)
+
+## 🟢 Grounded ICD-10 suggestions via tool use (2026-08-16)
+
+`suggestedCodes` was pure model recall with no way to verify a code was real before it reached a
+clinician — the code picker's own copy already admits this ("verify before billing"). Added a
+`search_icd10_codes` tool backed by a local, self-hosted lookup
+(`infra/lambda/process-transcript/icd10-common.ts`, mirrored from the existing
+`web/src/data/icd10-common.ts` the code picker already uses — the two aren't shared across the
+workspace boundary, kept in sync by hand, low risk given ~60 entries) and a bounded tool-use loop
+in `callAnthropicWithTools` that runs the search and feeds results back to the model before it
+finalizes `suggestedCodes`. Deliberately **not** a third-party coding API — that would add a new
+subprocessor touching PHI-adjacent assessment text and a new BAA requirement; ICD-10-CM is a
+public CMS-published set, so this stays entirely inside existing infra, no new subprocessor, no
+new legal-review item.
+
+`generateSoapNote`'s signature is unchanged, so all 16 existing fixture tests pass untouched.
+Added 8 new tests: the tool round trip end to end, the tool being advertised on every call, a
+bounded-loop guard (throws rather than looping forever if a model misbehaves), and direct coverage
+of `searchIcd10Codes`. 25/25 infra tests pass, `tsc`/`cdk synth` clean.
+
+**Verified twice against a real strep-throat transcript, not just trusted:** first pass, the note
+correctly suggested `J02.0` — but a correct code alone doesn't prove the tool actually fired, since
+J02.0 is common-knowledge territory for the model. Added a permanent (not scaffolding)
+`icd10_tool_call` log line — the only visibility into whether the grounding tool is actually being
+used in production short of reading raw Anthropic API traffic — redeployed, re-ran the same real
+transcript, and confirmed directly via CloudWatch: the model genuinely called
+`search_icd10_codes` with `"streptococcal pharyngitis"` and got exactly 1 real match back, which is
+what it used. Test patient/encounter/note rows and the test S3 object deleted after both runs.
 
 ## 🟢 Speaker-diarized transcript, no longer a flat paragraph (2026-08-15)
 
