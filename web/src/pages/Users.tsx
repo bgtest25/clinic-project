@@ -4,8 +4,10 @@ import type { Me, User } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { EmptyIcon } from '../icons';
 import { SkeletonTable } from '../components/Skeleton';
+import { useToast } from '../components/Toast';
 
 export function Users({ token, me, onBack }: { token: string; me: Me; onBack: () => void }) {
+  const { showToast } = useToast();
   const [users, setUsers] = useState<User[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -30,6 +32,20 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
     }
   }
 
+  async function handleResetMfa(user: User) {
+    setActionError(null);
+    setBusyId(user.id);
+    try {
+      const updated = await apiFetch<User>(`/users/${user.id}/reset-mfa`, token, { method: 'PATCH' });
+      setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev);
+      showToast(`MFA reset for ${user.name} — they'll get a new temporary password by email.`);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : 'Failed to reset MFA');
+    } finally {
+      setBusyId(null);
+    }
+  }
+
   return (
     <div className="page page-wide">
       <button type="button" className="link-button back-link" onClick={onBack}>
@@ -38,7 +54,11 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
       <div className="dashboard-header">
         <div>
           <h1>Manage users</h1>
-          <p>Deactivate or reactivate clinicians and admins in your clinic.</p>
+          <p>
+            Deactivate or reactivate clinicians and admins in your clinic. Resetting MFA also
+            issues a new temporary password by email — there's no way to clear just the
+            authenticator enrollment on its own.
+          </p>
         </div>
       </div>
 
@@ -79,15 +99,26 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
                       {u.deactivatedAt ? 'Inactive' : 'Active'}
                     </span>
                   </td>
-                  <td>
+                  <td className="table-actions-cell">
                     {u.id !== me.id && (
-                      <ConfirmButton
-                        key={`${u.id}-${u.deactivatedAt ?? 'active'}`}
-                        label={u.deactivatedAt ? 'Reactivate' : 'Deactivate'}
-                        className={u.deactivatedAt ? 'btn btn-secondary btn-sm' : 'btn btn-danger btn-sm'}
-                        busy={busyId === u.id}
-                        onConfirm={() => handleSetActive(u, u.deactivatedAt ? 'reactivate' : 'deactivate')}
-                      />
+                      <>
+                        <ConfirmButton
+                          key={`${u.id}-${u.deactivatedAt ?? 'active'}`}
+                          label={u.deactivatedAt ? 'Reactivate' : 'Deactivate'}
+                          className={u.deactivatedAt ? 'btn btn-secondary btn-sm' : 'btn btn-danger btn-sm'}
+                          busy={busyId === u.id}
+                          onConfirm={() => handleSetActive(u, u.deactivatedAt ? 'reactivate' : 'deactivate')}
+                        />
+                        {!u.deactivatedAt && (
+                          <ConfirmButton
+                            label="Reset MFA"
+                            confirmLabel="Reset MFA"
+                            className="btn btn-secondary btn-sm"
+                            busy={busyId === u.id}
+                            onConfirm={() => handleResetMfa(u)}
+                          />
+                        )}
+                      </>
                     )}
                   </td>
                 </tr>

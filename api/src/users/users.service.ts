@@ -146,6 +146,78 @@ export class UsersService {
     return updated;
   }
 
+  // Cognito's admin API has no way to forcibly un-associate a verified TOTP
+  // device — AdminSetUserMFAPreference only changes a preference flag, not
+  // the underlying enrollment (confirmed live 2026-08-16: an account kept
+  // returning the SOFTWARE_TOKEN_MFA challenge, not MFA_SETUP, after calling
+  // it). Delete-and-recreate is the only way to force a genuinely fresh MFA
+  // enrollment, which means this also always issues a new temporary
+  // password via the same branded Cognito invite email the original invite
+  // used — not a silent, MFA-only reset. The frontend surfaces that.
+  async resetMfa(cognitoSub: string, targetUserId: string) {
+    const actor = await this.findByCognitoSub(cognitoSub);
+    if (targetUserId === actor.id) {
+      // Deleting-and-recreating your own Cognito user mid-session would
+      // orphan the JWT you're currently authenticated with — same
+      // self-service dead end as self-deactivation, and it can't even help
+      // real lockout recovery, since reaching this endpoint already
+      // requires a valid session.
+      throw new BadRequestException('Cannot reset your own MFA — ask another admin');
+    }
+
+    const target = await this.prisma.user.findFirst({
+      where: { id: targetUserId, clinicId: actor.clinicId },
+    });
+    if (!target) throw new NotFoundException('User not found');
+    if (target.deactivatedAt) {
+      throw new BadRequestException('Cannot reset MFA for a deactivated account');
+    }
+
+    const userPoolId = process.env.COGNITO_USER_POOL_ID;
+
+    await this.cognito.send(
+      new AdminDeleteUserCommand({ UserPoolId: userPoolId, Username: target.email }),
+    );
+
+    const created = await this.cognito.send(
+      new AdminCreateUserCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+        UserAttributes: [
+          { Name: 'email', Value: target.email },
+          { Name: 'email_verified', Value: 'true' },
+          { Name: 'name', Value: target.name },
+        ],
+        DesiredDeliveryMediums: ['EMAIL'],
+      }),
+    );
+
+    const newCognitoSub = created.User?.Attributes?.find((attr) => attr.Name === 'sub')?.Value;
+    if (!newCognitoSub) {
+      throw new InternalServerErrorException('Cognito did not return a sub for the recreated user');
+    }
+
+    await this.cognito.send(
+      new AdminAddUserToGroupCommand({
+        UserPoolId: userPoolId,
+        Username: target.email,
+        GroupName: target.role === 'ADMIN' ? 'admin' : 'clinician',
+      }),
+    );
+
+    const [updated] = await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: targetUserId },
+        data: { cognitoSub: newCognitoSub },
+      }),
+      this.prisma.auditLog.create({
+        data: { actorId: actor.id, targetUserId, action: 'user.mfa_reset' },
+      }),
+    ]);
+
+    return updated;
+  }
+
   // Symmetrical undo — admin-only, same clinic-scoping, idempotent.
   async reactivate(cognitoSub: string, targetUserId: string) {
     const actor = await this.findByCognitoSub(cognitoSub);

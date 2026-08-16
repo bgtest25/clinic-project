@@ -135,4 +135,54 @@ describe('UsersService', () => {
       expect(prisma.$transaction).toHaveBeenCalled();
     });
   });
+
+  describe('resetMfa', () => {
+    beforeEach(() => {
+      prisma.user.findUniqueOrThrow.mockResolvedValue(actor);
+    });
+
+    it('rejects resetting your own MFA with BadRequestException', async () => {
+      await expect(service.resetMfa('sub-1', actor.id)).rejects.toThrow(BadRequestException);
+    });
+
+    it('throws NotFoundException for a target in a different clinic', async () => {
+      prisma.user.findFirst.mockResolvedValue(null);
+      await expect(service.resetMfa('sub-1', 'user-in-other-clinic')).rejects.toThrow(
+        NotFoundException,
+      );
+    });
+
+    it('rejects resetting MFA for a deactivated account', async () => {
+      const target = { id: 'user-2', clinicId: 'clinic-a', deactivatedAt: new Date() };
+      prisma.user.findFirst.mockResolvedValue(target);
+      await expect(service.resetMfa('sub-1', 'user-2')).rejects.toThrow(BadRequestException);
+    });
+
+    it('deletes and recreates the Cognito user, re-adds the correct group, syncs the new sub, and audit-logs it', async () => {
+      const target = {
+        id: 'user-2',
+        clinicId: 'clinic-a',
+        email: 'clinician@clinic-a.test',
+        name: 'Clinician Two',
+        role: 'CLINICIAN',
+        deactivatedAt: null,
+      };
+      prisma.user.findFirst.mockResolvedValue(target);
+      const send = (service as any).cognito.send;
+      send.mockResolvedValueOnce({}); // AdminDeleteUserCommand
+      send.mockResolvedValueOnce({ User: { Attributes: [{ Name: 'sub', Value: 'new-sub-123' }] } }); // AdminCreateUserCommand
+      send.mockResolvedValueOnce({}); // AdminAddUserToGroupCommand
+      prisma.$transaction.mockResolvedValue([{ ...target, cognitoSub: 'new-sub-123' }, {}]);
+
+      await service.resetMfa('sub-1', 'user-2');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-2' },
+        data: { cognitoSub: 'new-sub-123' },
+      });
+      expect(prisma.auditLog.create).toHaveBeenCalledWith({
+        data: { actorId: 'user-1', targetUserId: 'user-2', action: 'user.mfa_reset' },
+      });
+    });
+  });
 });

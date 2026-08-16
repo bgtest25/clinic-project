@@ -38,4 +38,10 @@ export class UsersController {
   reactivate(@Param('id') id: string, @Req() req: any) {
     return this.usersService.reactivate(req.user.sub, id);
   }
+
+  @Patch(':id/reset-mfa')
+  @Roles('admin')
+  resetMfa(@Param('id') id: string, @Req() req: any) {
+    return this.usersService.resetMfa(req.user.sub, id);
+  }
 }

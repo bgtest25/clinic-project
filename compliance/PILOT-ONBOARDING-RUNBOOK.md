@@ -47,12 +47,29 @@ From here on it's self-service through the app:
 
 1. Clinician goes to the login page, enters the emailed temp password.
 2. **Forced password reset** (Cognito `NEW_PASSWORD_REQUIRED` challenge) — sets a permanent password.
-3. **Mandatory MFA setup** (the user pool requires it, no way to skip) — the app shows a TOTP secret
-   to add to an authenticator app (Google Authenticator, Authy, 1Password all work), then confirms
-   with the 6-digit code. After first-time setup, subsequent logins just prompt for the 6-digit code.
+3. **Mandatory MFA setup** (the user pool requires it, no way to skip) — the app shows a scannable
+   QR code plus the raw secret as text, to add to an authenticator app (Google Authenticator, Authy,
+   1Password all work), then confirms with the 6-digit code. After first-time setup, subsequent
+   logins just prompt for the 6-digit code.
 
 Worth walking the pilot clinic's staff through this live once — MFA setup is the one step in the
 whole flow most likely to trip up a non-technical first-time user.
+
+**Clinician without a smartphone**: Cognito's MFA here is standard TOTP (RFC 6238) — it works
+identically whether the code comes from a phone app or a seedable hardware TOTP token/fob (e.g.
+Protectimus-style, or a YubiKey programmed via its own companion app). Scan or enter the same
+QR/secret from the setup screen into the hardware token instead of a phone app; everything else in
+the flow is unchanged. **Important**: it must be a *seedable* token that accepts an arbitrary
+secret — a pre-configured fixed-seed token (old-style RSA SecurID hardware) cannot work here, since
+Cognito always generates a fresh random secret per user at enrollment and there's no way to
+register a factory-fixed hardware secret into it.
+
+**Lost token / needs a fresh MFA enrollment**: an admin can trigger this from **Users** → find the
+clinician's row → **Reset MFA**. There's no way to clear just the authenticator enrollment on its
+own — Cognito's admin API has no "un-enroll this TOTP device" call, only delete-and-recreate the
+Cognito user, so this action always also issues a brand-new temporary password via the same
+branded invite email the original invite used. The clinician goes through the same first-login
+flow above again (temp password → new permanent password → new MFA setup) as if freshly invited.
 
 ## 4. Day-to-day clinician workflow
 
