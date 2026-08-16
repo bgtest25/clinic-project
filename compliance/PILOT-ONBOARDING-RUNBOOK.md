@@ -1,18 +1,33 @@
 # Havenote — Pilot Onboarding Runbook
 
-**Status:** operational draft. Covers everything that's actually built and live as of 2026-08-08.
-Not legally reviewed — see `BAA-TEMPLATE.md` / `PRIVACY-POLICY.md` for what's still pending counsel.
-This document assumes the two AWS blockers (Bedrock model access, CloudFront account verification)
-have cleared — see `../memory/STATUS.md` for current status before using this for a real launch.
+**Status:** operational draft, last brought current 2026-08-16. Not legally reviewed — see
+`BAA-TEMPLATE.md` / `PRIVACY-POLICY.md` for what's still pending counsel. **This document no
+longer assumes the Bedrock/CloudFront AWS blockers have cleared** — the pilot went live 2026-08-14
+via interim workarounds (direct Anthropic API instead of Bedrock; Vercel instead of CloudFront)
+that are fully live and verified, not waiting on those cases — see `../memory/STATUS.md` for
+current status and the revert plan once/if those AWS cases clear.
 
 ## 0. Pre-launch checklist
 
-- [ ] Bedrock model access `AUTHORIZED` (`aws bedrock get-foundation-model-availability --model-id anthropic.claude-sonnet-5 --profile clinic-project --region us-east-1`)
-- [ ] `infra/bin/infra.ts` `mockSoapNote` flipped to `false`, `ClinicAiPipelineStack` redeployed
-- [ ] CloudFront verification cleared, `ClinicWebHostingStack` deployed successfully, `app.havenote.health` resolving
-- [ ] `compliance/BAA-TEMPLATE.md` and `compliance/PRIVACY-POLICY.md` reviewed by counsel and signed with the pilot clinic
-- [ ] Pilot clinic's actual name/address/state confirmed (retention rules in `RETENTION-POLICY.md` are Pennsylvania-specific — re-verify if the pilot clinic isn't in PA)
-- [ ] `INCIDENT-RESPONSE-RUNBOOK.md` roles filled in (Security Officer / Privacy Officer / on-call engineer — currently placeholders)
+**Legal / compliance — the actual remaining gates, none completable by engineering alone:**
+- [ ] `compliance/BAA-TEMPLATE.md` and `compliance/PRIVACY-POLICY.md` reviewed by counsel and
+      signed with the pilot clinic — see `compliance/LEGAL-REVIEW-COVER-MEMO.md` for a reviewer
+      orientation
+- [ ] Pilot clinic's actual name/address/state confirmed (retention rules in `RETENTION-POLICY.md`
+      are Pennsylvania-specific — re-verify if the pilot clinic isn't in PA)
+- [ ] A BAA/DPA executed directly with Anthropic — the AWS BAA does not cover the direct Anthropic
+      API call used for AI drafting; see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for exactly
+      what data this involves
+- [ ] A formal, documented HIPAA Security Risk Assessment performed by a qualified assessor — see
+      `compliance/HIPAA-RISK-ASSESSMENT-EVIDENCE.md` for a technical evidence packet to start from
+- [ ] An independent security review / penetration test, by someone who wasn't involved in
+      building the system — see `compliance/SECURITY-REVIEW-SCOPE.md`
+
+**Done:**
+- [x] `INCIDENT-RESPONSE-RUNBOOK.md` roles filled in (2026-08-16)
+- [x] AWS BAA confirmed active (`aws artifact list-customer-agreements`, effective 2026-07-17)
+- [x] AI pipeline genuinely live, non-mock, verified with real transcripts (2026-08-14/15)
+- [x] Frontend live on `havenote.health`/`app.havenote.health` via Vercel (2026-08-14)
 
 ## 1. Bootstrap the first clinic + admin (one-time, manual)
 
