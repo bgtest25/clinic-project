@@ -77,6 +77,9 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   (same as the incident-response runbook contacts) in `infra/bin/infra.ts`, deployed, confirmed
   live: one subscription, `PendingConfirmation` status — **needs the confirmation email clicked to
   actually start receiving alerts**, same failure mode as before if left unconfirmed.
+  **Confirmed by the user same day** — re-checked `list-subscriptions-by-topic` directly and the
+  subscription now shows a real `SubscriptionArn`, not `PendingConfirmation`. Alert delivery is
+  genuinely live end to end: all 10 alarms → SNS topic → confirmed email delivery.
 - **Application-level error monitoring added.** Zero error tracking of any kind existed before
   this — checked directly, no Sentry/equivalent in either `api` or `web`'s `package.json`.
   Deliberately went CloudWatch-native (a metric filter matching `"ERROR"` on `/clinic-project/api`,
