@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api/client';
-import type { Clinic, EncounterDetail, Patient } from '../api/types';
+import type { Clinic, DiarizedSegment, EncounterDetail, Patient } from '../api/types';
 import { MicIcon, PauseIcon, ResumeIcon, StopIcon } from '../icons';
 import { LevelMeter } from '../components/LevelMeter';
 import { withRetry } from '../utils/retry';
@@ -30,6 +30,7 @@ export function Recording({
   const [error, setError] = useState<string | null>(null);
   const [encounterStatus, setEncounterStatus] = useState<string>('');
   const [transcript, setTranscript] = useState<string | null>(null);
+  const [diarizedSegments, setDiarizedSegments] = useState<DiarizedSegment[] | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [visitDate, setVisitDate] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -47,6 +48,10 @@ export function Recording({
     setVisitDate(latest.visitDate);
     if (latest.status === 'IN_REVIEW' || latest.status === 'SIGNED') {
       setTranscript(latest.transcript?.rawText ?? null);
+      // Rows written before diarization was wired up hold `{}`, not an array —
+      // only treat it as real segments if it's actually a non-empty array.
+      const segments = latest.transcript?.diarizedSegments;
+      setDiarizedSegments(Array.isArray(segments) && segments.length > 0 ? segments : null);
       setState('review');
     } else if (latest.status === 'FAILED') {
       setError(latest.processingError ?? 'Processing failed.');
@@ -199,6 +204,7 @@ export function Recording({
           token={token}
           encounterId={encounterId}
           transcript={transcript}
+          diarizedSegments={diarizedSegments}
           patient={patient}
           visitDate={visitDate}
           clinic={clinic}

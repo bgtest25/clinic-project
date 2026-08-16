@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
-import type { Clinic, ClinicalNote, Patient } from '../api/types';
+import type { Clinic, ClinicalNote, DiarizedSegment, Patient } from '../api/types';
 import { CheckIcon, PrintIcon, StarIcon } from '../icons';
 import { CodePicker } from '../components/CodePicker';
 import { TemplateMenu } from '../components/TemplateMenu';
@@ -40,6 +40,7 @@ export function NoteReview({
   token,
   encounterId,
   transcript,
+  diarizedSegments = null,
   patient = null,
   visitDate = null,
   clinic = null,
@@ -47,11 +48,19 @@ export function NoteReview({
   token: string;
   encounterId: string;
   transcript: string | null;
+  diarizedSegments?: DiarizedSegment[] | null;
   patient?: Patient | null;
   visitDate?: string | null;
   clinic?: Clinic | null;
 }) {
   const { showToast } = useToast();
+  const hasSpeakerView = !!diarizedSegments && diarizedSegments.length > 0;
+  // Automated diarization on real recordings has been noisy (the same
+  // speaker can jump labels mid-conversation) — default to it when
+  // available since it's usually still more scannable than one unbroken
+  // paragraph, but always leave the raw block one click away for a
+  // clinician who wants to double-check against the unsegmented original.
+  const [transcriptView, setTranscriptView] = useState<'speaker' | 'raw'>(hasSpeakerView ? 'speaker' : 'raw');
   const [note, setNote] = useState<ClinicalNote | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [editing, setEditing] = useState(false);
@@ -293,8 +302,52 @@ export function NoteReview({
 
       <div className="review-columns">
         <div className="transcript-pane">
-          <h2>Transcript</h2>
-          <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>
+          <div className="transcript-pane-header">
+            <h2>Transcript</h2>
+            {hasSpeakerView && (
+              <div className="transcript-view-toggle" role="group" aria-label="Transcript view">
+                <button
+                  type="button"
+                  className={`btn btn-sm ${transcriptView === 'speaker' ? 'btn-secondary' : 'btn-ghost'}`}
+                  aria-pressed={transcriptView === 'speaker'}
+                  onClick={() => setTranscriptView('speaker')}
+                >
+                  Speaker view
+                </button>
+                <button
+                  type="button"
+                  className={`btn btn-sm ${transcriptView === 'raw' ? 'btn-secondary' : 'btn-ghost'}`}
+                  aria-pressed={transcriptView === 'raw'}
+                  onClick={() => setTranscriptView('raw')}
+                >
+                  Raw text
+                </button>
+              </div>
+            )}
+          </div>
+          {hasSpeakerView && transcriptView === 'speaker' ? (
+            <div className="transcript-speaker-view">
+              {/* Diarization is best-effort, not verified per-turn — labels are
+                  generic ("Speaker 1/2"), numbered by first appearance to match
+                  what the model itself was shown, rather than guessing
+                  Clinician/Patient, since a wrong role label here would be
+                  taken as fact rather than the estimate it is. */}
+              {(() => {
+                const labelOrder = new Map<string, number>();
+                return diarizedSegments!.map((segment, i) => {
+                  if (!labelOrder.has(segment.speaker)) labelOrder.set(segment.speaker, labelOrder.size + 1);
+                  return (
+                    <p key={i} className="transcript-turn">
+                      <span className="transcript-speaker-label">Speaker {labelOrder.get(segment.speaker)}</span>
+                      {segment.text}
+                    </p>
+                  );
+                });
+              })()}
+            </div>
+          ) : (
+            <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>
+          )}
         </div>
 
         <div className="card note-form">

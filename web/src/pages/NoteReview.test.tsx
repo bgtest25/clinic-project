@@ -56,6 +56,39 @@ describe('NoteReview', () => {
     expect(screen.getByText('raw transcript text')).toBeInTheDocument();
   });
 
+  it('defaults to speaker view when diarized segments exist, and can toggle to raw text', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [
+        { speaker: 'spk_0', text: 'How can I help you today?', startTime: '0', endTime: '1' },
+        { speaker: 'spk_1', text: 'My throat hurts.', startTime: '1', endTime: '2' },
+      ],
+    });
+
+    await screen.findByDisplayValue('Cough for 3 days.');
+    expect(screen.getByText('How can I help you today?')).toBeInTheDocument();
+    expect(screen.getByText('My throat hurts.')).toBeInTheDocument();
+    expect(screen.getByText('Speaker 1')).toBeInTheDocument();
+    expect(screen.getByText('Speaker 2')).toBeInTheDocument();
+    expect(screen.queryByText('raw transcript text')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Raw text' }));
+    expect(screen.getByText('raw transcript text')).toBeInTheDocument();
+    expect(screen.queryByText('My throat hurts.')).not.toBeInTheDocument();
+  });
+
+  it('shows only raw text with no toggle when there are no diarized segments', async () => {
+    vi.mocked(apiFetch).mockResolvedValue(draftNote);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: 'raw transcript text' });
+
+    await screen.findByDisplayValue('Cough for 3 days.');
+    expect(screen.getByText('raw transcript text')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Speaker view' })).not.toBeInTheDocument();
+  });
+
   it('shows an error state if the note fails to load', async () => {
     vi.mocked(apiFetch).mockRejectedValue(new Error('boom'));
     renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });

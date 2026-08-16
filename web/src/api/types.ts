@@ -25,10 +25,20 @@ export interface Encounter {
   processingError: string | null;
 }
 
+export interface DiarizedSegment {
+  speaker: string;
+  text: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface Transcript {
   id: string;
   encounterId: string;
   rawText: string;
+  // Rows written before speaker diarization was wired up hold `{}`, not an
+  // array — always check Array.isArray before rendering as segments.
+  diarizedSegments: unknown;
   sttProvider: string;
   createdAt: string;
 }
