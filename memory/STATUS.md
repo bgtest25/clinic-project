@@ -66,6 +66,17 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   time for the whole batch (individual latencies 238-623ms, meaning they substantially overlapped,
   not queued). 60 concurrent: 60/60 `200`, 1.78s wall time. No errors, no connection-pool
   exhaustion. Test account cleaned up after.
+- **Real gap found and fixed: nobody was actually receiving alerts.** Checked
+  `list-subscriptions-by-topic` on `clinic-project-alerts` directly and it came back empty — zero
+  subscribers — despite all 10 CloudWatch alarms (9 original + the new `ApiErrorLogsPresent`)
+  correctly firing into that topic. Root cause: the original `barsehgbor2026@outlook.com`
+  subscription's confirmation email (sent 2026-08-11) was never clicked, and SNS auto-expired the
+  pending subscription after a few days. CloudFormation had no visibility into that — it only
+  tracks whether the `Subscribe` API call succeeded, not whether it was ever confirmed, so it kept
+  reporting `CREATE_COMPLETE` the whole time. Switched the address to `barsehgbor@gmail.com`
+  (same as the incident-response runbook contacts) in `infra/bin/infra.ts`, deployed, confirmed
+  live: one subscription, `PendingConfirmation` status — **needs the confirmation email clicked to
+  actually start receiving alerts**, same failure mode as before if left unconfirmed.
 - **Application-level error monitoring added.** Zero error tracking of any kind existed before
   this — checked directly, no Sentry/equivalent in either `api` or `web`'s `package.json`.
   Deliberately went CloudWatch-native (a metric filter matching `"ERROR"` on `/clinic-project/api`,
