@@ -103,6 +103,30 @@ user/counsel. Tier 2 (real engineering hardening) in progress:
   real go-live, not a substitute for it. This is the one remaining Tier 2 item, and it isn't
   something more engineering work closes.
 
+## 🟢 Business email live: hello@havenote.health (2026-08-16)
+
+Needed for the Anthropic BAA outreach (Sales required a business email, not a personal one).
+Set up Zoho Mail's free tier rather than migrate DNS providers — confirmed `havenote.health`'s
+DNS is on Route53 (not Cloudflare), so Cloudflare Email Routing would've meant migrating the
+whole domain's DNS management just for an inbox; Zoho only needed new records added to the
+existing Route53 zone. AWS WorkMail was considered and ruled out — confirmed via research it's
+not HIPAA-eligible and AWS is discontinuing it entirely in March 2027, so not viable even setting
+compliance aside.
+
+Added to the live `havenote.health` Route53 hosted zone (confirmed no conflicts beforehand — only
+existing records were the Vercel A/CNAME entries and ACM validation CNAMEs, no prior MX/mail TXT):
+- Zoho domain-ownership verification TXT record
+- MX records (mx.zoho.com/mx2.zoho.com/mx3.zoho.com, priorities 10/20/50)
+- SPF TXT record, merged into the same record set as the verification TXT (Route53 requires all
+  TXT values at one name to live in a single record set, not separate ones)
+- DKIM TXT record at `zmail._domainkey.havenote.health`
+
+All four verified live via real external DNS lookups (`nslookup` against Comcast's public
+resolver, not just trusting Route53's internal `INSYNC` status), and the live site/API confirmed
+unaffected (`havenote.health` and `api.havenote.health/health` both still `200` after the
+changes). Mailbox `hello@havenote.health` created in Zoho's console — its actual functionality
+isn't DNS-visible, so that part is taken on the user's word, not independently verified.
+
 ## 🟢 Pre-production gate prep (2026-08-16)
 
 Four items remain before real patient data can go through this system: legal review/execution of
