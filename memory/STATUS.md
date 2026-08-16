@@ -11,6 +11,52 @@ surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
 
+## 🟢 Production-readiness Tier 2 work (2026-08-16)
+
+Working through the punch list for what's actually needed before go-live. Tier 1 (legal review,
+Anthropic BAA, formal HIPAA risk assessment) is explicitly not engineering work and stays with the
+user/counsel. Tier 2 (real engineering hardening) in progress:
+
+- **API rate limiting added.** Confirmed there was genuinely none before adding this (direct
+  search, not assumed). `@nestjs/throttler` as a global guard, 100 req/min/IP — generous against
+  real usage (`Dashboard.tsx` polls every 15s) while catching a scripted client. No server-side
+  login endpoint exists to specifically protect (auth goes straight to Cognito from the browser),
+  so this is baseline abuse protection for the authenticated surface, not auth-specific throttling.
+  `/health` exempted via `@SkipThrottle()` — confirmed via `compute-stack.ts` that the ALB target
+  group hits it every ~15-30s, throttling it would eventually make the ALB mark a healthy task
+  unhealthy. 48/48 API tests pass, tsc clean. **Verified live against the real deployed API, not
+  just deployed and trusted**: 110 rapid requests to `/users/me` — the first 100 came back `401`
+  (unauthenticated, as expected, throttle not yet hit), then `429 Too Many Requests` from request
+  101 onward, exactly matching the configured limit. Confirmed `/health` stays `200` under the same
+  rapid-fire pattern.
+- **RDS back to Multi-AZ.** Was deliberately reverted to single-AZ 2026-08-11 while the pilot was
+  blocked on AWS with zero real traffic, on the explicit condition of flipping back once the pilot
+  was actually about to go live. Deployed via `cdk deploy ClinicDatabaseStack` (~10.4 min, matching
+  the standby-provisioning time expected for this operation) — confirmed live via
+  `aws rds describe-db-instances`: `MultiAZ: true`, `Status: available`. Verified zero disruption
+  with a live `api.havenote.health/health` check before and after (200 both times).
+  **Real deploy collision hit and resolved**: this manual `cdk deploy ClinicDatabaseStack` and
+  `deploy-api.yml`'s CI-triggered `cdk deploy ClinicComputeStack` (from the rate-limiting push,
+  landed at the same time) both touch the same CDK app's stack set — CI's deploy failed with
+  `Stack:...ClinicDatabaseStack is in UPDATE_IN_PROGRESS state and can not be updated`, the same
+  collision class documented in this file's 2026-08-11 Config-rules entry. Not a bug in the
+  rate-limiting code itself (unit tests, e2e, build, and migration all passed before the collision)
+  — waited for the Multi-AZ deploy to fully clear, then re-ran the same CI job via `gh run rerun`
+  rather than push a new commit.
+- **Incident-response runbook roles filled in.** Security Officer / Privacy Officer / on-call
+  engineer were placeholders — now all three are Barseh Gbor (phone/email on file in
+  `INCIDENT-RESPONSE-RUNBOOK.md`). Noted the real tradeoff explicitly: one person holding all three
+  roles means no backup coverage if that person is unreachable during an actual incident — worth
+  revisiting once the team grows. The document itself still needs a legal pass, same status as the
+  BAA/privacy policy drafts.
+- **Still open in Tier 2**: a real backup-restore drill (RDS backups exist and run, a restore has
+  never actually been proven to work), and basic load/concurrency testing (every test this project
+  has ever run, including this session's own verification work, has been one account at a time).
+- **Explicitly not something engineering can complete**: an independent security review / pen
+  test. Everything found and fixed this session (including a real 30-day session-persistence gap)
+  came from self-review — which is exactly why an independent second set of eyes matters before
+  real go-live, not a substitute for it.
+
 ## 🟢 Admin Reset MFA action, for hardware-TOTP clinicians who lose their token (2026-08-16)
 
 Follow-up to the hardware-TOTP discussion (a phone-free MFA option for clinicians without
