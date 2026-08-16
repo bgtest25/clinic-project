@@ -11,6 +11,42 @@ surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
 
+## 🟢 Admin Reset MFA action, for hardware-TOTP clinicians who lose their token (2026-08-16)
+
+Follow-up to the hardware-TOTP discussion (a phone-free MFA option for clinicians without
+smartphones): the one real gap was that resetting a stuck/lost MFA enrollment required an engineer
+running raw AWS CLI commands (exactly what this session did manually for the admin account and for
+barsehgbor's account). Built a real admin-facing **Reset MFA** action in **Users**.
+
+- `PATCH /users/:id/reset-mfa` (`users.controller.ts`/`users.service.ts`),
+  admin-only, clinic-scoped, matching the deactivate/reactivate pattern. Blocks self-reset (would
+  orphan your own current session mid-request, and can't help real lockout recovery anyway since
+  reaching the endpoint requires an already-valid session) and blocks resetting a deactivated
+  account.
+- Cognito's admin API has no way to un-associate a verified TOTP device — confirmed again live
+  this session — so this deletes and recreates the Cognito user (same technique used manually
+  earlier), re-adds the correct group from the target's `role`, syncs the new `cognitoSub`, and
+  audit-logs as `user.mfa_reset`. Recreating always issues a new temp password too (Cognito
+  requires one on create) — framed honestly in the UI ("Resetting MFA also issues a new temporary
+  password by email") rather than pretending it's MFA-only. No IAM changes needed —
+  `AdminDeleteUser`/`AdminCreateUser`/`AdminAddUserToGroup` were already granted for
+  invite/deactivate.
+- `PILOT-ONBOARDING-RUNBOOK.md` now documents hardware-TOTP enrollment (must be a *seedable* token
+  — Cognito always generates its own secret, so a fixed-seed token like old RSA SecurID hardware
+  cannot work here) and the Reset MFA procedure.
+- 48/48 API tests pass (4 new), 75/75 web tests pass (3 new), tsc/lint clean, local prod build
+  verified. Deployed via both `deploy-api.yml` and `deploy-web.yml` (this change touched both),
+  both confirmed live (`api.havenote.health/health` and `havenote.health` → 200).
+- **Verified with a real end-to-end call against the live API, not just CI's unit tests**:
+  created disposable admin + clinician test accounts, drove the admin through the actual Cognito
+  auth-challenge sequence via raw API calls (no browser needed this time — computed the TOTP code
+  from a real `AssociateSoftwareToken` secret, same RFC 6238 approach as the earlier Playwright
+  verification) to get a genuine access token, then called `PATCH /users/:id/reset-mfa` against
+  `https://api.havenote.health` for real. Confirmed directly: the old Cognito sub was truly gone
+  (`UserNotFoundException`), the new one was correctly in the `clinician` group, and a real
+  `user.mfa_reset` audit log row was written with the right actor/target. All test accounts and
+  rows deleted afterward.
+
 ## 🔴 Session-persistence security gap found and fixed (2026-08-16)
 
 Reported: a clinician's phone was still signed into Havenote a full day after last use, no
