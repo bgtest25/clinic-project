@@ -739,9 +739,13 @@ local production build before shipping.
   missing `prisma generate` and missing e2e `DATABASE_URL`).
 - **Frontend CI/CD**: `deploy-web.yml` exists and is verified to run correctly up to the known
   CloudFront blocker.
-- **Minimum retention period confirmed** (2026-07-19): pilot clinic is in Pennsylvania — 49 Pa.
-  Code § 16.95 requires ≥7 years from last visit (longer for minors). Indefinite retention of
-  `clinical_notes`/`transcripts` (already-built, no auto-deletion) satisfies this. See
+- **Minimum retention requirement — Pennsylvania used as a working example, not yet confirmed**
+  (2026-07-19; corrected 2026-08-17 — no clinic has actually been signed as a pilot partner, so
+  earlier "pilot clinic is in Pennsylvania" phrasing here and in `RETENTION-POLICY.md` was stale
+  placeholder framing, not a real fact): 49 Pa. Code § 16.95 requires ≥7 years from last visit
+  (longer for minors), used as a worked example. Indefinite retention of
+  `clinical_notes`/`transcripts` (already-built, no auto-deletion) satisfies this regardless of
+  which state ultimately applies once a real pilot clinic is identified. See
   `compliance/RETENTION-POLICY.md`.
 - **Patient-initiated deletion/amendment requests** (2026-07-19): log-and-route-for-review flow —
   `POST`/`GET`/`PATCH /patients/:id/data-requests` — deliberately never deletes/anonymizes data

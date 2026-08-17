@@ -34,19 +34,23 @@ backstops) are AWS-managed and not individually logged in the application's own 
 level of granularity is ever required, CloudTrail's S3 data events would need to be enabled for this
 bucket (currently only management events are captured account-wide).
 
-## Minimum retention requirement (resolved 2026-07-19)
+## Minimum retention requirement — Pennsylvania used as a working example, not yet confirmed (2026-07-19; corrected 2026-08-17)
 
-The pilot clinic is in **Pennsylvania**. Physician offices there must retain a patient's medical
-record for **at least 7 years from the date of the last medical service**, and for a minor patient
-**until 1 year after they reach the age of majority**, even if that exceeds 7 years (49 Pa. Code
-§ 16.95). This is a floor, not a ceiling — nothing above describes an obligation to *delete* at any
-point.
+No clinic has actually been signed as a pilot partner yet — earlier drafts of this file stated
+"the pilot clinic is in Pennsylvania" as if that were settled fact. It wasn't; Pennsylvania was
+used as a working example to validate the retention design, not a real, confirmed jurisdiction.
 
-The system already satisfies this trivially: `clinical_notes` and `transcripts` are retained
-**indefinitely** with no automated deletion (see the table above) — indefinite retention is always
-≥ any finite statutory minimum. This is not a legal opinion; confirm against the specific pilot
-clinic's status (hospital vs. physician office) and any applicable federal program requirements
-(e.g. Medicare/Medicaid) before relying on it, consistent with this file's own status note above.
+As a worked example: physician offices in Pennsylvania must retain a patient's medical record for
+**at least 7 years from the date of the last medical service**, and for a minor patient **until 1
+year after they reach the age of majority**, even if that exceeds 7 years (49 Pa. Code § 16.95).
+This is a floor, not a ceiling — nothing here describes an obligation to *delete* at any point.
+
+The system already satisfies this trivially regardless of which state ultimately applies:
+`clinical_notes` and `transcripts` are retained **indefinitely** with no automated deletion (see
+the table above) — indefinite retention is always ≥ any finite statutory minimum. This is not a
+legal opinion; once a real pilot clinic is identified, confirm the actual applicable state's
+requirement, the clinic's status (hospital vs. physician office), and any applicable federal
+program requirements (e.g. Medicare/Medicaid) before relying on this.
 
 ## Patient-initiated deletion/amendment requests (built 2026-07-19)
 

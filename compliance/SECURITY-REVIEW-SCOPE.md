@@ -10,8 +10,10 @@ is exactly why this document hands off rather than concludes. Everything below i
 
 A clinical documentation SaaS: a clinician records a patient visit in-browser, the audio is
 transcribed (AWS Transcribe Medical), an AI drafts a structured SOAP note (Anthropic Claude,
-called directly via API), the clinician reviews/edits/signs it, and it's exported. Single-tenant
-pilot stage — one clinic, real patients not yet onboarded (blocked on legal review, see
+called directly via API), the clinician reviews/edits/signs it, and it's exported. Pre-launch,
+single-tenant architecture — no external clinic has been signed as a pilot partner yet (the one
+clinic row in the system is internal test data), and real patient data has not been onboarded
+anywhere (blocked on legal review, see
 `compliance/BAA-TEMPLATE.md`).
 
 ## Live URLs
