@@ -1,15 +1,40 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-16 (real security report: a clinician's phone stayed silently signed in
-overnight. Found and fixed a genuine 30-day session-persistence gap in Cognito's token settings,
-plus two compounding client-side gaps — see below, this is the most urgent item in this file.
-Same day, also shipped: speaker-diarized transcripts instead of a flat paragraph, and ICD-10
+**Last updated:** 2026-08-16 (session interrupted mid-work by a computer crash — resumed and
+finished: the Security Risk Assessment's risk ratings and sign-off, left blank when the crash hit,
+are now complete and committed, see below. Before the crash, same day: real security report: a
+clinician's phone stayed silently signed in overnight. Found and fixed a genuine 30-day
+session-persistence gap in Cognito's token settings, plus two compounding client-side gaps — see
+below. Also shipped: speaker-diarized transcripts instead of a flat paragraph, and ICD-10
 suggestions grounded in a real tool-use lookup instead of pure model recall — both verified against
 real invocations, not just deployed. Before that, 2026-08-15: admin credential reset + MFA QR code added; a clinician-invite smoke test
 surfaced and fixed two frontend routing/access-control bugs; reviewing that same demo note then
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Security Risk Assessment completed (2026-08-16)
+
+`compliance/SECURITY-RISK-ASSESSMENT.md` (created earlier 2026-08-16, commit `55657c4`, as part of
+the pre-production gate prep below) had its threat table structured and evidence-cited but all 10
+rows' Likelihood/Impact/Risk-level columns deliberately left blank — those are risk-tolerance
+judgment calls for whoever owns the assessment, not something to pre-fill while building the
+system. That work was in progress, uncommitted, when the machine crashed mid-session. Resumed and
+finished (commit `3865bc8`):
+
+- All 10 threats rated. **Five came back High**: #3 compromised/malicious admin account, #5
+  Anthropic subprocessor (no BAA yet — a live gap, not residual risk), #8 AWS-credential
+  exfiltration, #9 DoS (no WAF configured), #10 unauthorized access via a code defect (this exact
+  bug class has already happened twice — the 2026-08-11 cross-clinic leak and the 2026-08-15
+  frontend admin-route gap).
+- Sign-off block filled in: assessed by Barseh Gbor, dated 2026-08-16. **Left honest, not
+  overclaimed**: the HHS/ONC Security Risk Assessment Tool cross-check box is marked "no," since
+  there's no record that tool was actually run alongside this document — still recommended before
+  treating this as final. Next scheduled review set to 2027-08-16 (annual), or sooner if the
+  Anthropic BAA status, team size, or subprocessor list changes materially.
+- This advances (does not fully close) the "formal HIPAA Security Risk Assessment" pre-production
+  gate below — HIPAA doesn't require an external party to perform it, but the HHS/ONC tool
+  cross-check and a genuine independent security review are both still outstanding.
 
 ## 🟢 Production-readiness Tier 2 work (2026-08-16)
 
