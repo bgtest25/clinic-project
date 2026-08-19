@@ -1,8 +1,10 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-19 (HHS/ONC SRA Tool cross-check built — see 🟡 entry below. Also today:
-blank-screen incident found and fixed, Vercel decommissioned, and the Anthropic BAA outreach —
-sent by you directly 2026-08-17, logged here 2026-08-19. Previously, 2026-08-16,
+**Last updated:** 2026-08-19 (supplementary security scanning done ahead of the independent review —
+see 🟡 entry below: 13/15 dependency vulnerabilities fixed, AWS Inspector enabled, scope doc
+refreshed. Also today: HHS/ONC SRA Tool cross-check built, blank-screen incident found and fixed,
+Vercel decommissioned, and the Anthropic BAA outreach — sent by you directly 2026-08-17, logged
+here 2026-08-19. Previously, 2026-08-16,
 session interrupted mid-work by a computer crash — resumed and
 finished: the Security Risk Assessment's risk ratings and sign-off, left blank when the crash hit,
 are now complete and committed, see below. Before the crash, same day: real security report: a
@@ -15,6 +17,40 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟡 Supplementary security scanning ahead of the independent review (2026-08-19)
+
+Explicitly a stopgap, not a substitute for the real independent security review — same framing as
+`compliance/SECURITY-REVIEW-SCOPE.md` already uses. Chose to run additional automated scanning
+while that review is still being arranged, and refreshed the scope doc itself (it had gone stale:
+still described the retired Vercel hosting as live and the CloudFront stack as dormant code —
+fixed, and added today's blank-screen bug to the "already found and fixed" list so a reviewer
+doesn't waste time rediscovering it).
+
+- **`npm audit` across all three workspaces found 15 real known vulnerabilities**: `hono` (ReDoS in
+  CORS middleware), `js-yaml` (quadratic-CPU DoS), `nanoid` (infinite loop on a zero-size
+  generator), `postcss` (arbitrary sourcemap file read), `undici` (cross-user info disclosure,
+  CRLF injection, cookie-attribute injection — 5 separate CVEs), `valibot`, and `brace-expansion`
+  (DoS). **13 fixed cleanly via `npm audit fix`**, no breaking changes, no manual `package.json`
+  edits needed (dry-run confirmed first). Re-ran the full suite afterward rather than trust the
+  fix blindly: 51/51 api, 77/77 web, 25/25 infra tests pass, `tsc`/`cdk synth` clean. Committed
+  (`5f2344b`).
+- **2 vulnerabilities remain, deliberately not force-fixed**: `prisma` CLI → `deepmerge-ts`
+  stack-exhaustion DoS, and `brace-expansion` nested inside `aws-cdk-lib`'s own dependencies.
+  Both would need `npm audit fix --force`, which downgrades `prisma` to 6.12.0 — a real breaking
+  change to the ORM/migration tooling touching the live production database, not something to push
+  through unprompted. Checked and confirmed both are devDependency/build-tooling only: the running
+  API only ever imports `@prisma/client` (a separate, unaffected package) at runtime, never the
+  `prisma` CLI — confirmed via `api/package.json`'s dependencies/devDependencies split. Worth
+  noting `api/Dockerfile` currently copies the full `node_modules` (including devDependencies) into
+  the runtime image, so the vulnerable code does ship in the container even though nothing in the
+  running process ever calls it — a minor image-hygiene gap, not a live exploitable path, not fixed
+  this session.
+- **AWS Inspector v2 was completely disabled account-wide** (EC2/ECR/Lambda/Lambda-code/code-repo
+  scanning all off) — checked directly via `aws inspector2 batch-get-account-status`, not assumed.
+  Checked real current pricing before enabling (Lambda ~$0.30/function/month, ECR ~$0.09/initial
+  scan + $0.01/re-scan) — negligible at this account's scale (one Lambda, one ECR repo). Enabled
+  ECR + Lambda + Lambda-code scanning via `aws inspector2 enable`.
 
 ## 🟡 HHS/ONC SRA Tool cross-check built (2026-08-19)
 
