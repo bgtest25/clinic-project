@@ -4,7 +4,7 @@
 needs before real patient data goes through it. This was deliberately not written by anyone who
 built or reviewed the system — self-review, however thorough, isn't a substitute for this, which
 is exactly why this document hands off rather than concludes. Everything below is current as of
-2026-08-16; verify it's still accurate before relying on it, since this system continues to change.
+2026-08-19; verify it's still accurate before relying on it, since this system continues to change.
 
 ## What Havenote is
 
@@ -19,7 +19,8 @@ anywhere (blocked on legal review, see
 ## Live URLs
 
 - `https://havenote.health` and `https://app.havenote.health` — frontend (React SPA, hosted on
-  Vercel as an interim measure — see "Known non-standard architecture" below)
+  AWS CloudFront + S3 + ACM as originally designed — `ClinicWebHostingStack`. Cut over from an
+  interim Vercel substitute 2026-08-19, once a blocking AWS account-verification case cleared)
 - `https://api.havenote.health` — backend API (NestJS on AWS ECS Fargate, behind an ALB)
 
 ## Attack surface
@@ -71,13 +72,20 @@ resolves the caller's clinic via their JWT and filters every query by it
 
 ## Known non-standard architecture (worth understanding before testing)
 
-- **Frontend is on Vercel, not the AWS-native CloudFront stack the code actually defines**
-  (`ClinicWebHostingStack` exists in `infra/lib/`, deployed nowhere right now). This is a
-  workaround for an AWS account-age-based CloudFront restriction, tracked as an open AWS support
-  case. Functionally live and verified, but worth knowing the "real" intended architecture is
-  currently dormant code.
-- **AI drafting goes through Anthropic's API directly, not Bedrock**, for the same reason
-  (a separate blocked AWS support case, Bedrock model access). Same caveat as above.
+- **AI drafting goes through Anthropic's API directly, not Bedrock.** Bedrock model access is
+  still blocked on an open AWS support case (`178433501800988`, escalated to a specialized team
+  2026-08-11, no timeline given, urgent follow-up sent 2026-08-19). The Anthropic-direct path has
+  been the live, verified architecture since 2026-08-14 — not a fallback expected to change soon.
+  Worth noting Anthropic doesn't yet have an executed BAA (outreach sent 2026-08-17, awaiting
+  response) — see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md`.
+- The CloudFront cutover above had a real, non-obvious bug worth knowing about if testing cache
+  behavior: the S3 deployment originally set no `Cache-Control` metadata at all, so a stale
+  cached `index.html` could reference a content-hashed JS bundle that a later deploy's default
+  pruning had already deleted, and CloudFront's SPA-fallback error handling silently served HTML
+  back instead of a real 404 — blank/black screen client-side, no console error a typical user
+  would notice. Fixed 2026-08-19 (`infra/lib/web-hosting-stack.ts`): hashed assets are now
+  immutable-cached and never pruned, `index.html` is always `no-cache`. Worth specifically testing
+  this doesn't regress on a future deploy.
 
 ## Things already found and fixed this project (don't waste time rediscovering these — verify
 they're still actually fixed, but they're not undiscovered territory)
@@ -98,6 +106,8 @@ they're still actually fixed, but they're not undiscovered territory)
 - A Prisma `Decimal`-to-JSON-string bug that crashed the `/metrics` page to a blank white screen
   for any authenticated admin, with no error boundary anywhere in the app to catch it (found and
   fixed 2026-08-16)
+- Missing `Cache-Control` metadata on the CloudFront/S3 frontend deployment causing a stale-cache
+  blank-screen failure mode after a deploy (found and fixed 2026-08-19, see above)
 
 ## What hasn't been tested by anyone, as far as this document's authors know
 
@@ -105,5 +115,5 @@ they're still actually fixed, but they're not undiscovered territory)
   testing "does the intended behavior work," not "can this be broken")
 - Real concurrent multi-tenant load (only ever tested with disposable single-clinic data)
 - The mobile/responsive experience under real network conditions
-- Anything about the Vercel or Anthropic-direct interim architectures specifically, versus the
-  AWS-native design the code was originally built for
+- Anything about the Anthropic-direct interim architecture specifically (versus the Bedrock design
+  the code was originally built for and will revert to once that AWS case clears)
