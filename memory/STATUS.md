@@ -1,8 +1,8 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-19 (blank-screen incident found and fixed — see 🟢 entry below, Vercel
-decommissioned same day, and the Anthropic BAA outreach — sent by you directly 2026-08-17, logged
-here 2026-08-19. Previously, 2026-08-16,
+**Last updated:** 2026-08-19 (HHS/ONC SRA Tool cross-check built — see 🟡 entry below. Also today:
+blank-screen incident found and fixed, Vercel decommissioned, and the Anthropic BAA outreach —
+sent by you directly 2026-08-17, logged here 2026-08-19. Previously, 2026-08-16,
 session interrupted mid-work by a computer crash — resumed and
 finished: the Security Risk Assessment's risk ratings and sign-off, left blank when the crash hit,
 are now complete and committed, see below. Before the crash, same day: real security report: a
@@ -15,6 +15,42 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟡 HHS/ONC SRA Tool cross-check built (2026-08-19)
+
+The formal HIPAA Security Risk Assessment gate has one piece left: `SECURITY-RISK-ASSESSMENT.md`'s
+sign-off explicitly marks the HHS/ONC SRA Tool cross-check as not yet run. Made real progress on it
+without overclaiming completion.
+
+Downloaded the actual current tool directly from healthit.gov (not assumed from prior knowledge) —
+version 3.6.1, the Excel Workbook format (141KB XLSX; a Windows desktop app version also exists).
+Parsed it for real with the `xlsx` npm package rather than guessing its structure: **125 questions
+across 7 sections** (SRA Basics, Security Program Documentation, Security Official & Workforce,
+Access/Encryption/Audit Technical Safeguards, Physical Safeguards, Business Associates, Contingency
+Planning) — the 125 count matches the tool's own documentation, confirming the parse was accurate.
+
+Deliberately did **not** attempt to mechanically fill in the actual government XLSX file — most of
+its questions are genuine organizational-practice judgment calls (workforce training-record
+retention, sanction-policy specifics, vendor-monitoring cadence), not technical facts with a single
+correct answer, and editing a binary spreadsheet's cells directly is hard to audit and risks subtle
+placement errors. Built `compliance/SRA-TOOL-CROSS-CHECK.md` instead: every one of the 125 real
+questions, mapped to either a confident, cited answer (drawing on
+`HIPAA-RISK-ASSESSMENT-EVIDENCE.md`, `SECURITY-RISK-ASSESSMENT.md`, and known project facts like
+team size and no pilot clinic signed yet) or explicitly flagged "needs your input" where it's a
+genuine judgment call — same "build the evidence, leave judgment to the assessment owner" pattern
+already used for the internal risk assessment. Roughly half the questions land in each bucket —
+Section 4 (technical safeguards) answers almost entirely with citations, Section 3 (workforce) and
+Section 5 (physical) lean heavily toward "needs your input" or "N/A, cloud-only architecture,"
+honestly reflecting a one-person team with no signed workforce or physical office holding ePHI.
+
+Also fixed a small real inaccuracy found along the way: `SECURITY-RISK-ASSESSMENT.md` had stated
+the Anthropic outreach was sent 2026-08-16 — corrected to 2026-08-17, matching what you actually
+told this session (see the entry below).
+
+**Still needs you**: actually open the real SRA Tool (Windows app or Excel workbook) and transcribe
+the cross-check's answers section by section, verifying each against its cited source rather than
+trusting this document blindly — then flip `SECURITY-RISK-ASSESSMENT.md`'s sign-off checkbox once
+done.
 
 ## 🟡 Anthropic BAA outreach sent (2026-08-17, logged 2026-08-19)
 
