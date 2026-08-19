@@ -92,3 +92,23 @@ same shape as the RDS-secret cycle from Phase 1) was solved by leaving the key o
 own role — never touching the key's own resource policy from another stack. See the comments in
 `storage-stack.ts`, `compute-stack.ts`, and `ai-pipeline-stack.ts` for the exact pattern if this needs
 replicating elsewhere.
+
+## Frontend hosting: CloudFront, not Vercel (settled 2026-08-19)
+
+Phase 1's plan always called for `ClinicWebHostingStack` (S3 + CloudFront + ACM) as the real frontend
+host. That stayed blocked for weeks by an AWS account-level CloudFront verification requirement
+(new-account fraud prevention, unrelated to this codebase), so Vercel served as an interim substitute
+from 2026-08-14. That AWS case was approved 2026-08-18, and the real cutover happened 2026-08-19 —
+`ClinicWebHostingStack` is now what's actually live for `havenote.health`/`app.havenote.health`.
+
+Worth recording for anyone who hits this again: the cutover deploy failed repeatedly with an ACM
+`CAA_ERROR` before the Vercel DNS records were removed — `cname.vercel-dns.com` carries a CAA record
+that doesn't authorize Amazon as an issuer, and CAA validation follows CNAME chains, so ACM could never
+issue a cert for a domain still pointed at Vercel. Any future migration *off* a third-party host with
+its own CAA policy should expect the same failure mode until that host's DNS records are actually
+removed, not just superseded.
+
+The Vercel project and its GitHub Actions secrets (`VERCEL_TOKEN`/`VERCEL_ORG_ID`/`VERCEL_PROJECT_ID`)
+were deleted 2026-08-19 now that nothing references them — `deploy-web.yml` deploys
+`ClinicWebHostingStack` directly. Full story, including the exact commands and live verification, is in
+`memory/STATUS.md`'s 2026-08-19 entry.
