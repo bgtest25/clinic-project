@@ -1,6 +1,7 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-16 (session interrupted mid-work by a computer crash — resumed and
+**Last updated:** 2026-08-19 (CloudFront cutover complete — see 🟢 entry below. Previously, 2026-08-16,
+session interrupted mid-work by a computer crash — resumed and
 finished: the Security Risk Assessment's risk ratings and sign-off, left blank when the crash hit,
 are now complete and committed, see below. Before the crash, same day: real security report: a
 clinician's phone stayed silently signed in overnight. Found and fixed a genuine 30-day
@@ -12,6 +13,74 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 CloudFront cutover complete — real root cause found and fixed, frontend off Vercel (2026-08-19)
+
+Checked both open AWS cases directly (`aws support describe-cases`, not just the STATUS.md claim).
+**CloudFront case `de7f9790e656deb8` was approved 2026-08-18** — AWS's own words: "your access
+request for Cloudfront has been approved and processed." Bedrock (`178433501800988`) is unchanged:
+still `unassigned`, `authorizationStatus: NOT_AUTHORIZED` confirmed live via
+`get-foundation-model-availability`, no correspondence since the 2026-08-11 escalation. Not a
+day-to-day blocker either way since the AI pipeline already runs on the direct Anthropic API.
+
+Deployed `ClinicWebHostingStack` (S3 + CloudFront + ACM) for real and cut DNS over from the interim
+Vercel hosting (live since 2026-08-14) back to CloudFront, per the plan already written into
+`dns-stack.ts`'s comments for exactly this moment.
+
+**Real, non-obvious root cause hit and fixed along the way**: the deploy failed twice with
+`Certificate validation failed with status: FAILED` before any DNS was touched. Chased this with
+real data instead of guessing — requested a standalone ACM certificate directly (bypassing CDK, so
+it wouldn't get auto-deleted on failure like the CDK-managed attempts had been, which is exactly
+why earlier sessions could never get a real error out of this) and read its actual
+`FailureReason`: **`CAA_ERROR`**, and only on `app.havenote.health` — the apex `havenote.health`
+validated `SUCCESS`. Confirmed via a real DNS query
+(`dns.google/resolve?name=cname.vercel-dns.com&type=CAA`): Vercel's own DNS zone
+(`cname.vercel-dns.com`, what `app.havenote.health` was still CNAME'd to) carries a CAA record
+authorizing only GlobalSign/Sectigo/Let's Encrypt/Google — **not Amazon**. CAA checks follow CNAME
+chains, so as long as the interim Vercel CNAME stayed live, ACM could never issue a cert for
+`app.havenote.health`, regardless of DNS record correctness. This had been silently failing every
+CloudFront deploy attempt since **2026-08-08** (5 separate failed `RequestCertificate` calls found
+in CloudTrail) — a real, pre-existing bug independent of the CloudFront account-verification block,
+never diagnosed before because CDK's rollback-on-failure deleted the certificate object (and the
+`FailureReason` with it) every single time.
+*(Correction: an earlier theory this session — that the failures were caused by stale leftover
+validation CNAME records from old attempts — was wrong. Those records were deleted mid-session
+based on that theory before the real CAA cause was confirmed; deleting them was harmless since
+CloudFormation recreates them deterministically, but it wasn't the actual fix.)*
+
+**Fix**: removed the interim Vercel records from `dns-stack.ts` entirely (both the apex A record
+and the `app.` CNAME) rather than trying to route around the CAA restriction — this was always the
+intended end state per that file's own comments. This necessarily meant real downtime during the
+switch (the CAA-blocking CNAME had to actually be gone before the cert could validate, so a
+zero-downtime two-phase approach wasn't possible once the CAA cause was understood). Deployed
+`ClinicDnsStack` then `ClinicWebHostingStack` (`--profile clinic-project`). Two more real deploy
+issues hit and cleared along the way, same class as documented in this file's earlier CloudFront
+cleanup notes: a stuck `REVIEW_IN_PROGRESS` changeset and a retained `clinic-project-web-*` S3
+bucket (`RemovalPolicy.RETAIN`) from each failed attempt, both requiring
+`aws cloudformation delete-stack` + `aws s3api delete-bucket` before the next retry — hit twice
+this session.
+
+**Real outage window, measured not estimated**: Vercel records removed at 13:54:38 UTC
+(confirmed via `describe-stack-events`); site confirmed back up via a live `curl` at ~14:04 UTC —
+roughly 8-10 minutes of real downtime for `havenote.health`/`app.havenote.health` during the
+cutover.
+
+**Verified live, not just deployed**: `curl -sv https://havenote.health` resolves to real CloudFront
+edge IPs (`18.165.9.x`), serves the actual Havenote `index.html` (correct title, correct hashed
+asset filenames) over a valid TLS connection. `openssl s_client` confirms the live certificate:
+`CN=app.havenote.health`, SAN covers `app.havenote.health` + `havenote.health`, issued by Amazon,
+valid through 2027-03-04. Both `https://havenote.health` and `https://app.havenote.health` return
+200 with matching content. `ClinicWebHostingStack` outputs confirm distribution
+`d3ozjvrhc1jtxn.cloudfront.net`. 25/25 infra tests pass, `tsc --noEmit` clean, `cdk synth` clean —
+checked before deploying, not after.
+
+**Not yet done, worth a decision**: the Vercel project (`web` under `barseh-gbors-projects`) and its
+domain attachments still exist and are simply unused now — not deleted, since CloudFront is what's
+actually serving traffic and Vercel costs nothing sitting idle on the free tier. `deploy-web.yml`
+(the CI pipeline) still deploys to Vercel on every push to `web/**` — **this is now stale and needs
+updating** to deploy to the CloudFront/S3 path instead (`cdk deploy ClinicWebHostingStack`), or the
+next frontend change won't actually reach production. Deliberately not done this session — flagging
+it as the next real gap rather than leaving it implicit.
 
 ## 🟢 Security Risk Assessment completed (2026-08-16)
 
@@ -683,33 +752,14 @@ local production build before shipping.
    - Once cleared: flip the default in `infra/bin/infra.ts` (`mockSoapNote`) to `false`, then
      `cd infra && npx cdk deploy ClinicAiPipelineStack --profile clinic-project`.
 
-2. **CloudFront account verification** — routed around 2026-08-14 via Vercel, see 🟡 above; this
-   case stays open/tracked in parallel, revert path documented above once it clears. The
-   *original* case (`178440028900396`) was actually
-   **denied and closed 2026-07-28** ("unable to approve the verification request at this time...
-   resubmit once the account has more usage/billing history") — this wasn't visible until Business
-   Support was enabled 2026-08-08 and gave API access to case correspondence; every re-check
-   between 7/28 and 8/8 was correctly hitting the 403 because there was no longer an active case,
-   not because it was "still pending." **New case opened 2026-08-08**:
-   `case-501264525435-muen-2026-de7f9790e656deb8`, referencing the denial and citing since-then
-   account history (cleared past-due balance, Business Support upgrade, continued real usage
-   across RDS/ECS/S3/Lambda/Step Functions/Cognito). Blocks the frontend (`ClinicWebHostingStack`:
-   S3 + CloudFront for `havenote.health` / `app.havenote.health`) from deploying at all. The
-   `deploy-web.yml` CI pipeline is fully built and correctly auto-retries on every push touching
-   `web/**` — it just needs AWS to approve this first.
-   Status as of 2026-08-12: case now `opened` (was `unassigned`). Agent (Tharun) explained the real
-   root cause: **CloudFront is blocked by default for all AWS accounts under 1 year old**, a
-   fraud-prevention policy, not something specific to this account. He's escalated internally to
-   request the restriction be lifted early, "no fixed time-frame." Note: this account was created
-   2026-07-16, so the restriction would likely lapse on its own around **2027-07-16** regardless of
-   case outcome — a real fallback if the case stalls, though a year is a long way off to just wait.
-   - Check status: prefer `aws support describe-cases --profile clinic-project --region us-east-1 --include-resolved-cases --max-results 10` and look at case `de7f9790e656deb8`'s correspondence directly — this is what revealed the *original* case had been silently denied/closed weeks before anyone noticed, since a raw 403 alone can't distinguish "still pending" from "denied, no active case." The `cdk deploy ClinicWebHostingStack --profile clinic-project` attempt still works as a live functional check, just don't treat its 403 alone as proof the case is still open.
-   - If it fails, clean up before retrying: the stack lands in a rollback/review state and the
-     `clinic-project-web-*` S3 bucket survives (RemovalPolicy.RETAIN) — delete the stack
-     (`aws cloudformation delete-stack --stack-name ClinicWebHostingStack`, then
-     `aws cloudformation wait stack-delete-complete ...`) and the empty bucket
-     (`aws s3api delete-bucket --bucket clinic-project-web-501264525435`) before trying again, or
-     the retry will collide on the bucket name.
+2. ~~**CloudFront account verification**~~ — **RESOLVED 2026-08-18/19.** Case
+   `de7f9790e656deb8` was approved by AWS 2026-08-18. `ClinicWebHostingStack` deployed for real
+   2026-08-19 and `havenote.health`/`app.havenote.health` now serve via CloudFront, cut over from
+   the interim Vercel hosting — see the 🟢 CloudFront cutover entry above for the full story,
+   including a real CAA-related root cause found along the way (unrelated to this AWS case) that
+   also had to be fixed before the cert would validate. **Still open**: `deploy-web.yml` (CI) still
+   deploys to Vercel on every push — needs updating to target `ClinicWebHostingStack` or the next
+   frontend change won't reach the now-live CloudFront production.
 
 3. **Legal review** — `compliance/BAA-TEMPLATE.md` and `compliance/PRIVACY-POLICY.md` are drafts,
    explicitly **not reviewed by counsel, not ready to sign/publish**. Needed before any real

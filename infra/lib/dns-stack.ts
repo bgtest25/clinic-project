@@ -22,20 +22,12 @@ export class ClinicDnsStack extends cdk.Stack {
       description: 'Update these as the NS records at the havenote.health registrar',
     });
 
-    // Interim substitute for CloudFront (blocked on AWS account verification,
-    // see STATUS.md) — points the frontend at Vercel instead of the
-    // CloudFront distribution in web-hosting-stack.ts, which is left in place
-    // but undeployed in the meantime. Remove these two records and let
-    // ClinicWebHostingStack's alias records take over again once the
-    // CloudFront case clears.
-    new route53.ARecord(this, 'VercelApexRecord', {
-      zone: this.hostedZone,
-      target: route53.RecordTarget.fromIpAddresses('76.76.21.21'),
-    });
-    new route53.CnameRecord(this, 'VercelAppRecord', {
-      zone: this.hostedZone,
-      recordName: 'app',
-      domainName: 'cname.vercel-dns.com',
-    });
+    // Interim Vercel substitute removed 2026-08-19: the CloudFront account-
+    // verification case cleared (approved 2026-08-18), and this CNAME was
+    // also the actual root cause of repeated ACM certificate validation
+    // failures on app.havenote.health — cname.vercel-dns.com carries a CAA
+    // record that doesn't authorize Amazon as an issuer, and CAA checks
+    // follow CNAME chains. ClinicWebHostingStack's alias records take over
+    // below.
   }
 }
