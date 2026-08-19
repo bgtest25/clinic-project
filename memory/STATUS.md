@@ -1,7 +1,8 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-19 (blank-screen incident found and fixed — see 🟢 entry below, and Vercel
-decommissioned — same day, right after the CloudFront cutover below it. Previously, 2026-08-16,
+**Last updated:** 2026-08-19 (blank-screen incident found and fixed — see 🟢 entry below, Vercel
+decommissioned same day, and the Anthropic BAA outreach — sent by you directly 2026-08-17, logged
+here 2026-08-19. Previously, 2026-08-16,
 session interrupted mid-work by a computer crash — resumed and
 finished: the Security Risk Assessment's risk ratings and sign-off, left blank when the crash hit,
 are now complete and committed, see below. Before the crash, same day: real security report: a
@@ -14,6 +15,15 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟡 Anthropic BAA outreach sent (2026-08-17, logged 2026-08-19)
+
+You sent the BAA/DPA request to Anthropic's commercial team directly (not through this session) on
+2026-08-17, from `hello@havenote.health` — the business email set up 2026-08-16 specifically for
+this. No reply yet as of this logging (2026-08-19). This was the actual next step on the
+"Anthropic BAA/DPA" pre-production gate item; `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` was
+prepared 2026-08-16 as the supporting material for exactly this outreach. Follow up if there's no
+response after a reasonable window — no fixed SLA known for Anthropic's commercial team.
 
 ## 🟢 Real live incident: blank/black screen, found and fixed for good (2026-08-19)
 
