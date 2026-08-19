@@ -77,12 +77,45 @@ export class ClinicWebHostingStack extends cdk.Stack {
     // construct entirely rather than crash synth on every API deploy.
     // deploy-web.yml (and manual deploys) always build web/dist first.
     if (existsSync(WEB_DIST_PATH)) {
-      new s3deploy.BucketDeployment(this, 'DeployWebAssets', {
+      // Split in two, with explicit Cache-Control, after a real incident
+      // (2026-08-19): a single undifferentiated deployment left every file
+      // with no cache metadata at all, so a browser (or CloudFront's default
+      // TTL) could hold a stale index.html referencing a content-hashed
+      // asset filename that a later deploy's default pruning had already
+      // deleted — the browser got CloudFront's SPA-fallback index.html back
+      // in place of the JS bundle it asked for, which fails to parse as a
+      // module, so the app never mounts. Blank/black screen, no console
+      // error a typical user would notice.
+      //
+      // Hashed assets: safe to cache forever (a content change always means
+      // a new filename) and, critically, never pruned — an old index.html
+      // still out there in a cache somewhere must always find the file it's
+      // looking for. The tiny amount of storage this leaves behind across
+      // many deploys isn't worth the risk of repeating this incident.
+      const hashedAssets = new s3deploy.BucketDeployment(this, 'DeployWebAssetsHashed', {
         sources: [s3deploy.Source.asset(WEB_DIST_PATH)],
         destinationBucket: siteBucket,
-        distribution,
-        distributionPaths: ['/*'],
+        exclude: ['index.html'],
+        cacheControl: [s3deploy.CacheControl.fromString('public, max-age=31536000, immutable')],
+        prune: false,
       });
+
+      // index.html is the one file that changes in place on every deploy —
+      // must never be served stale, so no-cache forces both the browser and
+      // CloudFront to revalidate on every request. Deployed after (and
+      // depending on) the hashed assets above, so it can never go live
+      // pointing at a filename that doesn't exist in the bucket yet.
+      const indexHtml = new s3deploy.BucketDeployment(this, 'DeployWebIndexHtml', {
+        sources: [s3deploy.Source.asset(WEB_DIST_PATH)],
+        destinationBucket: siteBucket,
+        exclude: ['*'],
+        include: ['index.html'],
+        cacheControl: [s3deploy.CacheControl.fromString('no-cache, must-revalidate')],
+        prune: false,
+        distribution,
+        distributionPaths: ['/index.html'],
+      });
+      indexHtml.node.addDependency(hashedAssets);
     }
 
     new cdk.CfnOutput(this, 'SiteUrl', { value: 'https://havenote.health (also https://app.havenote.health)' });
