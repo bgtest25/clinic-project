@@ -1,8 +1,8 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-19 (supplementary security scanning done ahead of the independent review —
-see 🟡 entry below: 13/15 dependency vulnerabilities fixed, AWS Inspector enabled, scope doc
-refreshed. Also today: HHS/ONC SRA Tool cross-check built, blank-screen incident found and fixed,
+**Last updated:** 2026-08-19 (independent-review outreach drafted — see 🟡 entry below. Also today:
+supplementary security scanning (13/15 dependency vulnerabilities fixed, AWS Inspector enabled,
+scope doc refreshed), HHS/ONC SRA Tool cross-check built, blank-screen incident found and fixed,
 Vercel decommissioned, and the Anthropic BAA outreach — sent by you directly 2026-08-17, logged
 here 2026-08-19. Previously, 2026-08-16,
 session interrupted mid-work by a computer crash — resumed and
@@ -17,6 +17,26 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟡 Independent-review outreach drafted, not yet sent (2026-08-19)
+
+You raised a real constraint: solo developer, no budget for a security firm. Talked through
+options — HIPAA's actual legal requirement is the risk analysis (done), not a mandatory
+third-party pentest, so this doesn't have to block launch the way legal review does; it can be a
+documented residual risk if it comes to that. You're leaning toward two low/no-cost paths in
+parallel rather than accepting the risk outright:
+
+1. **A peer favor** — a message asking a developer friend to spend a few hours reviewing, pointed
+   at `SECURITY-REVIEW-SCOPE.md` as the starting map.
+2. **A scoped freelance engagement** (Upwork/Toptal, not a firm) — a posting scoped tightly to
+   what actually matters for HIPAA's technical safeguards (§164.312), at your request: auth/session
+   security, multi-tenant authorization boundaries (flagged as highest priority), API-layer
+   vulnerabilities, encryption verification, audit-log integrity. Deliberately stripped of generic
+   filler.
+
+Both drafts are finalized, ready to send — you said you'd send them later today. Not sent by this
+session; nothing to verify yet. Log here so a future session has the drafts' content without
+re-deriving them, and so "independent review: not started" doesn't get read as "no progress made."
 
 ## 🟡 Supplementary security scanning ahead of the independent review (2026-08-19)
 
