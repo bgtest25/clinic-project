@@ -1,6 +1,7 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-19 (CloudFront cutover complete — see 🟢 entry below. Previously, 2026-08-16,
+**Last updated:** 2026-08-19 (blank-screen incident found and fixed — see 🟢 entry below, and Vercel
+decommissioned — same day, right after the CloudFront cutover below it. Previously, 2026-08-16,
 session interrupted mid-work by a computer crash — resumed and
 finished: the Security Risk Assessment's risk ratings and sign-off, left blank when the crash hit,
 are now complete and committed, see below. Before the crash, same day: real security report: a
@@ -13,6 +14,63 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Real live incident: blank/black screen, found and fixed for good (2026-08-19)
+
+Reported live by the user right after the CloudFront cutover below: the site loaded as a completely
+blank/black screen. Confirmed genuinely live via direct `curl` against `havenote.health` before
+touching anything — `index.html` itself returned 200 with correct content, but its referenced JS
+bundle path (an old hash from earlier in the day) returned **200 with `Content-Type: text/html`**
+instead of real JavaScript. Root cause: `ClinicWebHostingStack`'s original single `BucketDeployment`
+set **no `Cache-Control` metadata on anything**, and defaults to pruning old files on every deploy.
+Several deploys happened in quick succession today (the CloudFront cutover, then a CI-pipeline test,
+then a manual redeploy), each producing a new content-hashed JS filename and, by default, deleting
+the previous one. A browser (or CloudFront's own default edge TTL, up to 24h with no origin
+Cache-Control) that had `index.html` cached from an earlier deploy would then request a JS filename
+that no longer existed — CloudFront's SPA-fallback error response (`403/404 → 200 /index.html`,
+added 2026-08-14 for client-side routing) silently served the fallback HTML instead of a real 404.
+The browser tried to parse HTML as a JS module, failed, and React never mounted. No console error a
+typical user would think to check, just a blank page.
+
+**Immediate relief**: told the user to hard-refresh, which worked (confirms the diagnosis — a plain
+reload wasn't fetching a fresh `index.html`).
+
+**Fixed at the root, not just for this one incident** (`infra/lib/web-hosting-stack.ts`): split the
+single `BucketDeployment` into two. Content-hashed assets (`/assets/*`) now get
+`Cache-Control: public, max-age=31536000, immutable` and **`prune: false`** — old hashed files are
+never deleted on future deploys, so a stale `index.html` anywhere will always find what it's asking
+for. `index.html` itself gets its own deployment with `Cache-Control: no-cache, must-revalidate` (so
+it's never held stale by a browser or CloudFront again) and an explicit CloudFront invalidation
+scoped to just `/index.html`. `indexHtml.node.addDependency(hashedAssets)` guarantees the mutable
+file only goes live after the immutable files it might reference already exist. 25/25 infra tests
+pass, `tsc`/`cdk synth` clean — checked before deploying.
+
+**Verified live, twice — once manually, once for real through the fixed CI pipeline**: deployed
+manually first, confirmed via direct `curl` that a since-superseded JS bundle from an earlier deploy
+today was still reachable (200, correct content) post-fix, proving `prune: false` actually prevents
+the failure mode. Then committed and pushed, watched the real `deploy-web.yml` CI run
+(`32265169680`) succeed end-to-end (3m45s), and did a full simulated page load against production
+afterward: fetched the live `index.html`, extracted every asset it references, confirmed each one
+returns 200 with the correct content-type and real (non-HTML-fallback) content — JS bundle starts
+with real minified JS, not `<!doctype html>`. Also confirmed the API is still reachable from the
+frontend's origin with correct CORS. Site loads correctly.
+
+## 🟢 Vercel decommissioned — project and CI secrets deleted (2026-08-19)
+
+Housekeeping right after the CloudFront cutover confirmed the interim Vercel hosting (live
+2026-08-14 → 2026-08-19) was no longer referenced by anything. Verified nothing was live-affected
+before deleting: `havenote.health`/`app.havenote.health` confirmed still 200 via direct `curl`
+immediately before and after each deletion step.
+
+- Deleted the Vercel `web` project (`vercel project rm web`) — the Vercel account
+  (`barseh-gbors-projects`) is shared with the unrelated Swypi project (`landing`, `admin` projects),
+  confirmed via `vercel project ls` before touching anything so only `web` was ever in scope.
+- Removed the now-orphaned `havenote.health` domain reference left on the account after the project
+  deletion (`vercel domains rm havenote.health`) — `swypi.app` untouched.
+- Deleted the three now-unused GitHub Actions secrets (`VERCEL_TOKEN`, `VERCEL_ORG_ID`,
+  `VERCEL_PROJECT_ID`) via `gh secret delete`, confirmed via `gh secret list` returning empty
+  afterward. Nothing in the repo references them anymore since `deploy-web.yml` was already
+  repointed at `ClinicWebHostingStack`.
 
 ## 🟢 CloudFront cutover complete — real root cause found and fixed, frontend off Vercel (2026-08-19)
 
