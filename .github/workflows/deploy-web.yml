@@ -5,11 +5,17 @@ on:
     branches: [main]
     paths:
       - 'web/**'
+      - 'infra/**'
       - '.github/workflows/deploy-web.yml'
   workflow_dispatch: {}
 
 permissions:
+  id-token: write
   contents: read
+
+env:
+  AWS_REGION: us-east-1
+  AWS_ACCOUNT_ID: '501264525435'
 
 jobs:
   deploy:
@@ -33,38 +39,26 @@ jobs:
       - name: Lint web
         run: npm run lint --workspace=web
 
+      # Output lands in web/dist — web-hosting-stack.ts's existsSync guard
+      # reads it via a path relative to infra/, so this has to happen before
+      # the cdk deploy step below regardless of working directory.
       - name: Build web
         run: npm run build --workspace=web
 
-      # Interim substitute for CloudFront (blocked on AWS account
-      # verification, see STATUS.md) — deploys to Vercel instead of
-      # `cdk deploy ClinicWebHostingStack` (left in place, unused, in
-      # web-hosting-stack.ts). Deliberately NOT `vercel build` + `deploy
-      # --prebuilt`: that combo hung indefinitely on CI with a freshly
-      # fetched CLI (v59) after a working upload, even though the exact same
-      # commands succeeded locally seconds earlier — pinning the CLI version
-      # and avoiding the prebuilt path sidesteps whatever that was. Also
-      # deliberately NOT `vercel deploy dist` (bare positional path) — that
-      # makes Vercel treat `dist` as a brand new project root instead of the
-      # already-linked one, which is exactly what happened the first time
-      # this was set up manually. Copying the pulled `.vercel` link into
-      # `dist` first, then deploying from inside it with no positional path,
-      # keeps the correct project link and lets Vercel's normal (non-prebuilt)
-      # server-side deploy path run, which has been reliable every time.
-      # VITE_* values live as Vercel Production env vars on the project
-      # itself (not secrets: the Cognito app client has no client secret,
-      # and both IDs end up in the public JS bundle regardless), so `vercel
-      # pull` fetches them automatically — no VITE_* values need to live in
-      # this workflow, though the local build above also picks up its own
-      # `web/.env` if one exists.
-      - name: Deploy to Vercel
-        working-directory: web
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/clinic-project-github-actions-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      # Cut over from the interim Vercel hosting to the real
+      # S3+CloudFront+ACM stack 2026-08-19, once the CloudFront
+      # account-verification case cleared. BucketDeployment invalidates the
+      # distribution's cache as part of the same deploy, so a plain
+      # `cdk deploy` here is sufficient — no separate invalidation step.
+      - name: Deploy web hosting stack
+        working-directory: infra
         env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npx vercel@50.11.0 pull --yes --environment=production --token="$VERCEL_TOKEN"
-          cp -r .vercel dist/.vercel
-          cd dist
-          npx vercel@50.11.0 deploy --prod --yes --token="$VERCEL_TOKEN"
+          CDK_DEFAULT_ACCOUNT: ${{ env.AWS_ACCOUNT_ID }}
+          CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
+        run: npx cdk deploy ClinicWebHostingStack --require-approval never
