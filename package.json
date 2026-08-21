@@ -5,5 +5,11 @@
     "infra",
     "api",
     "web"
-  ]
+  ],
+  "scripts": {
+    "smoke-test": "node scripts/smoke-test.mjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
 }

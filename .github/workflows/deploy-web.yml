@@ -77,3 +77,16 @@ jobs:
           CDK_DEFAULT_ACCOUNT: ${{ env.AWS_ACCOUNT_ID }}
           CDK_DEFAULT_REGION: ${{ env.AWS_REGION }}
         run: npx cdk deploy ClinicWebHostingStack --require-approval never
+
+      # Added after the 2026-08-21 outage: a build can pass lint, tests, and
+      # `cdk deploy` cleanly while still being genuinely broken for every
+      # visitor (that incident was a Cognito config crash on page load) —
+      # none of the steps above ever actually run the deployed app. This
+      # loads it in a real headless browser, on both live domains, and fails
+      # the workflow on an uncaught JS exception, a failed same-origin
+      # request, or a #root that renders essentially nothing.
+      - name: Install Playwright browser
+        run: npx playwright install --with-deps chromium
+
+      - name: Smoke test deployed site
+        run: npm run smoke-test
