@@ -1,7 +1,9 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-21 (real production outage found and fixed — blank white screen on
-every page load, see 🔴 entry below. Previously, 2026-08-19: independent-review outreach drafted —
+**Last updated:** 2026-08-21 (real iPad/phone responsive audit, two real layout bugs found and
+fixed — see 🟢 entry below. Same day, earlier: a real production outage found and fixed — blank
+white screen on every page load, see 🔴 entry below. Previously, 2026-08-19: independent-review
+outreach drafted —
 see 🟡 entry below. Also that day:
 supplementary security scanning (13/15 dependency vulnerabilities fixed, AWS Inspector enabled,
 scope doc refreshed), HHS/ONC SRA Tool cross-check built, blank-screen incident found and fixed,
@@ -19,6 +21,57 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Real iPad/phone responsive audit — two real layout bugs found and fixed (2026-08-21)
+
+You asked for a real check that the site actually fits on iPad and phone, not an assumption.
+Rather than guess from the CSS, rendered every real page at four actual device viewports (iPhone
+SE 375px, iPhone 14 390px, iPad portrait 768px, iPad landscape 1024px) in real Chromium — local
+dev server, a mocked Cognito session (client-side only, real production API/Cognito never touched)
+and mocked API responses with realistic fixture data, so no production account or data was created
+or touched for this. Automated a horizontal-overflow check (`scrollWidth` vs `clientWidth`) across
+all 9 pages × 4 viewports as a first pass (zero flags — a good sign, but not sufficient alone),
+then visually reviewed every screenshot, which is what actually caught both real bugs below —
+neither would show up as page-level overflow.
+
+1. **Dashboard/Patients search box ballooned to ~220px tall, mostly empty, on phone.**
+   `.filter-search` keeps `flex: 1 1 220px` from the row layout when `.filter-bar` switches to
+   `flex-direction: column` at `max-width: 600px` — that flex-basis then applies to the *vertical*
+   axis instead of horizontal, and `flex-grow: 1` stretches the input to fill the column's
+   remaining height. Confirmed via direct DOM measurement before fixing (height 220px, computed
+   `flex-basis: 220px`, `flex-grow: 1`, parent `flex-direction: column`) and after (height 43px, a
+   normal single-line input). Fixed: `.filter-search { flex: 0 0 auto; width: 100%; }` inside that
+   breakpoint.
+2. **Users table names wrapped to one word per line ("Dr." / "Sam" / "Okafor" stacked
+   vertically) — reproducible even at iPad-portrait (768px) width with visible room to spare, not
+   just on phone.** `.patient-name`/`.table-primary-cell` (the Name column, shared by Dashboard,
+   Patients, and Users) had no `white-space: nowrap`, while every other column in those tables
+   already effectively can't wrap (buttons, status badges, unbreakable email addresses) — so table
+   auto-layout sacrificed the one wrappable column under space pressure, worst on Users' 5-column
+   table. Confirmed via direct measurement (table's own `scrollWidth` was 697-757px, well under
+   what the card's `overflow-x: auto` could scroll to show cleanly — the wrapping wasn't a
+   space-availability problem, just a layout-algorithm one). Fixed by adding `white-space: nowrap`
+   to both classes; the existing horizontal-scroll container still covers genuinely narrow
+   viewports without needing per-column wrapping.
+
+**Verified properly**: re-ran the same real-Chromium audit after the CSS fix — both issues
+resolved at every viewport screenshotted, zero page-level horizontal overflow (before and after),
+zero JS errors. Lint, `tsc`/`vite build`, and the full test suite (77/77) unaffected. Pushed
+(commit `5975f86`), watched the full CI pipeline succeed end-to-end including the post-deploy
+browser smoke test (run `32488518424`), and independently re-confirmed the live site loads cleanly
+at phone width afterward.
+
+**Everything else checked out already fine** — no other real bugs found across Login, Dashboard,
+Patients, PatientDetail, NewEncounter, the two-column NoteReview transcript+note layout (already
+correctly stacks to one column at ≤800px via the existing `.review-columns` breakpoint), Invite
+Clinician, Metrics, and Users, at all four viewports. The existing tablet responsive pass
+(topbar wrapping, dashboard-card horizontal scroll, `.review-columns` stacking) was already solid
+going in — these were the two real gaps in it.
+
+**Scope note**: this covered layout/fit — every page renders without overflow or squished content
+at real device sizes. It did not test touch-target sizing, the actual microphone-recording flow
+(needs a real device/browser mic permission, not headless), or real assistive-tech / VoiceOver
+behavior — those are different audits if ever wanted.
 
 ## 🔴 Real production outage: blank white screen, root-caused and fixed (2026-08-21)
 
