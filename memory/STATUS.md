@@ -97,6 +97,53 @@ and a real diagnostic, before trusting a pass against the genuinely-fixed produc
 pushed for real and watched CI run `32485195143` execute both new steps and pass against live
 production — confirmed from the actual job log, not just the green checkmark.
 
+**Went further, same day, at your explicit request ("make sure this never happens again,
+permanent fix")**: the smoke test above only *detects* a bad build after it's already live — it
+doesn't stop one from being built or deployed. Added two more layers that actually do, commit
+`03a28f4`:
+
+1. **`web/scripts/assert-env.mjs`**, wired as a `prebuild` npm hook ahead of every `npm run build`
+   (both locally and in CI — `npm`'s pre-hook convention runs it automatically, no workflow change
+   needed beyond what already existed). Fails the build itself, with a clear message naming exactly
+   which `VITE_*` value is missing, before `tsc`/`vite build` ever runs. This is the layer that
+   actually prevents a repeat: if a future pipeline change (a new host, a refactored workflow, a
+   different CI provider — the same class of change that caused this twice) drops these values
+   again, the build fails loudly in CI instead of shipping. **Verified for real**: temporarily
+   moved the real local `web/.env` aside, confirmed the build aborts with exit 1 and the exact
+   missing-var names; restored it, confirmed a normal build proceeds.
+2. **`web/src/main.tsx`** now imports `App` via a dynamic `import()` inside a `try`/`catch`,
+   rendering a plain-language "Havenote couldn't load" card (with a Refresh button) instead of a
+   blank screen on any startup failure. This addresses the actual mechanism of both outages
+   directly: `amazon-cognito-identity-js`'s `CognitoUserPool` constructor throws during **module
+   evaluation**, before `ReactDOM.createRoot().render()` is ever called — meaning the existing
+   `ErrorBoundary` (which wraps `<Routes>` inside the already-mounted app) structurally cannot catch
+   it, no matter where it's placed. A dynamic import turns that module-evaluation throw into an
+   ordinary rejected promise this *can* catch. **Verified for real, and rigorously**: built directly
+   with `vite build` (deliberately bypassing the new prebuild guard) using the exact
+   missing-env-var conditions that caused the real outage, served that build locally, and confirmed
+   via a real headless-browser run that the friendly fallback renders with zero uncaught page
+   errors — screenshotted. Also separately confirmed a normal, correctly-configured build still
+   renders pixel-identical to before (screenshotted), so the dynamic-import code-splitting introduced
+   no visual regression. Also tried non-empty-but-wrong Cognito IDs first, as a control — confirmed
+   `amazon-cognito-identity-js` only validates *presence* at construction time, not correctness, so
+   that case doesn't throw at startup at all (a wrong-but-present ID would surface as a normal login
+   error later, not a blank screen) — useful negative result, not a gap in this fix.
+
+Full web suite (77/77) and lint pass unchanged with both additions. Pushed for real (commit
+`03a28f4`), watched CI run `32486160159` execute the full pipeline end-to-end — `Build web`'s log
+confirmed the `prebuild` guard ran and passed, deploy succeeded, and the post-deploy smoke test
+passed against the new live build. Independently re-confirmed against production afterward with
+one more real headless-browser check outside CI: real sign-in screen, zero console/page errors.
+
+**Where this leaves the "can this repeat" question, honestly**: three independent layers now
+exist — (1) build fails if required config is absent, (2) CI fails if the deployed app doesn't
+actually run in a browser, (3) even an unforeseen startup exception this session didn't anticipate
+shows a clinician a clear message instead of silence. No engineering guarantee is absolute — a
+sufficiently different failure mode (e.g. a runtime crash *after* successful mount, or an API-layer
+outage) isn't fully covered by these three, though the pre-existing `ErrorBoundary` and CloudWatch
+alarms/error-log alerting cover some of that adjacent ground. This is a genuinely much stronger
+position than before today, not an unconditional guarantee.
+
 ## 🟡 Independent-review outreach drafted, not yet sent (2026-08-19)
 
 You raised a real constraint: solo developer, no budget for a security firm. Talked through
