@@ -1,6 +1,8 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-19 (independent-review outreach drafted — see 🟡 entry below. Also today:
+**Last updated:** 2026-08-21 (real production outage found and fixed — blank white screen on
+every page load, see 🔴 entry below. Previously, 2026-08-19: independent-review outreach drafted —
+see 🟡 entry below. Also that day:
 supplementary security scanning (13/15 dependency vulnerabilities fixed, AWS Inspector enabled,
 scope doc refreshed), HHS/ONC SRA Tool cross-check built, blank-screen incident found and fixed,
 Vercel decommissioned, and the Anthropic BAA outreach — sent by you directly 2026-08-17, logged
@@ -17,6 +19,76 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🔴 Real production outage: blank white screen, root-caused and fixed (2026-08-21)
+
+Reported live by the user: visiting the site showed nothing at all, same symptom class as the
+2026-08-19 blank-screen incident. **This was a genuinely different bug, not a recurrence of that
+one** — that one was a CDN caching/pruning problem; this one turned out to be a regression
+introduced by the very fix deployed at the end of that same 2026-08-19 session.
+
+Audited methodically rather than guessing: `curl`'d `index.html` and both referenced asset files
+directly first — all three came back exactly right (200, correct content-type, real JS/CSS, not
+HTML-fallback), ruling out the 2026-08-19 failure mode immediately. Checked API `/health` — also
+fine. Since everything at the HTTP layer was correct, the failure had to be a client-side runtime
+error, which curl can't see. Installed Playwright into an isolated scratch directory (not the
+repo) and drove a real headless Chromium browser against the live site, capturing console
+messages, uncaught exceptions, and failed network requests — this is what actually found it:
+
+```
+Error: Both UserPoolId and ClientId are required.
+    at new e (https://havenote.health/assets/index-C3DYLzXT.js:11:112240)
+```
+
+**Root cause**: Cognito config missing from the built JS bundle. `web/src/auth/cognito.ts` reads
+`import.meta.env.VITE_COGNITO_USER_POOL_ID`/`VITE_COGNITO_CLIENT_ID`, which Vite bakes in at
+*build* time. `.github/workflows/deploy-web.yml`'s `Build web` step (`npm run build
+--workspace=web`) never set these — and never had to, before 2026-08-19. Under the old Vercel
+pipeline, that build's output was thrown away; the actual serving build happened server-side on
+Vercel, using `VITE_*` values stored in Vercel's own Production environment settings (`vercel pull`
+fetched them automatically — see the old workflow's inline comment, preserved in git history at
+`eaf2520^`). When `deploy-web.yml` was repointed at CloudFront that same day, this GH Actions build
+step's output started being deployed to S3 **directly, as-is** — and it had never been given those
+env vars. Every CloudFront deploy since (`eaf2520`, then `6deaf2c` the blank-screen-caching fix
+itself) baked in `undefined`, crashing Cognito's SDK constructor on every single page load, for
+every visitor, starting **2026-08-19 ~14:16 UTC** — roughly two days before this was reported.
+
+**Why it wasn't caught at the time**: 2026-08-19's "verified live" checks for both the cutover and
+the caching fix were curl-based — confirming asset files were real, correctly-typed, non-stale
+content. None of them actually loaded the app in a browser and let Cognito's constructor run. A
+real HTTP 200 with real JavaScript is necessary but not sufficient for "the app works" — this is
+the concrete case proving why.
+
+**Fix**: `.github/workflows/deploy-web.yml`'s `Build web` step now sets `VITE_API_URL`,
+`VITE_COGNITO_USER_POOL_ID`, `VITE_COGNITO_CLIENT_ID` explicitly as env vars, sourced from
+`web/.env.example` (confirmed those are real, still-live production values via
+`describe-user-pool`/`describe-user-pool-client`, not assumed stale). Not secrets — same reasoning
+already documented in the old Vercel workflow: the Cognito app client has no client secret, and
+both IDs end up in the public JS bundle regardless. Commit `97c0bbe`.
+
+**Verified properly this time, end to end, before and after shipping**:
+1. Built locally with the same env vars the fixed workflow now sets; grepped the output bundle to
+   confirm the real values (not `undefined`) were actually baked in.
+2. Served that local build and re-ran the same real-Chromium check against it — root element
+   rendered the actual sign-in form, zero console/page errors.
+3. Ran lint (clean, pre-existing warnings only) and the full web test suite (77/77 pass) before
+   pushing.
+4. Pushed, watched the real `deploy-web.yml` CI run (`32484184341`) succeed end-to-end (3m30s).
+5. Re-ran the real-Chromium check against production a second time, post-deploy: confirmed
+   `index.html` now references the new bundle hash, zero console/page errors, zero failed network
+   requests, and the DOM contains the actual rendered sign-in screen (screenshotted for visual
+   confirmation). Repeated separately against `app.havenote.health` (the subdomain clinicians
+   actually use), not just the apex domain — same result.
+
+Scratch Playwright install and test scripts lived entirely in the session scratchpad, never
+touched the repo; the one-off local `web/dist` test build was deleted afterward.
+
+**Not yet done, worth flagging**: no automated check exists to catch this class of failure again —
+CI verifies the build succeeds and passes lint/tests, but nothing currently loads the deployed app
+in a real browser and checks for runtime errors as part of the pipeline itself. Worth considering a
+smoke-test step (even a minimal one: headless-browser hit against the live URL post-deploy,
+fail the workflow on any `pageerror`) so this class of regression fails CI instead of reaching
+production silently for two days next time.
 
 ## 🟡 Independent-review outreach drafted, not yet sent (2026-08-19)
 
