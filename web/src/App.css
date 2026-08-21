@@ -952,14 +952,23 @@
   display: none;
 }
 
+/* white-space: nowrap on both keeps the primary (name) column from being
+   the one column table auto-layout sacrifices under space pressure — every
+   other column here (badges, buttons, unbreakable emails) already can't
+   wrap, so without this the name column absorbed all the compression and
+   wrapped to one word per line, even on an iPad-width viewport with room
+   to spare. The existing dashboard-card overflow-x: auto still handles
+   genuinely narrow viewports via horizontal scroll. */
 .patient-name {
   font-weight: 600;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .table-primary-cell {
   font-weight: 600;
   color: var(--color-text);
+  white-space: nowrap;
 }
 
 .data-requests-card {
@@ -1359,6 +1368,16 @@
   }
 
   .filter-bar select {
+    width: 100%;
+  }
+
+  /* .filter-search keeps `flex: 1 1 220px` from the row layout above — once
+     the container switches to flex-direction: column, that flex-basis
+     applies to height instead of width, and flex-grow: 1 stretches the
+     input to fill the column's remaining vertical space instead of sizing
+     to one line. Reset both on the column axis. */
+  .filter-search {
+    flex: 0 0 auto;
     width: 100%;
   }
 }
