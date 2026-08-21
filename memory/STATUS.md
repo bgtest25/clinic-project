@@ -83,12 +83,19 @@ both IDs end up in the public JS bundle regardless. Commit `97c0bbe`.
 Scratch Playwright install and test scripts lived entirely in the session scratchpad, never
 touched the repo; the one-off local `web/dist` test build was deleted afterward.
 
-**Not yet done, worth flagging**: no automated check exists to catch this class of failure again —
-CI verifies the build succeeds and passes lint/tests, but nothing currently loads the deployed app
-in a real browser and checks for runtime errors as part of the pipeline itself. Worth considering a
-smoke-test step (even a minimal one: headless-browser hit against the live URL post-deploy,
-fail the workflow on any `pageerror`) so this class of regression fails CI instead of reaching
-production silently for two days next time.
+**Closed the same session**: added `scripts/smoke-test.mjs` (headless Playwright/Chromium,
+`playwright` now a root devDependency) plus two new steps at the end of `deploy-web.yml` —
+`Install Playwright browser` and `Smoke test deployed site` (`npm run smoke-test`). Runs after
+every `cdk deploy ClinicWebHostingStack`, hits both `havenote.health` and `app.havenote.health` for
+real, and fails the workflow on any uncaught JS exception, any failed same-origin request, or a
+`#root` that renders under 50 characters of HTML (a blank-screen proxy) — retries each URL up to 3
+times with a 5s backoff first, in case of transient post-deploy propagation delay. Commit `dcb02ca`.
+
+Verified the check itself actually discriminates, not just always-green: ran it locally against
+`https://example.com` (no `#root` at all) first and confirmed it correctly failed with exit code 1
+and a real diagnostic, before trusting a pass against the genuinely-fixed production site. Then
+pushed for real and watched CI run `32485195143` execute both new steps and pass against live
+production — confirmed from the actual job log, not just the green checkmark.
 
 ## 🟡 Independent-review outreach drafted, not yet sent (2026-08-19)
 
