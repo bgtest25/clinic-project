@@ -42,7 +42,22 @@ jobs:
       # Output lands in web/dist — web-hosting-stack.ts's existsSync guard
       # reads it via a path relative to infra/, so this has to happen before
       # the cdk deploy step below regardless of working directory.
+      #
+      # These VITE_* values used to come from Vercel's own Production env
+      # vars (see git history pre-2026-08-19 cutover) — Vercel silently
+      # rebuilt with them server-side on every deploy, masking the fact this
+      # step itself never had them. Once dist started going straight to S3,
+      # that safety net was gone and every build baked in `undefined`,
+      # breaking Cognito init with "Both UserPoolId and ClientId are
+      # required." on every page load — not caught because verification
+      # only curl'd asset files, never loaded the app in a real browser.
+      # Not secrets: the Cognito app client has no client secret, and both
+      # IDs end up in the public JS bundle regardless.
       - name: Build web
+        env:
+          VITE_API_URL: https://api.havenote.health
+          VITE_COGNITO_USER_POOL_ID: us-east-1_odhVx41g7
+          VITE_COGNITO_CLIENT_ID: 6qut6e3b4gd68it3i28dsqjg6b
         run: npm run build --workspace=web
 
       - name: Configure AWS credentials
