@@ -1,14 +1,18 @@
-# Welcome to your CDK TypeScript project
+# Havenote Infra
 
-This is a blank project for CDK development with TypeScript.
+AWS CDK (TypeScript) stacks: VPC, RDS Postgres Multi-AZ + KMS, S3 (SSE-KMS), Cognito with
+mandatory MFA, ECS Fargate, Step Functions/Transcribe Medical/Bedrock pipeline, CloudTrail,
+GuardDuty, and Config. See the [root README](../README.md) for the full architecture.
 
-The `cdk.json` file tells the CDK Toolkit how to execute your app.
+## Commands
 
-## Useful commands
+```bash
+npm install
+npx cdk synth <StackName>    # emit the CloudFormation template
+npx cdk diff <StackName>     # compare against what's deployed
+npx cdk deploy <StackName>   # deploy
+npm run test                 # Jest tests for the CDK constructs
+```
 
-* `npm run build`   type-check the project
-* `npm run watch`   watch for changes and type-check
-* `npm run test`    perform the jest unit tests
-* `npx cdk deploy`  deploy this stack to your default AWS account/region
-* `npx cdk diff`    compare deployed stack with current state
-* `npx cdk synth`   emits the synthesized CloudFormation template
+Requires AWS credentials for the target account/region (`CDK_DEFAULT_ACCOUNT`,
+`CDK_DEFAULT_REGION`, or an AWS CLI profile).
