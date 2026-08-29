@@ -9,3 +9,5 @@ build/
 .DS_Store
 cdk.out*/
 .cdk.staging/
+.claude/
+memory/
