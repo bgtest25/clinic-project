@@ -113,8 +113,15 @@ describe Bedrock. The 2026-08-17 outreach to Anthropic's commercial team (`memor
 **Update 2026-08-31**: the unused `clinic-project/anthropic-api-key` Secrets Manager secret was
 deleted at your request (`aws secretsmanager delete-secret`, standard 30-day recovery window, not
 force-deleted — recoverable via `restore-secret` through 2026-09-30 if ever needed). Confirmed
-nothing in active code referenced it before deleting. Still worth considering whether to formally
-cancel the Anthropic outreach rather than just letting it lapse.
+nothing in active code referenced it before deleting.
+
+**Update 2026-08-31, later same day**: drafted a cancellation email for the 2026-08-17 Anthropic
+BAA outreach (Bedrock switch makes it unnecessary). Could not send or reply into the original
+thread directly — the outreach went from `hello@havenote.health` (Zoho Mail), which is not the
+mailbox connected to this session (that's your personal Gmail, confirmed by searching it for
+"Anthropic" and finding no trace of the original outreach or any Anthropic-commercial-team thread).
+Handed you the draft text to send yourself. **Not yet confirmed sent** — verify next session before
+assuming this is closed out.
 
 ## 🟢 Follow-up: STATUS.md re-tracked in git, Security Risk Assessment threat #5 re-rated (2026-08-31)
 
