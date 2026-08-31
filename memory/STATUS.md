@@ -116,6 +116,31 @@ pipeline on push (not a local `cdk deploy ClinicComputeStack`, which would have 
 task definition's image tag to the `latest` context default instead of the real deployed commit SHA
 — the same collision class this file has documented before).
 
+**Pushed (commit `16db5e5`) and verified live, not just deployed**: `deploy-api.yml` CI run
+(`33446655437`) succeeded end-to-end — tests, e2e, image build, migration, and the compute-stack
+deploy carrying the WAF. `deploy-web.yml` (`33446655363`) succeeded too, including its post-deploy
+browser smoke test. Then independently confirmed against the real infrastructure, not the CI
+checkmark alone:
+- `aws wafv2 get-web-acl-for-resource` against the real ALB's ARN returned `clinic-project-api-waf`
+  — the WAF is genuinely attached, not just created.
+- The running ECS task's task definition image is tagged `16db5e5` — the exact commit with the
+  fix — and the task is `RUNNING`, confirming the live container actually is the fixed one, not a
+  stale image.
+- `https://api.havenote.health/health` returns 200 post-deploy.
+
+Didn't additionally stand up a disposable second clinic to exercise the fix over a real HTTP call —
+the 26 new unit tests already exercise the exact code path deterministically, and the three checks
+above confirm that exact code is what's actually running in production; judged the marginal value
+of a live HTTP repro not to justify creating temporary clinic/account test data against production
+for this one. Re-rated Security Risk Assessment threat #9 to Medium now that the WAF is confirmed
+live (was left at High pending exactly this confirmation) — see `compliance/SECURITY-RISK-ASSESSMENT.md`.
+
+**Where this leaves go-live**: two of the four original post-Bedrock gates are done today (auth
+test coverage + a real vulnerability fix, WAF). Two of the original four pre-production gates
+remain untouched by this session (legal review, HHS/ONC SRA Tool cross-check) plus the pentest
+outreach status is still unconfirmed — see the "what's next" summary given earlier this session for
+the full list.
+
 ## 🟢 Bedrock access confirmed live, AI pipeline switched from direct Anthropic API back to Bedrock (2026-08-31)
 
 You reported a conversation with AWS confirming Bedrock access to Claude Sonnet 4.5 — checked

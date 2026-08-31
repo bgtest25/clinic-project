@@ -17,14 +17,13 @@ by whoever built the system being assessed.
 (Anthropic subprocessor — no BAA yet, a live gap not a residual risk), #8 (data exfiltration via a
 compromised AWS credential), #9 (DoS — no WAF configured), and #10 (unauthorized access from a code
 defect — this exact bug class has already happened twice, and a third instance was found and fixed
-2026-08-31 — see row 10). **Two re-rated 2026-08-31**: #5 (Anthropic replaced by Bedrock, no longer
-a subprocessor) and #3 (a real admin-activity anomaly alarm now exists where there was previously
-only generic visibility) both moved to **Medium**. **Three threats remain High as of 2026-08-31**:
-#8, #9 (a WAF was added in code the same day but isn't yet confirmed live — see row 9), and #10
-(deliberately not downgraded despite new test coverage, given a third live instance of this bug
-class was just found).
+2026-08-31 — see row 10). **Three re-rated 2026-08-31**: #5 (Anthropic replaced by Bedrock, no
+longer a subprocessor), #3 (a real admin-activity anomaly alarm now exists where there was
+previously only generic visibility), and #9 (a WAF is now confirmed live on the ALB) all moved to
+**Medium**. **Two threats remain High as of 2026-08-31**: #8, and #10 (deliberately not downgraded
+despite new test coverage, given a third live instance of this bug class was just found).
 
-Worth a deliberate remediation decision on the remaining three before this assessment is
+Worth a deliberate remediation decision on the remaining two before this assessment is
 considered closed out, not just filed away.
 
 **Asset inventory, in detail:** see `compliance/HIPAA-RISK-ASSESSMENT-EVIDENCE.md` — not repeated
@@ -44,7 +43,7 @@ here.
 | 6 | Insider threat (single team member currently holds broad access) | All actions audit-logged; least-privilege IAM grants (reviewed 2026-07-18, found 5 justified wildcards, no hardcoded secrets) | Low | Medium | Low | At current team size (one person), broad access is a structural reality, not a fixable gap — document as an accepted risk at this stage and revisit as the team grows |
 | 7 | Ransomware / destructive attack on infrastructure | RDS automated backups (7-day retention) **and a real point-in-time restore proven to work** (2026-08-16 drill: restored instance's data matched the live primary exactly, not just configured and assumed); RDS Multi-AZ (automatic failover) | Low | Low | Low | |
 | 8 | Data exfiltration via a compromised AWS credential | CloudTrail (account-wide), GuardDuty enabled, 16 AWS Config managed rules with NON_COMPLIANT alerts routed to the same monitoring pipeline as CloudWatch alarms; data encrypted at rest limits what's actually readable even if exfiltrated | Medium | High | High | |
-| 9 | Denial of service / resource exhaustion | API rate limiting (100 req/min/IP, verified live 2026-08-16); AWS's baseline infrastructure-level DDoS protection on the ALB. **2026-08-31: a WAF (`AWS::WAFv2::WebACL`) was added** in code — a 2000-req/5-min-per-IP rate-based rule plus AWS's Common/KnownBadInputs/IpReputation managed rule groups, associated with the API's ALB (`infra/lib/compute-stack.ts`) — but **not yet confirmed deployed and live** as of this writing, only synthesized and diffed | Medium | High | High | Rating deliberately left as-is until the WAF is confirmed live in production, not just merged — see `memory/STATUS.md` for the deploy status; re-rate once verified, following the same Medium→Low pattern used for rows 3 and 5 |
+| 9 | Denial of service / resource exhaustion | API rate limiting (100 req/min/IP, verified live 2026-08-16); AWS's baseline infrastructure-level DDoS protection on the ALB. **2026-08-31: a WAF (`AWS::WAFv2::WebACL`, `clinic-project-api-waf`) added and confirmed live** — a 2000-req/5-min-per-IP rate-based rule plus AWS's Common/KnownBadInputs/IpReputation managed rule groups, associated with the real production ALB (confirmed via `aws wafv2 get-web-acl-for-resource` against the actual load balancer ARN, not just a successful `cdk deploy`) | Low | High | Medium | Re-rated 2026-08-31 (Likelihood Medium→Low) now that a real WAF is confirmed attached to the ALB in production, not just added in code — same Low+High→Medium pattern as rows 3 and 5 |
 | 10 | Unauthorized data access due to a code defect (missed authorization check) | `RolesGuard` + clinic-scoping pattern enforced via a single chokepoint (`UsersService.findByCognitoSub`) that most services call first; JWT claims independently re-verified server-side, never trusted from the client. **2026-08-31: real authorization-boundary test coverage added** — 26 new tests across `users`/`notes`/`recordings`/`patients`/`patient-data-requests` asserting the clinic-ownership check actually fires at each call site, not just that it exists somewhere | High | High | High | **A third real instance of this exact bug class was found and fixed 2026-08-31**, while adding the test coverage above: `UsersService.invite()` trusted a client-supplied `clinicId` with zero server-side check, letting any admin invite a user (including another admin) into a different clinic via a direct API call — live since this endpoint was built, never triggered through the UI, never caught until this session tested it directly. Deliberately **not** re-rated down despite the new tests: a third live finding of the same bug class (after 2026-08-11 and 2026-08-15) is evidence this is a persistent pattern in how this codebase gets built, not a closed gap — the new tests cover what they cover, not a guarantee against the next missed check |
 
 ## Sign-off
