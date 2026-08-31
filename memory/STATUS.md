@@ -110,10 +110,11 @@ edited 2026-08-15 to describe the direct-Anthropic architecture — corrected bo
 describe Bedrock. The 2026-08-17 outreach to Anthropic's commercial team (`memory/STATUS.md`
 2026-08-19 entry) is now moot; noted as safe to drop rather than needing a response.
 
-**Left for you**: the Anthropic Secrets Manager secret (`clinic-project/anthropic-api-key`) is now
-unused but not deleted — low-cost to leave (~$0.40/month), deliberately not deleted without asking
-since it's a live credential-bearing resource. Worth considering whether to formally cancel the
-Anthropic outreach rather than just letting it lapse.
+**Update 2026-08-31**: the unused `clinic-project/anthropic-api-key` Secrets Manager secret was
+deleted at your request (`aws secretsmanager delete-secret`, standard 30-day recovery window, not
+force-deleted — recoverable via `restore-secret` through 2026-09-30 if ever needed). Confirmed
+nothing in active code referenced it before deleting. Still worth considering whether to formally
+cancel the Anthropic outreach rather than just letting it lapse.
 
 ## 🟢 Follow-up: STATUS.md re-tracked in git, Security Risk Assessment threat #5 re-rated (2026-08-31)
 
