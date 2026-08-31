@@ -10,7 +10,6 @@ describe('ClinicsService', () => {
   beforeEach(() => {
     prisma = {
       clinic: {
-        create: jest.fn(),
         findMany: jest.fn(),
         findUniqueOrThrow: jest.fn(),
       },

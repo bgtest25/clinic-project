@@ -1,10 +1,14 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (real, live cross-tenant authorization vulnerability found and fixed
-while adding authorization-boundary test coverage for Security Risk Assessment threat #10 — any
-authenticated admin could invite a user, including another admin, into a clinic they don't belong
-to via a direct API call. Also closed threats #9 (WAF added) and #3 (admin-activity anomaly alarm
-added) — see 🔴 entry below. Earlier the same day: Bedrock access confirmed live — AWS support case `178433501800988`
+**Last updated:** 2026-08-31 (remediation pass on threats #8/#10 plus real progress on the HHS/ONC
+SRA Tool — a second unused-but-reachable admin over-permission found and removed (`POST /clinics`),
+IAM Access Analyzer enabled, a real GuardDuty-findings-go-nowhere gap found and fixed, and 55/125
+SRA Tool questions genuinely answered in the real downloaded workbook, with two real findings
+surfaced along the way — see 🟢 entry below. Earlier the same day: a real, live cross-tenant
+authorization vulnerability found and fixed while adding authorization-boundary test coverage for
+Security Risk Assessment threat #10 — any authenticated admin could invite a user, including
+another admin, into a clinic they don't belong to via a direct API call. Also closed threats #9
+(WAF added) and #3 (admin-activity anomaly alarm added) — see 🔴 entry below. Earlier the same day: Bedrock access confirmed live — AWS support case `178433501800988`
 partially approved for Claude Sonnet 4/4.5 — and the AI pipeline switched from the interim direct
 Anthropic API back to AWS Bedrock, deployed and verified against the real Lambda, with a real bug
 found and fixed along the way. This closes the Anthropic-subprocessor-with-no-BAA gap that was a
@@ -30,6 +34,91 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Threat #8/#10 remediation pass, and real progress on the HHS/ONC SRA Tool (2026-08-31)
+
+You asked to close out the two remaining self-directed go-live items: a remediation decision on
+Security Risk Assessment threats #8/#10, and the HHS/ONC SRA Tool cross-check.
+
+**#10 remediation — a second real over-permission found while auditing every remaining controller
+for the same bug class.** Read every controller in the API (`clinics`, `metrics`, `encounters`,
+`patients`, `notes`, `patient-data-requests`, `recordings`) looking specifically for a client-
+supplied ID trusted without a server-side ownership check — the exact shape of the `invite()`
+vulnerability found earlier today. `metrics.controller.ts` takes `clinicId` from the URL but
+`MetricsService.summary` already throws `ForbiddenException` if it doesn't match the caller's own
+clinic — correctly guarded, confirmed by reading the code, not assumed. **`POST /clinics` was not
+guarded at all**: gated only by `@Roles('admin')`, meaning any admin of any clinic could create a
+brand-new, empty tenant clinic via a direct API call — there's no platform-superadmin concept in
+this system, so this was never an intended capability. Lower severity than the `invite` bug (a new
+clinic starts with zero members, so it can't expose or modify any *existing* clinic's data), but
+the same class of unauthorized-capability gap. Confirmed the frontend never called it (only
+`GET /clinics`) and `PILOT-ONBOARDING-RUNBOOK.md` already documents clinic creation as a manual,
+direct-DB process — no legitimate caller existed. Removed the endpoint, service method, and DTO
+entirely rather than trying to scope it down. 77/77 API tests still pass, `tsc` clean.
+Deliberately **not re-rated down** despite this and the earlier `invite` fix — see the Security
+Risk Assessment entry below for why.
+
+**#8 remediation — checked the real IAM/CloudTrail/GuardDuty state rather than assuming the
+existing controls were sufficient, and found a real gap.** `clinic-admin` (the one IAM user in this
+account, full `Administrators` group access, a static access key created 2026-07-17) is the
+account's single highest-value credential — confirmed AWS Config's `AccessKeysRotated` rule is
+already watching it and currently `COMPLIANT` (90-day threshold, key is ~45 days old), and
+CloudTrail log file validation is already on. **The real finding**: GuardDuty has been `ENABLED`
+and actively generating findings since before this session, but `aws events list-rules` showed
+**zero EventBridge rules referencing GuardDuty at all** — a genuine credential-compromise finding,
+exactly what threat #8 is about, would have sat unseen in the console forever. Same silent-
+alerting-gap shape as the 2026-08-16 SNS-subscription incident already documented in this file.
+Fixed by mirroring the existing Config-rule-to-SNS pattern in `config-rules-stack.ts`: a new
+`GuardDutyFindingNotifier` EventBridge rule, filtered to Medium severity and above, routed into the
+same `clinic-project-alerts` SNS topic. Deployed and confirmed live: the rule exists, is `ENABLED`,
+and targets the real topic ARN (`aws events list-targets-by-rule`), not just synthesized. Also
+enabled **IAM Access Analyzer** (`clinic-project-analyzer`, account-level, confirmed `ACTIVE`) — a
+free, zero-risk, additive detective control directly relevant to this threat, following the same
+precedent as how GuardDuty/Config/Inspector were enabled directly rather than through CDK (an
+account-level toggle, not a stack-owned resource).
+
+**HHS/ONC SRA Tool: 55 of 125 questions genuinely answered in the real downloaded workbook, not
+just prep documentation this time.** Downloaded the actual current tool fresh from healthit.gov
+(v3.6.1, confirmed matching version already referenced in `SRA-TOOL-CROSS-CHECK.md`), parsed it
+with the `xlsx` npm package in a throwaway scratch install (not a project dependency). Hit and
+resolved two real parsing traps before trusting any extraction: each section sheet embeds a
+"Threats & Vulnerabilities" reference catalog after the real questions, using the same
+numbered-row layout — a naive parse over-counted by picking up catalog rows as if they were
+questions (165 vs the real 125); found and used the sheet's own literal "Threats & Vulnerabilities"
+header row as the reliable boundary marker instead of guessing. Cross-referenced every extracted
+question against `SRA-TOOL-CROSS-CHECK.md`'s existing answers and applied a deliberately
+conservative rule for what counts as safe to auto-fill: a plain Yes/No/IDK question with an
+unambiguous cross-check answer, or a multi-choice question where exactly one option is a low-risk
+factual match — **not** anything requiring a judgment call about how mature/formal the practice's
+documentation is, even where the cross-check doc characterized it as a "confident" answer in prose.
+That distinction is why this is 55/125 (44%), not more — translating prose into the tool's specific
+worded options is itself interpretation for the nuanced questions, and that's not something to do
+on your behalf for a real compliance document.
+
+**Verified rigorously before trusting any of it**: after writing the 55 checkmarks, independently
+re-read the output file and confirmed all 55 landed on the exact intended row — not just that the
+write script exited cleanly. That re-read caught a real problem: the blank template downloaded from
+healthit.gov ships with 2 pre-existing example checkmarks already in it (found via an unexpected
+total-count mismatch, 56 found vs 55 expected), which would have left one question with two
+conflicting answers checked simultaneously if left alone. Cleared those first, then re-verified
+clean (exactly 55, all in the right place). Also confirmed the workbook's internal scoring formulas
+(`Risk_Logic` sheet) survived the write byte-for-byte identical to the original, not just that the
+file opens.
+
+**Two real findings surfaced along the way, documented in `SRA-TOOL-CROSS-CHECK.md` rather than
+silently resolved either direction**: Section 4 Q29 (vulnerability scanning) — the existing
+cross-check text says "no formal program," but AWS Inspector has actually been running continuous
+automated scans since 2026-08-19; whether that satisfies this specific question is a real judgment
+call, left unchecked. Section 5 Q15 (audit-report retention ≥6 years) — CloudTrail's actual
+retention is a 365-day lifecycle rule, well under the 6 years this question asks about, contradicting
+the adjacent "Yes, monitoring implemented" framing elsewhere in the doc if read too broadly.
+
+Saved the real partially-completed file at `compliance/SRA-Tool-v3.6.1-Partial.xlsx` (committed,
+not just left in a scratch directory) — openable directly in Excel or the free SRA Tool Windows app.
+**Not done**: the remaining ~70 questions are genuine judgment calls or undecided policy questions
+for you, same as everything already marked "Needs your input" in the cross-check doc. The
+Security Risk Assessment's sign-off checkbox for this tool is still unchecked — flip it once you've
+actually gone through the remaining questions, not before.
 
 ## 🔴 Real, live cross-tenant authorization vulnerability found and fixed; WAF and admin-activity anomaly alarm added (2026-08-31)
 

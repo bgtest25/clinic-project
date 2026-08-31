@@ -109,5 +109,30 @@ export class ClinicConfigRulesStack extends cdk.Stack {
       },
       targets: [new eventsTargets.SnsTopic(alarmTopic)],
     });
+
+    // Same class of gap as the Config rules above, found during the
+    // 2026-08-31 threat #8 (AWS credential exfiltration) remediation pass:
+    // GuardDuty has been enabled since before this stack existed and is
+    // actively generating findings (confirmed via `aws guardduty
+    // get-detector` — Status ENABLED), but nothing was routing them
+    // anywhere — no EventBridge rule referenced GuardDuty at all (confirmed
+    // via `aws events list-rules`). A real credential-compromise finding —
+    // exactly what threat #8 is about — would have sat unseen in the
+    // GuardDuty console forever, the same silent-alerting-gap shape as the
+    // 2026-08-16 SNS-subscription incident documented in memory/STATUS.md.
+    // Filtered to Medium severity and above (GuardDuty's own scale tops out
+    // just under 9.0) to avoid paging on Low-severity informational
+    // findings — a judgment call, revisit if it proves too noisy or too quiet.
+    new events.Rule(this, 'GuardDutyFindingNotifier', {
+      description: 'Notify clinic-project-alerts on GuardDuty findings of Medium severity or above',
+      eventPattern: {
+        source: ['aws.guardduty'],
+        detailType: ['GuardDuty Finding'],
+        detail: {
+          severity: [{ numeric: ['>=', 4] }],
+        },
+      },
+      targets: [new eventsTargets.SnsTopic(alarmTopic)],
+    });
   }
 }

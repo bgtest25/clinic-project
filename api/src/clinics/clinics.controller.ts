@@ -1,20 +1,24 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
-import { Roles } from '../auth/roles.decorator';
-import { RolesGuard } from '../auth/roles.guard';
 import { ClinicsService } from './clinics.service';
-import { CreateClinicDto } from './dto/create-clinic.dto';
 
-@UseGuards(CognitoAuthGuard, RolesGuard)
+// No POST /clinics here — deliberately removed 2026-08-31. There is no
+// platform-superadmin concept in this system (every user belongs to
+// exactly one clinic), so a regular clinic admin creating brand-new
+// tenant clinics was never an intended capability; it was only ever
+// gated by @Roles('admin'), meaning any admin of any clinic could call
+// it. Found during the authorization audit prompted by the 2026-08-31
+// invite() vulnerability — same class of over-broad admin capability,
+// though this one never exposed another clinic's existing data (a new
+// clinic starts empty with no members, per ClinicsService.create's old
+// behavior). The frontend never called it (only GET /clinics) and
+// PILOT-ONBOARDING-RUNBOOK.md already documents clinic creation as a
+// manual, direct-DB/Cognito process — this endpoint had no legitimate
+// caller.
+@UseGuards(CognitoAuthGuard)
 @Controller('clinics')
 export class ClinicsController {
   constructor(private readonly clinicsService: ClinicsService) {}
-
-  @Post()
-  @Roles('admin')
-  create(@Body() dto: CreateClinicDto) {
-    return this.clinicsService.create(dto);
-  }
 
   @Get()
   findAll(@Req() req: any) {

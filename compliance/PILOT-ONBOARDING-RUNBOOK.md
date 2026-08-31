@@ -19,12 +19,12 @@ Anthropic API). See `../memory/STATUS.md` for the full history.
       Anthropic is no longer a subprocessor of this system; the existing AWS BAA covers this data
       flow. See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` (now superseded) for the direct-API
       architecture this replaced
-- [ ] A formal, documented HIPAA Security Risk Assessment — see
-      `compliance/HIPAA-RISK-ASSESSMENT-EVIDENCE.md` for a technical evidence packet and
-      `compliance/SECURITY-RISK-ASSESSMENT.md` for the threat/vulnerability analysis (likelihood,
-      impact, and risk-level ratings still need to be filled in — that's a risk-tolerance judgment
-      call, not something pre-filled). Use alongside the free HHS/ONC Security Risk Assessment
-      Tool (healthit.gov/privacy-security/security-risk-assessment-tool/)
+- [ ] A formal, documented HIPAA Security Risk Assessment — `compliance/SECURITY-RISK-ASSESSMENT.md`
+      is complete with likelihood/impact/risk ratings (signed 2026-08-16, revised 2026-08-31); the
+      HHS/ONC SRA Tool cross-check is genuinely in progress, not just prepped — 55/125 questions
+      answered in the real downloaded workbook (`compliance/SRA-Tool-v3.6.1-Partial.xlsx`), the
+      remaining ~70 are judgment calls only you can make. Sign-off checkbox stays unchecked until
+      those are done
 - [ ] An independent security review / penetration test, by someone who wasn't involved in
       building the system — see `compliance/SECURITY-REVIEW-SCOPE.md`
 

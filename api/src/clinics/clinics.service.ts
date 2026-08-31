@@ -1,7 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
-import { CreateClinicDto } from './dto/create-clinic.dto';
 
 @Injectable()
 export class ClinicsService {
@@ -9,10 +8,6 @@ export class ClinicsService {
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
   ) {}
-
-  create(dto: CreateClinicDto) {
-    return this.prisma.clinic.create({ data: dto });
-  }
 
   // Every user belongs to exactly one clinic and there's no superadmin
   // concept in this system, so "all clinics" is always just the caller's own.
