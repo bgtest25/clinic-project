@@ -50,13 +50,16 @@ Havenote uses the following subprocessors to provide the service. `[Confirm each
 with legal/procurement before publishing — do not assume it's in place just because the service is
 "HIPAA-eligible."]`
 
-- **Amazon Web Services** — hosting, storage (S3, RDS), and transcription (Amazon Transcribe Medical).
-  AWS offers a BAA for HIPAA-eligible services; `[confirm Havenote has executed one]`.
-- **Anthropic** — provides the Claude model used to draft clinical notes from transcripts, called
-  directly via Anthropic's own API (not routed through Amazon Bedrock). `[Confirm Anthropic's specific
-  data-handling and BAA terms for direct API usage before publishing this policy — this is a separate
-  agreement from AWS's BAA, which does not cover this call path. Do not assert terms here that haven't
-  been verified against the actual executed agreement.]`
+- **Amazon Web Services** — hosting, storage (S3, RDS), transcription (Amazon Transcribe Medical),
+  and (as of 2026-08-31) the Claude model used to draft clinical notes from transcripts, via Amazon
+  Bedrock. AWS offers a BAA for HIPAA-eligible services, confirmed active
+  (`aws artifact list-customer-agreements`, effective 2026-07-17), which covers Bedrock along with
+  the rest of the stack. `[Reconfirm this BAA's effective scope explicitly includes Bedrock before
+  publishing — do not assume from the service being "HIPAA-eligible" alone.]`
+
+Anthropic is not a separate subprocessor of this system: from 2026-08-14 to 2026-08-31, the AI
+drafting call went directly to Anthropic's own API as an interim workaround, but that path has
+since been replaced with the Bedrock call above.
 
 ## Security measures
 

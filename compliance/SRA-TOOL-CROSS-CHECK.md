@@ -25,9 +25,9 @@ physical office/device holding ePHI outside of a developer workstation.
 ## Section 1 — SRA Basics (10 questions)
 
 1. Has your practice completed an SRA before? — **Answer: Yes.** `compliance/SECURITY-RISK-ASSESSMENT.md`, completed and signed 2026-08-16.
-2. Do you review and update your SRA? — **Answer: Yes.** Next scheduled review 2027-08-16 (annual), or sooner on material change to the Anthropic BAA status, team size, or subprocessor list.
+2. Do you review and update your SRA? — **Answer: Yes.** Next scheduled review 2027-08-16 (annual), or sooner on material change to team size or subprocessor list — the 2026-08-31 switch to AWS Bedrock (removing Anthropic as a subprocessor) is exactly this kind of trigger and should prompt an earlier review.
 3. How often? — **Answer:** Annually, or triggered by a material change (see above).
-4. Do you include all systems containing/processing/transmitting ePHI? — **Answer: Yes.** Evidence packet covers the full stack: RDS, S3, Lambda/Step Functions, ECS, Cognito, and the Anthropic API call.
+4. Do you include all systems containing/processing/transmitting ePHI? — **Answer: Yes.** Evidence packet covers the full stack: RDS, S3, Lambda/Step Functions, ECS, Cognito, and the AI drafting call (AWS Bedrock as of 2026-08-31, previously a direct Anthropic API call).
 5. How do you verify your security measures comply with current HIPAA requirements? — **Needs your input.** Describes your own ongoing verification process/cadence beyond the point-in-time assessment already built.
 6. What do you include in your SRA documentation? — **Answer:** Threat/vulnerability analysis, current controls (cited to code/live verification), likelihood/impact/risk ratings, sign-off block — matches `SECURITY-RISK-ASSESSMENT.md`'s structure.
 7. Do you respond to threats/vulnerabilities identified? — **Answer: Partial.** Direct remediation already shipped from this assessment (rate limiting, RDS Multi-AZ, monitoring, a proven backup-restore drill) — but the 5 High-risk items still need a deliberate remediation decision each before this is closed out, not just filed away.
@@ -87,13 +87,13 @@ AWS" rather than leaving blank, since HIPAA still expects the question to be add
 
 ## Section 6 — Business Associates (15 questions)
 
-1. Contract with business associates/third-party vendors? — **Answer: Yes.** AWS, Anthropic (direct API), Zoho Mail, GitHub.
-2. Do vendors access your info systems/ePHI? — **Answer: Yes, for AWS and Anthropic specifically.** Anthropic receives transcript/SOAP-note text via API — see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for the exact scope, cited from the real request code.
-3. How do you identify which vendors are business associates? — **Answer:** Any vendor that creates, receives, maintains, or transmits ePHI on the practice's behalf — AWS and Anthropic qualify; Zoho (business email) and GitHub (code hosting) do not, since neither ever touches ePHI.
+1. Contract with business associates/third-party vendors? — **Answer: Yes.** AWS (covers the AI drafting call too, as of 2026-08-31 — see below), Zoho Mail, GitHub. Anthropic is no longer a direct business associate of this system.
+2. Do vendors access your info systems/ePHI? — **Answer: Yes, for AWS.** The AI drafting call (transcript/SOAP-note text) now goes through AWS Bedrock rather than Anthropic's API directly — see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for the now-superseded direct-API architecture and the data scope, unchanged in substance.
+3. How do you identify which vendors are business associates? — **Answer:** Any vendor that creates, receives, maintains, or transmits ePHI on the practice's behalf — AWS qualifies; Zoho (business email) and GitHub (code hosting) do not, since neither ever touches ePHI.
 4-5, 7. Enforcement/monitoring of BA access; awareness of BA security practices — **Needs your input.** No formal ongoing vendor-monitoring cadence has been established yet.
-6. Executed BAAs with all business associates that touch ePHI? — **Answer: Partial — this is the actual gate.** AWS: yes, active (confirmed via AWS Artifact). Anthropic: no — outreach sent 2026-08-17 to their commercial team, awaiting response.
-8. Satisfactory-assurances language in BAAs? — **Answer:** AWS's own standard BAA terms apply (not separately customized). Anthropic's terms don't exist yet pending the BAA above.
-9-15. Subcontractor terms, 2013 Omnibus Rule updates, vendor-compliance tracking — **Needs your input** / mostly not yet formally tracked. AWS maintains its own compliance program independently; Anthropic is N/A until the BAA above is executed.
+6. Executed BAAs with all business associates that touch ePHI? — **Answer: Yes, as of 2026-08-31.** AWS: active (confirmed via AWS Artifact), covers the full stack including the AI drafting call. Anthropic is no longer a business associate of this system — the AI pipeline was switched from a direct Anthropic API call to AWS Bedrock 2026-08-31, so no separate agreement is needed (see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md`, now superseded, for the prior architecture and the outreach sent 2026-08-17 that this change made moot).
+8. Satisfactory-assurances language in BAAs? — **Answer:** AWS's own standard BAA terms apply (not separately customized), and now cover the AI drafting data flow too since it moved to Bedrock.
+9-15. Subcontractor terms, 2013 Omnibus Rule updates, vendor-compliance tracking — **Needs your input** / mostly not yet formally tracked. AWS maintains its own compliance program independently; no other subprocessor touches ePHI as of 2026-08-31.
 
 ## Section 7 — Contingency Planning (20 questions)
 

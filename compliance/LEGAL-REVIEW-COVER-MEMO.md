@@ -23,11 +23,14 @@ is explicitly blocked on this legal review completing.
 
 ## What changed recently that the documents already reflect
 
-The AI-drafting subprocessor changed from Amazon Bedrock to a direct Anthropic API call
-(architecture change, 2026-08-14 — a workaround for a separate, unrelated AWS account
-restriction). Both `BAA-TEMPLATE.md` §5 and `PRIVACY-POLICY.md`'s Subprocessors section have
-already been corrected to describe this accurately (2026-08-15) — they no longer say "via Amazon
-Bedrock." See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for exactly what data this sends.
+The AI-drafting subprocessor has changed twice. It moved from a direct Anthropic API call back to
+Amazon Bedrock on 2026-08-31, once the AWS account restriction that originally forced the
+2026-08-14 workaround cleared. Both `BAA-TEMPLATE.md` §5 and `PRIVACY-POLICY.md`'s Subprocessors
+section have been corrected again to reflect this (2026-08-31) — they now describe Bedrock, not a
+direct Anthropic call. **Net effect: Anthropic is no longer a subprocessor of this system at all**,
+and the AI-drafting data flow is covered by the existing AWS BAA rather than needing a separate
+agreement. See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` (now superseded) for what the interim
+direct-API architecture sent, and `compliance/SECURITY-REVIEW-SCOPE.md` for the current flow.
 
 ## What's still placeholder in these documents (marked `[...]` in the files themselves)
 
@@ -35,9 +38,9 @@ Bedrock." See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for exactly what data 
 - Havenote's own signatory name/title
 - The specific breach-notification timeline Havenote commits to in the BAA (currently a
   placeholder recommending "materially shorter than HIPAA's 60-day outer limit")
-- Subprocessor BAA/agreement status is explicitly flagged as unconfirmed for both AWS and
-  Anthropic in the document text — **AWS's is confirmed active** (see below); **Anthropic's is
-  not yet in place**
+- Subprocessor BAA/agreement status: **AWS's is confirmed active** (see below) and, as of
+  2026-08-31, covers the AI-drafting call too since it now goes through Bedrock. Anthropic is no
+  longer a subprocessor of this system — there is nothing to confirm for it
 - Governing law, standard boilerplate (BAA §10)
 - Havenote's own privacy/legal contact information (privacy policy)
 - Policy-update notice mechanism (privacy policy)
@@ -47,9 +50,10 @@ Bedrock." See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for exactly what data 
 1. The pilot clinic's actual legal name, address, and state of operation. (`RETENTION-POLICY.md`'s
    retention-period analysis is Pennsylvania-specific — if the actual pilot clinic isn't in PA,
    that analysis needs to be redone for the correct state.)
-2. Confirmation of whether an Anthropic BAA/DPA will be pursued before or in parallel with this
-   review — the current subprocessor list in the BAA is accurate as of today, but incomplete
-   until that agreement exists.
+2. Confirmation that the AWS BAA's effective scope explicitly covers Bedrock (the AI-drafting
+   subprocessor as of 2026-08-31) — expected but not yet independently re-confirmed post-switch.
+   An Anthropic BAA is no longer needed; the 2026-08-17 outreach to Anthropic's commercial team
+   can be dropped or left to lapse.
 3. Havenote's own signatory information.
 
 ## Independent confirmation already done (not asserted, actually checked)

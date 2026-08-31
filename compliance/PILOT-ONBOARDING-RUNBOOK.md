@@ -1,11 +1,10 @@
 # Havenote — Pilot Onboarding Runbook
 
-**Status:** operational draft, last brought current 2026-08-16. Not legally reviewed — see
-`BAA-TEMPLATE.md` / `PRIVACY-POLICY.md` for what's still pending counsel. **This document no
-longer assumes the Bedrock/CloudFront AWS blockers have cleared** — the pilot went live 2026-08-14
-via interim workarounds (direct Anthropic API instead of Bedrock; Vercel instead of CloudFront)
-that are fully live and verified, not waiting on those cases — see `../memory/STATUS.md` for
-current status and the revert plan once/if those AWS cases clear.
+**Status:** operational draft, last brought current 2026-08-31. Not legally reviewed — see
+`BAA-TEMPLATE.md` / `PRIVACY-POLICY.md` for what's still pending counsel. Both AWS blockers that
+originally forced interim workarounds have since cleared: CloudFront cutover completed 2026-08-19
+(frontend off Vercel), and Bedrock access confirmed 2026-08-31 (AI drafting off the direct
+Anthropic API). See `../memory/STATUS.md` for the full history.
 
 ## 0. Pre-launch checklist
 
@@ -15,9 +14,11 @@ current status and the revert plan once/if those AWS cases clear.
       orientation
 - [ ] Pilot clinic's actual name/address/state confirmed (retention rules in `RETENTION-POLICY.md`
       are Pennsylvania-specific — re-verify if the pilot clinic isn't in PA)
-- [ ] A BAA/DPA executed directly with Anthropic — the AWS BAA does not cover the direct Anthropic
-      API call used for AI drafting; see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for exactly
-      what data this involves
+- [x] ~~A BAA/DPA executed directly with Anthropic~~ — **no longer needed as of 2026-08-31**: AI
+      drafting now calls the model through AWS Bedrock instead of Anthropic's API directly, so
+      Anthropic is no longer a subprocessor of this system; the existing AWS BAA covers this data
+      flow. See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` (now superseded) for the direct-API
+      architecture this replaced
 - [ ] A formal, documented HIPAA Security Risk Assessment — see
       `compliance/HIPAA-RISK-ASSESSMENT-EVIDENCE.md` for a technical evidence packet and
       `compliance/SECURITY-RISK-ASSESSMENT.md` for the threat/vulnerability analysis (likelihood,
@@ -31,7 +32,10 @@ current status and the revert plan once/if those AWS cases clear.
 - [x] `INCIDENT-RESPONSE-RUNBOOK.md` roles filled in (2026-08-16)
 - [x] AWS BAA confirmed active (`aws artifact list-customer-agreements`, effective 2026-07-17)
 - [x] AI pipeline genuinely live, non-mock, verified with real transcripts (2026-08-14/15)
-- [x] Frontend live on `havenote.health`/`app.havenote.health` via Vercel (2026-08-14)
+- [x] Frontend live on `havenote.health`/`app.havenote.health` via CloudFront (cut over from
+      Vercel 2026-08-19)
+- [x] AI pipeline switched from direct Anthropic API to AWS Bedrock, verified via a real deployed-
+      Lambda invocation (2026-08-31)
 
 ## 1. Bootstrap the first clinic + admin (one-time, manual)
 
@@ -125,6 +129,6 @@ flow above again (temp password → new permanent password → new MFA setup) as
 - `Login.tsx` and `Recording.tsx` have zero automated test coverage (Cognito SDK / MediaRecorder
   depth aren't meaningfully testable under jsdom) — these are the two components most worth a manual
   smoke test before real patient use, not just trusting the green CI checkmark.
-- Every draft note is labeled `[MOCK NOTE — Bedrock access pending]` until Bedrock access is live —
-  do not let a clinician sign a mock note believing it's real AI output; verify the mock banner is
-  gone (see checklist item 0) before the first real patient visit.
+- If `MOCK_SOAP_NOTE` is ever set back to `true` (e.g. for a test run), every draft note is labeled
+  `[MOCK NOTE]` — do not let a clinician sign a mock note believing it's real AI output; verify the
+  mock banner is absent before the first real patient visit of any pilot.

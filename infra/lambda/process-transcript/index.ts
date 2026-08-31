@@ -1,9 +1,16 @@
 import { GetObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import {
+  BedrockRuntimeClient,
+  ConverseCommand,
+  type ContentBlock,
+  type Message,
+} from '@aws-sdk/client-bedrock-runtime';
 import { Client } from 'pg';
 import { randomUUID } from 'crypto';
 import { ICD10_COMMON_CODES } from './icd10-common';
 
 const s3 = new S3Client({});
+const bedrock = new BedrockRuntimeClient({});
 
 interface ProcessEvent {
   mode?: 'process';
@@ -141,21 +148,25 @@ function formatSpeakerLabeledTranscript(segments: DiarizedSegment[], fallbackTex
 }
 
 const ICD10_SEARCH_TOOL = {
-  name: 'search_icd10_codes',
-  description:
-    'Search a curated (non-exhaustive) ICD-10-CM code list for codes matching a diagnosis, ' +
-    'condition, or symptom. Returns up to 5 matches with their code and description, or an ' +
-    'empty list if nothing matches well. Always call this before including a code in ' +
-    'suggestedCodes — never suggest a code from memory alone.',
-  input_schema: {
-    type: 'object',
-    properties: {
-      query: {
-        type: 'string',
-        description: "A diagnosis, condition, or symptom to search for, e.g. 'streptococcal pharyngitis'.",
+  toolSpec: {
+    name: 'search_icd10_codes',
+    description:
+      'Search a curated (non-exhaustive) ICD-10-CM code list for codes matching a diagnosis, ' +
+      'condition, or symptom. Returns up to 5 matches with their code and description, or an ' +
+      'empty list if nothing matches well. Always call this before including a code in ' +
+      'suggestedCodes — never suggest a code from memory alone.',
+    inputSchema: {
+      json: {
+        type: 'object',
+        properties: {
+          query: {
+            type: 'string',
+            description: "A diagnosis, condition, or symptom to search for, e.g. 'streptococcal pharyngitis'.",
+          },
+        },
+        required: ['query'],
       },
     },
-    required: ['query'],
   },
 };
 
@@ -173,22 +184,21 @@ export function searchIcd10Codes(query: string) {
   ).slice(0, 5);
 }
 
-interface AnthropicContentBlock {
-  type?: string;
-  text?: string;
-  id?: string;
-  name?: string;
-  input?: { query?: string };
+function isTextBlock(b: ContentBlock): b is ContentBlock.TextMember {
+  return typeof (b as { text?: unknown }).text === 'string';
 }
 
-interface AnthropicResponse {
-  stop_reason?: string;
-  content?: AnthropicContentBlock[];
+function isToolUseBlock(b: ContentBlock): b is ContentBlock.ToolUseMember {
+  return (b as { toolUse?: unknown }).toolUse !== undefined;
 }
 
-async function callAnthropicWithTools(transcriptText: string): Promise<AnthropicResponse> {
-  const messages: Array<{ role: string; content: unknown }> = [
-    { role: 'user', content: `Transcript:\n\n${transcriptText}` },
+// Bedrock's Converse API — provider-agnostic across Anthropic, Amazon, Meta,
+// etc. models, with native tool-use support, so the tool-round-trip shape
+// below maps closely to the direct-Anthropic version this replaced (see
+// STATUS.md for the 2026-08-31 Bedrock access confirmation and switch).
+async function callBedrockWithTools(transcriptText: string): Promise<string> {
+  const messages: Message[] = [
+    { role: 'user', content: [{ text: `Transcript:\n\n${transcriptText}` }] },
   ];
 
   // A real tool-use round trip is at most a couple of turns (search, maybe one
@@ -197,85 +207,77 @@ async function callAnthropicWithTools(transcriptText: string): Promise<Anthropic
   const MAX_TOOL_ROUNDS = 4;
 
   for (let round = 0; round <= MAX_TOOL_ROUNDS; round++) {
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'content-type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY ?? '',
-        'anthropic-version': '2023-06-01',
-      },
-      body: JSON.stringify({
-        model: process.env.ANTHROPIC_MODEL_ID,
-        max_tokens: 1500,
-        system: SOAP_SYSTEM_PROMPT,
-        tools: [ICD10_SEARCH_TOOL],
+    const response = await bedrock.send(
+      new ConverseCommand({
+        modelId: process.env.BEDROCK_MODEL_ID,
+        system: [{ text: SOAP_SYSTEM_PROMPT }],
+        toolConfig: { tools: [ICD10_SEARCH_TOOL] },
+        inferenceConfig: { maxTokens: 1500 },
         messages,
       }),
-    });
+    );
 
-    if (!response.ok) {
-      throw new Error(`Anthropic API request failed: ${response.status} ${await response.text()}`);
+    const content: ContentBlock[] = response.output?.message?.content ?? [];
+    const textBlock = content.find(isTextBlock);
+
+    if (response.stopReason !== 'tool_use') {
+      if (!textBlock) throw new Error('No text content in Bedrock response');
+      return textBlock.text;
     }
 
-    const responseBody = (await response.json()) as AnthropicResponse;
-    if (responseBody.stop_reason !== 'tool_use') return responseBody;
+    const toolUseBlocks = content.filter(isToolUseBlock);
+    // Malformed/empty tool_use turn — nothing to act on. Fall back to any text
+    // present rather than loop forever; the caller's own JSON-extraction will
+    // fail loudly if there's none.
+    if (toolUseBlocks.length === 0) {
+      if (!textBlock) throw new Error('No text content in Bedrock response');
+      return textBlock.text;
+    }
 
-    const toolUseBlocks = (responseBody.content ?? []).filter((b) => b.type === 'tool_use');
-    // Malformed/empty tool_use turn — nothing to act on. Return as-is rather than
-    // loop forever; the caller's own text-extraction will fail loudly on it.
-    if (toolUseBlocks.length === 0) return responseBody;
-
-    messages.push({ role: 'assistant', content: responseBody.content });
+    messages.push({ role: 'assistant', content });
     messages.push({
       role: 'user',
-      content: toolUseBlocks.map((block) => {
-        const results = searchIcd10Codes(block.input?.query ?? '');
+      content: toolUseBlocks.map((block): ContentBlock => {
+        const query = (block.toolUse.input as { query?: string } | undefined)?.query ?? '';
+        const results = searchIcd10Codes(query);
         // Deliberately kept (not scaffolding) — this is the only visibility
         // into whether the code-grounding tool is actually firing in
-        // production, short of reading raw Anthropic API traffic.
-        console.log(
-          'icd10_tool_call',
-          JSON.stringify({ query: block.input?.query, matchCount: results.length }),
-        );
-        return { type: 'tool_result', tool_use_id: block.id, content: JSON.stringify(results) };
+        // production, short of reading raw Bedrock traffic.
+        console.log('icd10_tool_call', JSON.stringify({ query, matchCount: results.length }));
+        // Bedrock's Converse API rejects a bare array for toolResult content's
+        // `json` field at runtime ("Provide a json object for the field") even
+        // though the SDK's DocumentType allows arrays structurally — found via
+        // a real live invocation, not a type error. Wrap in an object.
+        // Cast: Icd10Code is a plain interface with the same shape as
+        // DocumentType's index-signature object at runtime, so the cast is a
+        // type-system-only gap, not a real risk.
+        return {
+          toolResult: { toolUseId: block.toolUse.toolUseId, content: [{ json: { results } as any }] },
+        };
       }),
     });
   }
 
-  throw new Error(`Anthropic API tool-use loop exceeded ${MAX_TOOL_ROUNDS} rounds`);
+  throw new Error(`Bedrock tool-use loop exceeded ${MAX_TOOL_ROUNDS} rounds`);
 }
 
 export async function generateSoapNote(transcriptText: string) {
-  // Temporary: AWS Bedrock model access for anthropic.claude-sonnet-5 is blocked
-  // on an account-level restriction (AWS support case filed, pending as of
-  // 2026-07-18) — this lets the rest of the pipeline (and the note review/sign
-  // UI) be built and exercised end-to-end without a real model call.
-  // Remove this branch once MOCK_SOAP_NOTE is no longer set to 'true' in the stack.
+  // Lets the rest of the pipeline (and the note review/sign UI) be exercised
+  // end-to-end without a real model call — e.g. for local/CI test runs.
   if (process.env.MOCK_SOAP_NOTE === 'true') {
     return {
-      subjective: `[MOCK NOTE — Bedrock access pending] ${transcriptText.slice(0, 300)}`,
-      objective: '[MOCK NOTE — Bedrock access pending]',
-      assessment: '[MOCK NOTE — Bedrock access pending]',
-      plan: '[MOCK NOTE — Bedrock access pending]',
+      subjective: `[MOCK NOTE] ${transcriptText.slice(0, 300)}`,
+      objective: '[MOCK NOTE]',
+      assessment: '[MOCK NOTE]',
+      plan: '[MOCK NOTE]',
       suggestedCodes: '',
     };
   }
 
-  // Interim substitute for Bedrock (blocked on AWS account verification, see
-  // STATUS.md) — calls the Anthropic API directly instead. Same model family,
-  // same system prompt, same messages shape; only the transport differs.
-  // Revert to BedrockRuntimeClient.send(InvokeModelCommand) once Bedrock access clears.
-  const responseBody = await callAnthropicWithTools(transcriptText);
-
-  // Extended thinking puts a `thinking`-type block before the `text` block,
-  // so content[0] isn't reliably the answer — found live 2026-08-14, the
-  // first real (non-mock) invocation returned a thinking block at index 0
-  // and this threw "No text content" despite the model answering correctly.
-  const text: string | undefined = responseBody?.content?.find((block) => block.type === 'text')?.text;
-  if (!text) throw new Error('No text content in Anthropic API response');
+  const text = await callBedrockWithTools(transcriptText);
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) throw new Error(`Anthropic API response was not JSON: ${text}`);
+  if (!jsonMatch) throw new Error(`Bedrock response was not JSON: ${text}`);
   return JSON.parse(jsonMatch[0]) as {
     subjective?: string;
     objective?: string;

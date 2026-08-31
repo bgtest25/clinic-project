@@ -10,7 +10,7 @@ assessor starts from "here's what's built, verify and evaluate it" instead of a 
 Every claim below is either (a) verified live against the running system as of the date noted, or
 (b) a citation to a specific file/line in this repository. Nothing here is asserted from memory.
 
-**Last verified:** 2026-08-16.
+**Last verified:** 2026-08-16, business-associate row updated 2026-08-31.
 
 ---
 
@@ -27,7 +27,7 @@ Every claim below is either (a) verified live against the running system as of t
 | Contingency plan — data backup | Implemented and **proven**, not just configured | RDS automated backups (7-day retention). A real point-in-time restore drill (2026-08-16) confirmed the restored instance's row counts matched the live primary exactly — not assumed, verified |
 | Contingency plan — disaster recovery / emergency mode | Partial | RDS Multi-AZ live (automatic failover to a standby). No documented DR runbook beyond the incident-response runbook's containment section |
 | Evaluation | Ongoing, informal | Multiple live security audits this project (2026-08-11, 2026-08-15, 2026-08-16) found and fixed real issues — see `memory/STATUS.md` for the full history. Not a substitute for a scheduled, formal evaluation cadence |
-| Business associate contracts | **Partial — the actual gate** | AWS BAA: confirmed **ACTIVE** via `aws artifact list-customer-agreements` (effective 2026-07-17). Anthropic: **no BAA/DPA in place** — the direct Anthropic API call (see Technical Safeguards below) is not currently covered by any executed agreement. Clinic BAA: `compliance/BAA-TEMPLATE.md`, drafted, not reviewed by counsel, not executed |
+| Business associate contracts | **Partial** | AWS BAA: confirmed **ACTIVE** via `aws artifact list-customer-agreements` (effective 2026-07-17), now covers the AI drafting call too since it moved to AWS Bedrock 2026-08-31 (see Technical Safeguards below) — Anthropic is no longer a direct subprocessor of this system. Clinic BAA: `compliance/BAA-TEMPLATE.md`, drafted, not reviewed by counsel, not executed — this remains the actual gate |
 
 ## Physical Safeguards (45 CFR §164.310)
 
@@ -62,6 +62,5 @@ Every claim below is either (a) verified live against the running system as of t
 
 - No formal risk analysis (this document is preparation for one, not one itself)
 - No workforce sanction policy or documented security-awareness training program
-- Anthropic BAA/DPA not yet executed
 - Clinic-facing BAA and privacy policy not yet reviewed by counsel or executed
 - No independent security review / penetration test has been performed — see `compliance/SECURITY-REVIEW-SCOPE.md`

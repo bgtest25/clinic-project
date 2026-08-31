@@ -1,10 +1,19 @@
 # Havenote — Data Sent to Anthropic
 
-**Purpose:** a precise technical description of what data reaches Anthropic's API, for whoever
-contacts Anthropic's commercial/legal team about a BAA or data-processing agreement. Every claim
-below is a direct citation to the actual request code
-(`infra/lambda/process-transcript/index.ts`), not a general description — verify against current
-code before relying on it if this document is more than a few weeks old.
+**SUPERSEDED 2026-08-31**: this document describes the direct-Anthropic-API architecture that was
+live 2026-08-14 through 2026-08-31. As of 2026-08-31, `infra/lambda/process-transcript/index.ts`
+calls the model through **AWS Bedrock** (`BedrockRuntimeClient`/`ConverseCommand`) instead of
+`api.anthropic.com` directly — see `memory/STATUS.md`'s 2026-08-31 entry. **Anthropic is no longer
+a direct subprocessor of this system**; the model call now flows entirely through AWS
+infrastructure already covered by the active AWS BAA (confirmed effective 2026-07-17). Kept here
+for historical record (why the BAA outreach below was sent, what the interim architecture looked
+like) — not current architecture. See `compliance/SECURITY-REVIEW-SCOPE.md` for the current data
+flow description.
+
+**Purpose (as of when this was written):** a precise technical description of what data reaches
+Anthropic's API, for whoever contacts Anthropic's commercial/legal team about a BAA or
+data-processing agreement. Every claim below is a direct citation to the actual request code as it
+existed at the time, not a general description.
 
 ## The short version
 
@@ -57,10 +66,14 @@ it's just the code-search results.
   Anthropic as part of the BAA/DPA conversation, do not assume standard API retention terms apply
   without checking
 
-## Current subprocessor status
+## Subprocessor status (as of when this was written — see superseded notice above)
 
 - **AWS** (hosting the Lambda, and Transcribe Medical for the earlier transcription step): covered
   by an active AWS BAA (confirmed via `aws artifact list-customer-agreements`, effective
   2026-07-17)
-- **Anthropic**: **no BAA or data-processing agreement currently in place.** This is a real,
-  active gap — this data flow should not run against real patient transcripts until it's resolved.
+- **Anthropic**: **no BAA or data-processing agreement currently in place.** This was a real,
+  active gap while this architecture was live. **Resolved 2026-08-31 by removing the direct
+  dependency**, not by executing a BAA — the model call now goes through Bedrock, so this data flow
+  is covered by the existing AWS BAA instead. If the outreach sent to Anthropic's commercial team
+  2026-08-17 gets a response, an Anthropic BAA is no longer a blocker for this system, though there's
+  no harm in completing it if already in motion.

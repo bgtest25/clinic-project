@@ -55,10 +55,10 @@ Business Associate will report to Covered Entity, without unreasonable delay:
 Business Associate will ensure that any subcontractor that creates, receives, maintains, or transmits
 PHI on Business Associate's behalf agrees, in writing, to restrictions and conditions at least as
 restrictive as those in this Agreement. `[List current subprocessors — AWS (hosting, storage, Amazon
-Transcribe Medical) and Anthropic (called directly via its own API, not through Amazon Bedrock) — and
-confirm each has an executed BAA or equivalent flow-down agreement in place before this section is
-finalized, including a direct agreement with Anthropic covering this API usage, not just AWS's BAA; see
-the Subprocessors section of PRIVACY-POLICY.md.]`
+Transcribe Medical, and as of 2026-08-31 the Claude model via Amazon Bedrock) — and confirm the
+existing AWS BAA's effective scope explicitly covers Bedrock before this section is finalized; see the
+Subprocessors section of PRIVACY-POLICY.md. Anthropic is not a separate subprocessor as of 2026-08-31 —
+an earlier direct-API architecture (2026-08-14 through 2026-08-31) has since been replaced.]`
 
 ## 6. Access, amendment, and accounting of disclosures
 

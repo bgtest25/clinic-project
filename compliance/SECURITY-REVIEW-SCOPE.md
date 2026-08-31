@@ -51,10 +51,13 @@ resolves the caller's clinic via their JWT and filters every query by it
 **Data flows to third parties**
 - **AWS Transcribe Medical** — receives raw audio, returns a transcript (text + speaker-diarized
   segments). Covered by the active AWS BAA.
-- **Anthropic API** (`api.anthropic.com`, called directly from `infra/lambda/process-transcript/index.ts`,
-  not via Bedrock) — receives the transcript text (real PHI: patient statements, symptoms,
-  history) to draft the SOAP note. **No BAA currently in place with Anthropic** — see
-  `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for the exact data sent.
+- **AWS Bedrock** (`BedrockRuntimeClient`/`ConverseCommand` in
+  `infra/lambda/process-transcript/index.ts`, model `us.anthropic.claude-sonnet-4-5-20250929-v1:0`
+  — switched from a direct Anthropic API call 2026-08-31, see `memory/STATUS.md`) — receives the
+  transcript text (real PHI: patient statements, symptoms, history) to draft the SOAP note.
+  Covered by the active AWS BAA — **Anthropic is no longer a direct subprocessor of this system**;
+  see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for the now-superseded direct-API architecture
+  and what data this call sends (unchanged in substance, only the transport changed).
 - No other third party receives PHI. The ICD-10 code lookup used by the AI pipeline's tool-use step
   is a local, self-hosted dataset bundled into the Lambda — deliberately not a third-party API, to
   avoid a new subprocessor relationship.
@@ -72,12 +75,13 @@ resolves the caller's clinic via their JWT and filters every query by it
 
 ## Known non-standard architecture (worth understanding before testing)
 
-- **AI drafting goes through Anthropic's API directly, not Bedrock.** Bedrock model access is
-  still blocked on an open AWS support case (`178433501800988`, escalated to a specialized team
-  2026-08-11, no timeline given, urgent follow-up sent 2026-08-19). The Anthropic-direct path has
-  been the live, verified architecture since 2026-08-14 — not a fallback expected to change soon.
-  Worth noting Anthropic doesn't yet have an executed BAA (outreach sent 2026-08-17, awaiting
-  response) — see `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md`.
+- **AI drafting goes through AWS Bedrock as of 2026-08-31.** AWS support case `178433501800988`
+  was partially approved 2026-08-31 (Claude Sonnet 4/4.5 access in us-east-1/us-west-2 — newer
+  models like 4.6/Opus 5 still need more paperwork, not a blocker for this pipeline). Confirmed
+  live via a real Bedrock `Converse` call and via a real invocation of the deployed Lambda. From
+  2026-08-14 through 2026-08-31 this ran as a direct Anthropic API call instead (an interim
+  workaround while Bedrock access was blocked) — that history and the resulting no-BAA gap are
+  preserved in `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md`, now superseded.
 - The CloudFront cutover above had a real, non-obvious bug worth knowing about if testing cache
   behavior: the S3 deployment originally set no `Cache-Control` metadata at all, so a stale
   cached `index.html` could reference a content-hashed JS bundle that a later deploy's default

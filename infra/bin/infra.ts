@@ -23,10 +23,12 @@ const env = {
 // Passed by the GitHub Actions workflow at deploy time (`-c apiImageTag=<git-sha>`);
 // defaults to 'latest' for local/manual synth.
 const apiImageTag = app.node.tryGetContext('apiImageTag') ?? 'latest';
-// Interim substitute for Bedrock (blocked on AWS account verification, see
-// STATUS.md) — this is a direct Anthropic API model id, not a Bedrock one.
-// Revert to bedrockModelId/'anthropic.claude-sonnet-5' once Bedrock clears.
-const anthropicModelId = app.node.tryGetContext('anthropicModelId') ?? 'claude-sonnet-5';
+// Bedrock model access confirmed live 2026-08-31 (AWS support case
+// 178433501800988) — a cross-region inference profile id, not a bare
+// foundation-model id; this model family doesn't support on-demand
+// throughput on the raw model id (see ai-pipeline-stack.ts).
+const bedrockModelId =
+  app.node.tryGetContext('bedrockModelId') ?? 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
 // The real model has been wired up (direct Anthropic API, see STATUS.md) since
 // 2026-08-14, so 'false' is now the actual default — not a CLI flag someone
 // has to remember to repeat. A prior version of this line defaulted to 'true'
@@ -57,7 +59,7 @@ const aiPipeline = new ClinicAiPipelineStack(app, 'ClinicAiPipelineStack', {
   mediaBucketKey: storage.mediaBucketKey,
   dbSecurityGroup: database.dbSecurityGroup,
   dbSecret: database.instance.secret!,
-  anthropicModelId,
+  bedrockModelId,
   mockSoapNote,
 });
 
