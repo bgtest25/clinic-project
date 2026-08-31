@@ -10,4 +10,3 @@ build/
 cdk.out*/
 .cdk.staging/
 .claude/
-memory/
