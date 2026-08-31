@@ -1,10 +1,12 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (remediation pass on threats #8/#10 plus real progress on the HHS/ONC
-SRA Tool — a second unused-but-reachable admin over-permission found and removed (`POST /clinics`),
-IAM Access Analyzer enabled, a real GuardDuty-findings-go-nowhere gap found and fixed, and 55/125
-SRA Tool questions genuinely answered in the real downloaded workbook, with two real findings
-surfaced along the way — see 🟢 entry below. Earlier the same day: a real, live cross-tenant
+**Last updated:** 2026-08-31 (SRA Tool pushed further at your explicit request — 24 more questions
+answered in a second round, 79/125 total now genuinely checked in the real downloaded workbook,
+Section 1 fully complete — see 🟢 entry below. Earlier the same day: a remediation pass on threats
+#8/#10 plus the SRA Tool's first round — a second unused-but-reachable admin over-permission found
+and removed (`POST /clinics`), IAM Access Analyzer enabled, a real GuardDuty-findings-go-nowhere gap
+found and fixed, and the SRA Tool's first 55/125 questions genuinely answered, with two real
+findings surfaced along the way — see 🟢 entry below. Earlier the same day: a real, live cross-tenant
 authorization vulnerability found and fixed while adding authorization-boundary test coverage for
 Security Risk Assessment threat #10 — any authenticated admin could invite a user, including
 another admin, into a clinic they don't belong to via a direct API call. Also closed threats #9
@@ -34,6 +36,45 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 SRA Tool round 2 — 24 more questions, 79/125 total, Section 1 fully complete (2026-08-31)
+
+You asked to continue with the remaining ~70 questions after round 1. Went through every one of
+them individually against the same rule as round 1 (no maturity/formality judgment calls on your
+behalf), but this round also filled in questions where the honest answer follows directly from an
+already-established fact — either a "No" already given to a closely-related question earlier in
+the same section (e.g. Section 1 Q9-10, "we don't communicate SRA results to staff," follows
+directly from there being no formal communication process for a team of one), or a real, cited
+project fact not previously connected to that specific tool question (e.g. Section 5 Q18's "data is
+centrally stored in the cloud" answer, straight from the RDS/S3 architecture).
+
+**24 more answered**: Section 1 (5, now 10/10 complete), Section 2 (4), Section 3 (2), Section 4
+(7), Section 5 (1), Section 6 (2), Section 7 (3). Section 5 remains almost entirely open (17 of 23
+questions) — it's overwhelmingly about a physical facility that doesn't exist for this cloud-only
+architecture, or personal workstation/device practices only you would know; deliberately left for
+you rather than guessed.
+
+**One judgment call resolved that round 1 deliberately left open, flagged clearly rather than
+silently decided**: Section 4 Q29 (vulnerability scanning) — round 1 noted AWS Inspector's
+continuous automated scanning as a real fact in tension with the cross-check doc's older "no
+formal program" framing, but left it unchecked pending your call. This round answered it "Yes"
+(periodic, scheduled scans), reasoning Inspector's continuous scanning genuinely satisfies the
+question as worded — flagged in `SRA-TOOL-CROSS-CHECK.md` so you can override it if you disagree.
+Section 5 Q15 (audit-report retention ≥6 years, but CloudTrail's real retention is 365 days) stayed
+unchecked — that's a genuine compliance gap, not a translation judgment call, and picking either
+answer without your input would misrepresent it.
+
+**Verified with the same rigor as round 1**: independently re-read the written file, confirmed all
+79 checkmarks (55 + 24) land on the exact intended rows, confirmed zero questions have two
+conflicting answers checked, confirmed the `Risk_Logic` sheet's formulas are still byte-for-byte
+intact. `compliance/SRA-Tool-v3.6.1-Partial.xlsx` updated in place (same file, not a new one) —
+committed, not left in a scratch directory.
+
+**Where this leaves it**: 46 questions remain, genuinely needing you — mostly Section 5's
+physical/personal-device questions, plus a handful of others (workforce-hiring questions that don't
+structurally fit a team of one, a couple of specific BAA-clause facts not independently verified
+against AWS's actual agreement text). Full remaining list is implicit in
+`compliance/SRA-Tool-v3.6.1-Partial.xlsx` itself — any question without a `✔` in column C.
 
 ## 🟢 Threat #8/#10 remediation pass, and real progress on the HHS/ONC SRA Tool (2026-08-31)
 

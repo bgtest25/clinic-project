@@ -109,47 +109,63 @@ AWS" rather than leaving blank, since HIPAA still expects the question to be add
 
 ---
 
-## Real progress: 55/125 questions already answered (2026-08-31)
+## Real progress: 79/125 questions already answered (2026-08-31, two rounds)
 
 `compliance/SRA-Tool-v3.6.1-Partial.xlsx` in this same directory is the actual downloaded tool
-(v3.6.1, healthit.gov), with 55 of the 125 questions genuinely checked off — not a mockup. Built by
+(v3.6.1, healthit.gov), with 79 of the 125 questions genuinely checked off — not a mockup. Built by
 parsing the real workbook (`xlsx` npm package, in a throwaway scratch install, not a project
 dependency) rather than guessing its layout, then mechanically placing a `✔` in column C of the
-matching answer row for each question below where the translation from this doc's cited answer to
-the tool's exact wording was low-risk (a plain Yes/No/IDK question, or a multi-choice question where
-one option is an unambiguous factual match). **Deliberately did not fill in any question that
-requires a maturity/formality judgment call** — e.g. whether existing documentation counts as a
-fully "formal process" versus "some documentation, not all complete" — even where this document
-gave a confident prose answer, if translating that into the tool's specific worded options would
-mean making that judgment on your behalf rather than just transcribing a fact. Those 70 remain
-unchecked for the same reason as everything already marked "Needs your input" below.
+matching answer row.
 
-**Verified before treating this as done**: independently re-read the written file after each
-change and confirmed every one of the 55 checkmarks landed on the exact intended row (not just
-that the script exited cleanly); the original downloaded template turned out to ship with 2
-pre-existing example checkmarks (Section 1, an internal sample answer) — found by an unexpected
-count mismatch during verification, and cleared before applying ours so no question ended up with
-two conflicting answers checked at once; confirmed the workbook's internal scoring formulas
-(`Risk_Logic` sheet) are byte-for-byte intact after the write, not just that the file opens.
+**Round 1 (55 questions)**: only where the translation from this doc's cited answer to the tool's
+exact wording was low-risk — a plain Yes/No/IDK question, or a multi-choice question where one
+option is an unambiguous factual match. Deliberately skipped anything requiring a maturity/
+formality judgment call (e.g. whether existing documentation counts as a fully "formal process"
+versus "some documentation, not all complete"), even where this document gave a confident prose
+answer, since translating that into the tool's specific worded options would mean making that
+judgment on your behalf rather than just transcribing a fact.
+
+**Round 2 (24 more), at your explicit request to continue**: answered the remaining questions
+where the honest answer follows directly from an already-established fact — a prior "No" answer to
+a closely related question in the same section (e.g. "we don't communicate SRA results to staff"
+follows from "no formal communication process exists" for a team of one), or a real, cited project
+fact not previously connected to that specific tool question (e.g. RDS/S3 as the "centrally stored"
+backup answer for device-independent ePHI access). Section 1 is now fully answered (10/10). Still
+deliberately skipped: anything about a physical facility that doesn't exist for this cloud-only
+architecture, personal workstation/device practices only you would know, or genuine unresolved
+policy questions (vendor BAA-clause specifics not independently verified, workforce-hiring
+questions that don't structurally fit a team of one) — these remain in the "still unanswered"
+list below, same as always.
+
+**Verified before treating either round as done**: independently re-read the written file after
+each round and confirmed every checkmark landed on the exact intended row (not just that the script
+exited cleanly), and confirmed no question ended up with two conflicting answers checked at once.
+Round 1's re-read caught a real problem: the original downloaded template ships with 2 pre-existing
+example checkmarks (Section 1, an internal sample answer) — found by an unexpected count mismatch,
+cleared before applying ours. Confirmed the workbook's internal scoring formulas (`Risk_Logic`
+sheet) are byte-for-byte intact after each write, not just that the file opens.
 
 **Two real findings surfaced while doing this, worth flagging directly** (not silently corrected
 in the cells above, since they contradict this document's own earlier prose):
 - **Section 4 Q29** (vulnerability scanning): this document's Section 4 answer above says "No
   formal vulnerability-scanning program exists" — but AWS Inspector was enabled 2026-08-19 (ECR +
-  Lambda scanning, confirmed live) and does run automated, continuous vulnerability scans. Whether
-  that counts as satisfying this specific tool question is a real judgment call, left unchecked
-  rather than either overclaiming or leaving the stale "No" answer in place.
+  Lambda scanning, confirmed live) and does run automated, continuous vulnerability scans.
+  Round 1 left this unchecked pending exactly this judgment call; **round 2 answered it "Yes"**
+  (periodic, scheduled scans), on the reasoning that Inspector's continuous automated scanning
+  genuinely satisfies the question as worded — flagged here so you can override it if you disagree
+  with that call, not asserted as beyond question.
 - **Section 5 Q15** (audit-report retention ≥6 years): CloudTrail's actual retention is a 365-day
   lifecycle rule — under a year, not the ≥6 years this question asks about — even though Section
-  4's broader "Yes, monitoring/logging implemented" answer is accurate on its own terms. Left
-  unchecked rather than picking either the compliant or non-compliant option without your input.
+  4's broader "Yes, monitoring/logging implemented" answer is accurate on its own terms. Still left
+  unchecked in round 2 too — this is a genuine compliance gap, not a translation judgment call, and
+  picking either the compliant or non-compliant option without your input would misrepresent it.
 
 ## What to actually do with this
 
 1. Open `compliance/SRA-Tool-v3.6.1-Partial.xlsx` directly (Excel or the free SRA Tool Windows app)
-   — the 55 auto-filled answers are already there; spot-check a few against the cited sources
-   above rather than trusting them blindly.
-2. Work through the remaining ~70 questions using the prose answers above as a starting point
+   — the 79 auto-filled answers are already there; spot-check a few against the cited sources
+   above rather than trusting them blindly, and double-check the Section 4 Q29 call specifically.
+2. Work through the remaining ~46 questions using the prose answers above as a starting point
    where given, and your own honest judgment for everything marked "Needs your input" or left
    unchecked above — including "no" or "not yet" where that's the truth. The tool is designed to
    surface gaps, not to be gamed into a clean scorecard.

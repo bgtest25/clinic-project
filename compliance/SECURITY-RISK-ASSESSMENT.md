@@ -57,7 +57,9 @@ authorization vulnerabilities found/fixed and test coverage added) — point rev
 rows, not a full re-walk of all ten threats. Worth a full re-review before this is treated as
 current on every row.
 **Reviewed alongside:** HHS/ONC Security Risk Assessment Tool — ☐ yes ☑ no. **Real progress
-2026-08-31**: 55/125 questions genuinely answered in the actual downloaded workbook
-(`compliance/SRA-Tool-v3.6.1-Partial.xlsx`) — still not complete, the remaining ~70 are genuine
-judgment calls for you; don't flip this to "yes" until they're done
+2026-08-31**: 79/125 questions genuinely answered in the actual downloaded workbook
+(`compliance/SRA-Tool-v3.6.1-Partial.xlsx`, two rounds) — still not complete, the remaining ~46 are
+genuine judgment calls for you (mostly Section 5's physical-facility/personal-device questions,
+which don't apply cleanly to a cloud-only architecture and a one-person team); don't flip this to
+"yes" until they're done
 **Next scheduled review:** 2027-08-16 (annual), or sooner if team size or a new subprocessor changes materially.
