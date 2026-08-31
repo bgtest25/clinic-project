@@ -30,19 +30,27 @@ describe('PatientsService', () => {
     } as any);
 
     expect(prisma.patient.create).toHaveBeenCalledWith({
-      data: { name: 'Jane', dateOfBirth: new Date('1990-01-01'), clinicId: 'clinic-a' },
+      data: {
+        name: 'Jane',
+        dateOfBirth: new Date('1990-01-01'),
+        clinicId: 'clinic-a',
+      },
     });
   });
 
   it("findAll only ever queries the caller's own clinic", async () => {
     prisma.patient.findMany.mockResolvedValue([]);
     await service.findAll('sub-1');
-    expect(prisma.patient.findMany).toHaveBeenCalledWith({ where: { clinicId: 'clinic-a' } });
+    expect(prisma.patient.findMany).toHaveBeenCalledWith({
+      where: { clinicId: 'clinic-a' },
+    });
   });
 
   it('findOne throws NotFoundException for a patient in a different clinic', async () => {
     prisma.patient.findFirst.mockResolvedValue(null);
-    await expect(service.findOne('sub-1', 'patient-in-other-clinic')).rejects.toThrow(NotFoundException);
+    await expect(
+      service.findOne('sub-1', 'patient-in-other-clinic'),
+    ).rejects.toThrow(NotFoundException);
     expect(prisma.patient.findFirst).toHaveBeenCalledWith({
       where: { id: 'patient-in-other-clinic', clinicId: 'clinic-a' },
     });
@@ -56,9 +64,33 @@ describe('PatientsService', () => {
 
   it('update throws NotFoundException (and never writes) for a patient in a different clinic', async () => {
     prisma.patient.findFirst.mockResolvedValue(null);
-    await expect(service.update('sub-1', 'patient-x', { name: 'New' } as any)).rejects.toThrow(
-      NotFoundException,
-    );
+    await expect(
+      service.update('sub-1', 'patient-x', { name: 'New' } as any),
+    ).rejects.toThrow(NotFoundException);
     expect(prisma.patient.update).not.toHaveBeenCalled();
+  });
+
+  // Direct coverage of the real method other modules call in production
+  // (PatientDataRequestsService) — previously only exercised via mocks in
+  // those callers' own specs, meaning a regression here (e.g. someone
+  // dropping the clinicId filter) would have gone uncaught by any test.
+  describe('assertClinicOwnsPatient', () => {
+    it('throws NotFoundException when the patient belongs to a different clinic', async () => {
+      prisma.patient.findFirst.mockResolvedValue(null);
+      await expect(
+        service.assertClinicOwnsPatient('patient-1', 'clinic-a'),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.patient.findFirst).toHaveBeenCalledWith({
+        where: { id: 'patient-1', clinicId: 'clinic-a' },
+        select: { id: true },
+      });
+    });
+
+    it('resolves silently when the patient belongs to the given clinic', async () => {
+      prisma.patient.findFirst.mockResolvedValue({ id: 'patient-1' });
+      await expect(
+        service.assertClinicOwnsPatient('patient-1', 'clinic-a'),
+      ).resolves.toBeUndefined();
+    });
   });
 });

@@ -1,4 +1,13 @@
-import { Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -23,8 +32,8 @@ export class UsersController {
 
   @Post()
   @Roles('admin')
-  invite(@Body() dto: CreateUserDto) {
-    return this.usersService.invite(dto);
+  invite(@Body() dto: CreateUserDto, @Req() req: any) {
+    return this.usersService.invite(req.user.sub, dto);
   }
 
   @Patch(':id/deactivate')

@@ -149,7 +149,7 @@ function AuthenticatedApp({ token }: { token: string }) {
           path="/invite"
           element={
             <AdminRoute me={me}>
-              <InviteClinician token={token} me={me} onBack={() => navigate('/')} />
+              <InviteClinician token={token} onBack={() => navigate('/')} />
             </AdminRoute>
           }
         />

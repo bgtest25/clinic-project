@@ -75,7 +75,6 @@ export interface InviteUserPayload {
   email: string;
   name: string;
   role: 'ADMIN' | 'CLINICIAN';
-  clinicId: string;
 }
 
 export interface MetricsSummary {

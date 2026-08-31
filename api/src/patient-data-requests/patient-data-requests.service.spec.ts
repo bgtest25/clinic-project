@@ -20,28 +20,46 @@ describe('PatientDataRequestsService', () => {
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
     usersService = { findByCognitoSub: jest.fn().mockResolvedValue(actor) };
-    patientsService = { assertClinicOwnsPatient: jest.fn().mockResolvedValue(undefined) };
-    service = new PatientDataRequestsService(prisma, usersService, patientsService);
+    patientsService = {
+      assertClinicOwnsPatient: jest.fn().mockResolvedValue(undefined),
+    };
+    service = new PatientDataRequestsService(
+      prisma,
+      usersService,
+      patientsService,
+    );
   });
 
   describe('create', () => {
     it('checks clinic ownership before logging the request', async () => {
       prisma.$transaction.mockResolvedValue([{ id: 'req-1' }, {}]);
-      await service.create('sub-1', 'patient-1', { requestType: 'deletion' } as any);
-      expect(patientsService.assertClinicOwnsPatient).toHaveBeenCalledWith('patient-1', 'clinic-a');
+      await service.create('sub-1', 'patient-1', {
+        requestType: 'deletion',
+      });
+      expect(patientsService.assertClinicOwnsPatient).toHaveBeenCalledWith(
+        'patient-1',
+        'clinic-a',
+      );
     });
 
     it('never logs a request if the clinic-ownership check fails', async () => {
-      patientsService.assertClinicOwnsPatient.mockRejectedValue(new NotFoundException());
+      patientsService.assertClinicOwnsPatient.mockRejectedValue(
+        new NotFoundException(),
+      );
       await expect(
-        service.create('sub-1', 'patient-x', { requestType: 'deletion' } as any),
+        service.create('sub-1', 'patient-x', {
+          requestType: 'deletion',
+        } as any),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('writes both the request and an audit log entry', async () => {
       prisma.$transaction.mockResolvedValue([{ id: 'req-1' }, {}]);
-      await service.create('sub-1', 'patient-1', { requestType: 'amendment', reason: 'typo' } as any);
+      await service.create('sub-1', 'patient-1', {
+        requestType: 'amendment',
+        reason: 'typo',
+      });
 
       expect(prisma.patientDataRequest.create).toHaveBeenCalledWith({
         data: {
@@ -62,23 +80,97 @@ describe('PatientDataRequestsService', () => {
     });
   });
 
+  describe('findAll', () => {
+    it('checks clinic ownership before listing requests', async () => {
+      prisma.patientDataRequest.findMany.mockResolvedValue([]);
+      await service.findAll('sub-1', 'patient-1');
+      expect(patientsService.assertClinicOwnsPatient).toHaveBeenCalledWith(
+        'patient-1',
+        'clinic-a',
+      );
+    });
+
+    it('never lists requests if the clinic-ownership check fails', async () => {
+      patientsService.assertClinicOwnsPatient.mockRejectedValue(
+        new NotFoundException(),
+      );
+      await expect(service.findAll('sub-1', 'patient-x')).rejects.toThrow(
+        NotFoundException,
+      );
+      expect(prisma.patientDataRequest.findMany).not.toHaveBeenCalled();
+    });
+
+    it('returns requests for the patient, newest first', async () => {
+      const requests = [{ id: 'req-1' }, { id: 'req-2' }];
+      prisma.patientDataRequest.findMany.mockResolvedValue(requests);
+      await expect(service.findAll('sub-1', 'patient-1')).resolves.toBe(
+        requests,
+      );
+      expect(prisma.patientDataRequest.findMany).toHaveBeenCalledWith({
+        where: { patientId: 'patient-1' },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+  });
+
   describe('resolve', () => {
+    it('checks clinic ownership before resolving a request', async () => {
+      prisma.patientDataRequest.findFirst.mockResolvedValue({
+        id: 'req-1',
+        status: 'pending',
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'req-1', status: 'approved' },
+        {},
+      ]);
+
+      await service.resolve('sub-1', 'patient-1', 'req-1', {
+        status: 'approved',
+      });
+
+      expect(patientsService.assertClinicOwnsPatient).toHaveBeenCalledWith(
+        'patient-1',
+        'clinic-a',
+      );
+    });
+
+    it('never resolves a request if the clinic-ownership check fails', async () => {
+      patientsService.assertClinicOwnsPatient.mockRejectedValue(
+        new NotFoundException(),
+      );
+      await expect(
+        service.resolve('sub-1', 'patient-x', 'req-1', {
+          status: 'approved',
+        } as any),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.patientDataRequest.findFirst).not.toHaveBeenCalled();
+      expect(prisma.$transaction).not.toHaveBeenCalled();
+    });
+
     it('throws NotFoundException for an unknown requestId even within the right clinic', async () => {
       prisma.patientDataRequest.findFirst.mockResolvedValue(null);
       await expect(
-        service.resolve('sub-1', 'patient-1', 'req-missing', { status: 'approved' } as any),
+        service.resolve('sub-1', 'patient-1', 'req-missing', {
+          status: 'approved',
+        } as any),
       ).rejects.toThrow(NotFoundException);
       expect(prisma.$transaction).not.toHaveBeenCalled();
     });
 
     it('updates status and writes an audit log recording the transition', async () => {
-      prisma.patientDataRequest.findFirst.mockResolvedValue({ id: 'req-1', status: 'pending' });
-      prisma.$transaction.mockResolvedValue([{ id: 'req-1', status: 'denied' }, {}]);
+      prisma.patientDataRequest.findFirst.mockResolvedValue({
+        id: 'req-1',
+        status: 'pending',
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'req-1', status: 'denied' },
+        {},
+      ]);
 
       await service.resolve('sub-1', 'patient-1', 'req-1', {
         status: 'denied',
         resolutionNote: 'Retention period not yet elapsed',
-      } as any);
+      });
 
       expect(prisma.patientDataRequest.update).toHaveBeenCalledWith({
         where: { id: 'req-1' },

@@ -136,6 +136,38 @@ export class ClinicMonitoringStack extends cdk.Stack {
       treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
     });
 
+    // Anomaly detection for unusual admin activity — Security Risk
+    // Assessment threat #3's own example is "mass user creation"; this
+    // covers that plus mass deactivation/reactivation/MFA-reset bursts,
+    // the other admin actions with real blast radius. UsersService logs a
+    // plain `admin_action` stdout line alongside each AuditLog write
+    // (invite/deactivate/reactivate/resetMfa) specifically to make this
+    // countable here — AuditLog rows alone land in Postgres only, with no
+    // CloudWatch visibility. Threshold is a judgment call, not a precise
+    // baseline: at this project's current scale (single-digit users per
+    // clinic), more than 10 admin actions in 5 minutes is already unusual
+    // for legitimate use (even an initial clinic-bootstrap invite batch is
+    // typically a handful of people) — revisit as the team/pilot grows and
+    // legitimate bulk-onboarding becomes more common.
+    const adminActionMetric = new logs.MetricFilter(this, 'AdminActionLogFilter', {
+      logGroup: apiLogGroup,
+      metricNamespace: 'ClinicProject',
+      metricName: 'AdminActionCount',
+      filterPattern: logs.FilterPattern.anyTerm('admin_action'),
+      metricValue: '1',
+      defaultValue: 0,
+    }).metric({ period: cdk.Duration.minutes(5), statistic: 'Sum' });
+
+    alarm('AdminActionBurst', {
+      alarmDescription:
+        'Unusually high volume of admin actions (invite/deactivate/reactivate/MFA-reset) in a 5-minute window — possible compromised or malicious admin account',
+      metric: adminActionMetric,
+      threshold: 10,
+      evaluationPeriods: 1,
+      comparisonOperator: cloudwatch.ComparisonOperator.GREATER_THAN_THRESHOLD,
+      treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
+    });
+
     // --- AI pipeline Lambda ---
     alarm('ProcessTranscriptErrors', {
       alarmDescription: 'process-transcript Lambda has errored',

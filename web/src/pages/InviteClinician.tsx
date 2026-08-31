@@ -1,14 +1,12 @@
 import { useState, type FormEvent } from 'react';
 import { apiFetch } from '../api/client';
-import type { InviteUserPayload, Me } from '../api/types';
+import type { InviteUserPayload } from '../api/types';
 
 export function InviteClinician({
   token,
-  me,
   onBack,
 }: {
   token: string;
-  me: Me;
   onBack: () => void;
 }) {
   const [name, setName] = useState('');
@@ -25,7 +23,7 @@ export function InviteClinician({
     try {
       await apiFetch<unknown>('/users', token, {
         method: 'POST',
-        body: JSON.stringify({ email, name, role, clinicId: me.clinicId } satisfies InviteUserPayload),
+        body: JSON.stringify({ email, name, role } satisfies InviteUserPayload),
       });
       setInvitedEmail(email);
       setName('');

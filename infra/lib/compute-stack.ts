@@ -13,6 +13,7 @@ import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager';
 import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2';
 
 export interface ClinicComputeStackProps extends cdk.StackProps {
   vpc: ec2.Vpc;
@@ -157,6 +158,95 @@ export class ClinicComputeStack extends cdk.Stack {
       toPort: 5432,
       sourceSecurityGroupId: this.service.service.connections.securityGroups[0].securityGroupId,
       description: 'Allow ECS app tier to reach Postgres',
+    });
+
+    // Security Risk Assessment threat #9 (DoS / resource exhaustion) flagged
+    // no WAF configured as a real, un-addressed gap — this closes it.
+    // REGIONAL scope (not CLOUDFRONT) since this protects the ALB directly,
+    // not the CloudFront distribution in front of the static frontend — the
+    // API is the resource-intensive, stateful surface; static assets behind
+    // CloudFront already get edge caching and AWS Shield Standard.
+    const apiWebAcl = new wafv2.CfnWebACL(this, 'ApiWebAcl', {
+      name: 'clinic-project-api-waf',
+      scope: 'REGIONAL',
+      defaultAction: { allow: {} },
+      visibilityConfig: {
+        sampledRequestsEnabled: true,
+        cloudWatchMetricsEnabled: true,
+        metricName: 'clinic-project-api-waf',
+      },
+      rules: [
+        {
+          name: 'RateLimit',
+          priority: 0,
+          // Complements, doesn't replace, the app-level @nestjs/throttler
+          // limit (100 req/min/IP, added 2026-08-16) — this blocks at the
+          // edge before a request reaches a Fargate task at all, and covers
+          // paths the app-level limiter exempts (e.g. /health). 2000
+          // requests per 5-minute window per IP (~6.6 req/sec sustained) is
+          // generous against real usage (Dashboard polls every 15s) while
+          // still catching a real flood.
+          statement: {
+            rateBasedStatement: { limit: 2000, aggregateKeyType: 'IP' },
+          },
+          action: { block: {} },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: 'clinic-project-api-waf-ratelimit',
+          },
+        },
+        {
+          name: 'AWSManagedRulesCommonRuleSet',
+          priority: 1,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: { vendorName: 'AWS', name: 'AWSManagedRulesCommonRuleSet' },
+          },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: 'clinic-project-api-waf-common',
+          },
+        },
+        {
+          name: 'AWSManagedRulesKnownBadInputsRuleSet',
+          priority: 2,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: 'AWS',
+              name: 'AWSManagedRulesKnownBadInputsRuleSet',
+            },
+          },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: 'clinic-project-api-waf-badinputs',
+          },
+        },
+        {
+          name: 'AWSManagedRulesAmazonIpReputationList',
+          priority: 3,
+          overrideAction: { none: {} },
+          statement: {
+            managedRuleGroupStatement: {
+              vendorName: 'AWS',
+              name: 'AWSManagedRulesAmazonIpReputationList',
+            },
+          },
+          visibilityConfig: {
+            sampledRequestsEnabled: true,
+            cloudWatchMetricsEnabled: true,
+            metricName: 'clinic-project-api-waf-ipreputation',
+          },
+        },
+      ],
+    });
+
+    new wafv2.CfnWebACLAssociation(this, 'ApiWebAclAssociation', {
+      resourceArn: this.service.loadBalancer.loadBalancerArn,
+      webAclArn: apiWebAcl.attrArn,
     });
 
     // Consumed by the GitHub Actions workflow (run-task for migrations, force-deploy)

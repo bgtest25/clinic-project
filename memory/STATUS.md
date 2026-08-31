@@ -1,6 +1,10 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (Bedrock access confirmed live — AWS support case `178433501800988`
+**Last updated:** 2026-08-31 (real, live cross-tenant authorization vulnerability found and fixed
+while adding authorization-boundary test coverage for Security Risk Assessment threat #10 — any
+authenticated admin could invite a user, including another admin, into a clinic they don't belong
+to via a direct API call. Also closed threats #9 (WAF added) and #3 (admin-activity anomaly alarm
+added) — see 🔴 entry below. Earlier the same day: Bedrock access confirmed live — AWS support case `178433501800988`
 partially approved for Claude Sonnet 4/4.5 — and the AI pipeline switched from the interim direct
 Anthropic API back to AWS Bedrock, deployed and verified against the real Lambda, with a real bug
 found and fixed along the way. This closes the Anthropic-subprocessor-with-no-BAA gap that was a
@@ -26,6 +30,91 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🔴 Real, live cross-tenant authorization vulnerability found and fixed; WAF and admin-activity anomaly alarm added (2026-08-31)
+
+You asked what's left before go-live besides the pentest, then picked three of the four remaining
+High-risk items to close now (declined only the pentest itself, which needs an outside party):
+authorization-boundary test coverage (#10), a WAF (#9), and an admin-activity anomaly alarm (#3).
+
+**While auditing authorization test coverage across every service, found a real, live bug, not a
+hypothetical gap**: `UsersService.invite()` — the endpoint that creates a new clinician or admin
+account — took `clinicId` directly from the client-supplied request body
+(`CreateUserDto.clinicId`, required, `@IsUUID()`) and used it as-is with **zero server-side check**
+that it matched the calling admin's own clinic. `POST /users` is `@Roles('admin')`-gated, so any
+authenticated admin — of any clinic — could invite a user, **including another admin**, into a
+completely different clinic via a direct API call, bypassing the UI entirely. The frontend
+(`InviteClinician.tsx`) happened to always send the caller's own `clinicId`
+(`me.clinicId`), so the normal UI never triggered this — but the backend is supposed to be the
+actual trust boundary here (the same principle this codebase already states for frontend route
+guards), and on this one endpoint it wasn't. This is exactly threat #10's own description
+("unauthorized access due to a code defect") and exactly the same bug *class* as the 2026-08-11
+cross-clinic leak and the 2026-08-15 frontend admin-route gap — this instance had simply never been
+found, because nothing had ever tested it and the UI never exercised it.
+
+**Fixed at the root, matching the pattern already used by `PatientsService.create`** ("clinicId is
+never client-supplied — always the caller's own clinic"):
+- `CreateUserDto` no longer has a `clinicId` field at all (was `@IsUUID() clinicId: string`) —
+  removed the attack surface rather than just validating it.
+- `UsersService.invite()` now takes the caller's `cognitoSub`, resolves the actor via
+  `findByCognitoSub`, and always uses `actor.clinicId`.
+- `UsersController.invite()` passes `req.user.sub` through.
+- Frontend: `InviteClinician.tsx`/`InviteUserPayload` no longer send `clinicId` at all (dead weight
+  once the server ignores it); `App.tsx` no longer needs to pass `me` into `InviteClinician`.
+- **Also found and fixed while in this code**: `invite()` never wrote an `AuditLog` row at all —
+  every other admin action in this service (deactivate/reactivate/reset-MFA) does, and
+  `HIPAA-RISK-ASSESSMENT-EVIDENCE.md` claims audit coverage on "every sensitive action." Granting
+  someone access to PHI is exactly that kind of action. Added a `user.invited` audit log entry,
+  written after both the Cognito and Postgres writes succeed (deliberately outside the existing
+  try/catch that rolls back the Cognito account on a Postgres failure — an audit-log write failing
+  at that point shouldn't trigger deleting the account it's a record of).
+
+**Regression tests added, not just the fix** — `invite` had zero tests before this (which is
+exactly how the vulnerability went unnoticed): the new user is always created under the actor's
+own clinic regardless of what a raw request body claims (mirroring `PatientsService.create`'s
+existing defensive test), the calling admin is resolved before anything is created in Cognito or
+Postgres, the correct Cognito group is used, and the audit log entry is written. Also closed real
+coverage gaps found the same way in other services while doing this audit: `recordings.service.ts`
+had **zero tests at all** (new `recordings.service.spec.ts`, 6 tests — both entry points check
+clinic ownership via the same shared `assertClinicOwnsEncounter` chokepoint `notes`/`recordings`
+both rely on); `notes.service.spec.ts`'s `update`/`sign`/`submitFeedback` only had the ownership
+check covered *transitively* through `findLatest`'s own tests, not asserted at each call site
+(added direct assertions + negative cases, plus full new coverage for `getForExport`, which had
+none); `patients.service.ts`'s `assertClinicOwnsPatient` — the method `PatientDataRequestsService`
+depends on in production — had never been tested directly, only exercised via mocks in that
+caller's spec; `patient-data-requests.service.spec.ts` was missing `findAll` entirely and didn't
+assert the ownership check in `resolve`. **77/77 API tests pass (26 new)**, `tsc` clean.
+`npm run lint --workspace=api` surfaced ~330 pre-existing `@typescript-eslint/no-unsafe-*` errors
+spanning dozens of files never touched this session (`main.ts`, `cognito-auth.guard.ts`, etc.) —
+confirmed this is a pre-existing, ungated baseline (`deploy-api.yml` has no lint step for the API,
+unlike `deploy-web.yml`), not something introduced now; out of scope to fix here.
+
+**WAF added (threat #9)** — `infra/lib/compute-stack.ts`: `AWS::WAFv2::WebACL` (REGIONAL scope,
+associated with the API's ALB) with a 2000-req/5-min-per-IP rate-based rule plus AWS's
+`CommonRuleSet`, `KnownBadInputsRuleSet`, and `AmazonIpReputationList` managed rule groups. Deliberately
+ALB-only, not CloudFront — the API is the resource-intensive, stateful surface; the static frontend
+already gets CloudFront edge caching + Shield Standard. Complements, doesn't replace, the existing
+app-level rate limiting (100 req/min/IP): this blocks at the edge before a request reaches a Fargate
+task, and covers paths the app-level limiter exempts (e.g. `/health`).
+
+**Admin-activity anomaly alarm added (threat #3)** — the assessment's own example was "mass user
+creation," but there was no way to detect it: `AuditLog` rows land in Postgres only, invisible to
+CloudWatch. Added a plain `console.log('admin_action', ...)` stdout line alongside each of
+`invite`/`deactivate`/`reactivate`/`resetMfa`'s `AuditLog` writes (same visibility pattern as the
+AI pipeline's `icd10_tool_call` line), then a CloudWatch metric filter + `AdminActionBurst` alarm on
+`/clinic-project/api` counting them — threshold 10 in a 5-minute window, a judgment call for this
+project's current scale (single-digit users per clinic), flagged in the code as worth revisiting
+once legitimate bulk onboarding becomes more common.
+
+**Verified before deploying anything**: 77/77 API tests, 77/77 web tests, 25/25 infra tests, `tsc`
+clean on all three workspaces, web production build clean. `cdk diff` on both changed stacks showed
+exactly the expected resources (new `AdminActionLogFilter`/`AdminActionBurst` on
+`ClinicMonitoringStack`; new `ApiWebAcl`/`ApiWebAclAssociation` on `ClinicComputeStack`, correctly
+scoped to the real ALB) — no unrelated drift. Deployed `ClinicMonitoringStack` directly (confirmed
+`UPDATE_COMPLETE`); the vulnerability fix and WAF go out through the normal `deploy-api.yml`
+pipeline on push (not a local `cdk deploy ClinicComputeStack`, which would have reverted the running
+task definition's image tag to the `latest` context default instead of the real deployed commit SHA
+— the same collision class this file has documented before).
 
 ## 🟢 Bedrock access confirmed live, AI pipeline switched from direct Anthropic API back to Bedrock (2026-08-31)
 
