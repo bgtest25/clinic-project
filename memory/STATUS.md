@@ -120,6 +120,12 @@ for you, same as everything already marked "Needs your input" in the cross-check
 Security Risk Assessment's sign-off checkbox for this tool is still unchecked — flip it once you've
 actually gone through the remaining questions, not before.
 
+**Pushed (commit `672894d`) and verified live**: `deploy-api.yml` (`33450613745`) and
+`deploy-web.yml` (`33450613746`) both succeeded end-to-end, including the web smoke test.
+Independently confirmed against production afterward, not just the CI checkmark: `POST /clinics`
+now returns a genuine `404` (route removed entirely, not just newly auth-gated), and
+`api.havenote.health/health` returns `200`.
+
 ## 🔴 Real, live cross-tenant authorization vulnerability found and fixed; WAF and admin-activity anomaly alarm added (2026-08-31)
 
 You asked what's left before go-live besides the pentest, then picked three of the four remaining
