@@ -120,8 +120,10 @@ BAA outreach (Bedrock switch makes it unnecessary). Could not send or reply into
 thread directly — the outreach went from `hello@havenote.health` (Zoho Mail), which is not the
 mailbox connected to this session (that's your personal Gmail, confirmed by searching it for
 "Anthropic" and finding no trace of the original outreach or any Anthropic-commercial-team thread).
-Handed you the draft text to send yourself. **Not yet confirmed sent** — verify next session before
-assuming this is closed out.
+Handed you the draft text; **you confirmed sending it yourself** (not independently verified by
+this session — same pattern as the original 2026-08-17 outreach, which was also sent by you
+directly and logged on your word). The Anthropic BAA/DPA item is now fully closed out: no longer
+needed (Bedrock switch), and the outreach that would have pursued it has been withdrawn.
 
 ## 🟢 Follow-up: STATUS.md re-tracked in git, Security Risk Assessment threat #5 re-rated (2026-08-31)
 
