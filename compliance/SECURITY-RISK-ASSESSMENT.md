@@ -16,13 +16,11 @@ by whoever built the system being assessed.
 **Five threats rated High risk on 2026-08-16**: #3 (compromised/malicious admin account), #5
 (Anthropic subprocessor — no BAA yet, a live gap not a residual risk), #8 (data exfiltration via a
 compromised AWS credential), #9 (DoS — no WAF configured), and #10 (unauthorized access from a code
-defect — this exact bug class has already happened twice). **Note (2026-08-31): the underlying fact
-behind #5's rating has changed** — the AI pipeline now calls the model through AWS Bedrock instead
-of Anthropic's API directly, so Anthropic is no longer a subprocessor of this system at all (see row
-5 below and `memory/STATUS.md`). The Likelihood/Impact/Risk-level ratings below are left as the
-assessment owner recorded them 2026-08-16, per this document's own stated practice that ratings are
-the owner's judgment call, not something to silently overwrite — but #5 in particular is now stale
-and worth a deliberate re-rating at the next review, not treated as still-High by default.
+defect — this exact bug class has already happened twice). **#5 re-rated 2026-08-31** — the AI
+pipeline now calls the model through AWS Bedrock instead of Anthropic's API directly, so Anthropic
+is no longer a subprocessor of this system at all (see row 5 below and `memory/STATUS.md`). With the
+underlying fact that drove the original High rating resolved, this row now sits at **Medium**, not
+High — **four threats remain High risk** as of 2026-08-31: #3, #8, #9, #10.
 
 Worth a deliberate remediation decision on the remaining four before this assessment is
 considered closed out, not just filed away.
@@ -40,7 +38,7 @@ here.
 | 2 | Lost/stolen clinician device with an active session | 15-min idle timeout, resilient to backgrounded mobile tabs via a persisted-timestamp resume-check (found and fixed 2026-08-16 — the original implementation could silently fail to fire on a backgrounded tab); 12-hour refresh-token ceiling limits the outer bound regardless; admin can force `AdminUserGlobalSignOut` + deactivate | Medium | Medium | Medium | No self-service "sign out of all my devices" for a clinician who suspects their own device is compromised — currently admin-only |
 | 3 | Compromised or malicious admin account | Same MFA/session controls as #1/#2; every admin action writes an `AuditLog` row; admins are clinic-scoped even for their own clinic's data (can't see other clinics); admin Reset MFA action itself is audit-logged and clinic-scoped | Medium | High | High | No automated anomaly detection on unusual admin activity patterns (e.g. mass user creation) beyond generic CloudTrail/GuardDuty visibility |
 | 4 | SQL injection / API-layer attack | Prisma ORM parameterizes all standard queries; the two raw `$queryRaw` calls in `metrics.service.ts` use tagged-template parameter binding (not string concatenation); `ValidationPipe({ whitelist: true, transform: true })` globally rejects unexpected request fields; rate limiting added 2026-08-16 | Low | High | Medium | |
-| 5 | Third-party subprocessor breach or misuse (AWS) | **Updated 2026-08-31**: AI drafting now calls the model through AWS Bedrock, not Anthropic's API directly (`infra/lambda/process-transcript/index.ts`, confirmed live via a real Bedrock invocation and a real deployed-Lambda test) — Anthropic is no longer a subprocessor of this system. AWS: BAA confirmed active (`aws artifact list-customer-agreements`, effective 2026-07-17), data encrypted at rest (KMS) and in transit (TLS) limiting exposure even in a breach scenario | Medium | High | **Needs re-rating** | Rated High 2026-08-16 specifically because of the Anthropic no-BAA gap, which no longer exists — this row's rating should be revisited at the next review rather than carried forward unchanged. See `compliance/ANTHROPIC-DATA-FLOW-SUMMARY.md` for the now-superseded direct-Anthropic architecture this replaced |
+| 5 | Third-party subprocessor breach or misuse (AWS) | AI drafting now calls the model through AWS Bedrock, not Anthropic's API directly (`infra/lambda/process-transcript/index.ts`, confirmed live via a real Bedrock invocation and a real deployed-Lambda test) — Anthropic is no longer a subprocessor of this system, leaving AWS as the sole subprocessor. AWS: BAA confirmed active (`aws artifact list-customer-agreements`, effective 2026-07-17), mature independently-audited security program (SOC 2/HITRUST-class controls under the shared-responsibility model), data encrypted at rest (KMS, customer-managed key on the media bucket) and in transit (TLS) limiting exposure even in a breach scenario | Low | High | Medium | **Re-rated 2026-08-31** (was Medium/High/High on 2026-08-16). Likelihood dropped from Medium to Low: the 2026-08-16 Medium rating reflected two subprocessors, one (Anthropic) with no BAA, no contractual security assurances, and unverified data-handling practices — a real elevated-likelihood factor. With only AWS remaining — a mature, audited, BAA-covered provider, the same profile already rated Low for threat #7's infrastructure-attack scenario — Low is consistent with this document's own rating pattern. Impact stays High (any subprocessor breach exposing PHI is high-impact regardless of subprocessor count), which nets to Medium per the same Low+High→Medium pattern used for threat #4. Re-rated by this session at your explicit request, not by the original assessment owner — worth a quick sanity check against your own risk tolerance, not just accepted on the reasoning alone |
 | 6 | Insider threat (single team member currently holds broad access) | All actions audit-logged; least-privilege IAM grants (reviewed 2026-07-18, found 5 justified wildcards, no hardcoded secrets) | Low | Medium | Low | At current team size (one person), broad access is a structural reality, not a fixable gap — document as an accepted risk at this stage and revisit as the team grows |
 | 7 | Ransomware / destructive attack on infrastructure | RDS automated backups (7-day retention) **and a real point-in-time restore proven to work** (2026-08-16 drill: restored instance's data matched the live primary exactly, not just configured and assumed); RDS Multi-AZ (automatic failover) | Low | Low | Low | |
 | 8 | Data exfiltration via a compromised AWS credential | CloudTrail (account-wide), GuardDuty enabled, 16 AWS Config managed rules with NON_COMPLIANT alerts routed to the same monitoring pipeline as CloudWatch alarms; data encrypted at rest limits what's actually readable even if exfiltrated | Medium | High | High | |
@@ -50,6 +48,8 @@ here.
 ## Sign-off
 
 **Assessed by:** Barseh Gbor
-**Date:** 2026-08-16
+**Date:** 2026-08-16 (full assessment); row 5 re-rated 2026-08-31 following the Anthropic → Bedrock
+subprocessor change — a point revision to one row, not a full re-walk of all ten threats. Worth a
+full re-review before this is treated as current on every row, not just row 5.
 **Reviewed alongside:** HHS/ONC Security Risk Assessment Tool — ☐ yes ☑ no (not yet run; recommended before this assessment is treated as final)
-**Next scheduled review:** 2027-08-16 (annual), or sooner if team size or a new subprocessor changes materially. **2026-08-31: the Anthropic-BAA trigger condition fired** — the AI pipeline was switched to AWS Bedrock, removing Anthropic as a subprocessor entirely (see row 5 above); this alone is reason enough to bring the review forward rather than wait for the annual date, since it changes one of the five High-risk ratings
+**Next scheduled review:** 2027-08-16 (annual), or sooner if team size or a new subprocessor changes materially.

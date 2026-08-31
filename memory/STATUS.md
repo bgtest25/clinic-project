@@ -112,9 +112,33 @@ describe Bedrock. The 2026-08-17 outreach to Anthropic's commercial team (`memor
 
 **Left for you**: the Anthropic Secrets Manager secret (`clinic-project/anthropic-api-key`) is now
 unused but not deleted — low-cost to leave (~$0.40/month), deliberately not deleted without asking
-since it's a live credential-bearing resource. The Security Risk Assessment's threat #5 rating
-still needs your actual re-rating pass (flagged in the doc, not silently changed). Worth
-considering whether to formally cancel the Anthropic outreach rather than just letting it lapse.
+since it's a live credential-bearing resource. Worth considering whether to formally cancel the
+Anthropic outreach rather than just letting it lapse.
+
+## 🟢 Follow-up: STATUS.md re-tracked in git, Security Risk Assessment threat #5 re-rated (2026-08-31)
+
+Two small follow-ups from the Bedrock switch above, both at your explicit request.
+
+**`memory/STATUS.md` tracked in git again.** It had been deliberately untracked 2026-08-29 (commit
+`7e21435`, "Claude Code's own session log, not project documentation") — a real decision, not an
+oversight, but one that silently broke the disaster-recovery path this project's own tooling
+assumes exists (a fresh `git clone` restoring full session history if this machine is lost — see
+the `clinic-project` skill / this file's own header). Flagged the contradiction, you chose to
+restore recoverability over keeping repo history clean. Removed `memory/` from `.gitignore`,
+committed and pushed (`dd9c75e`).
+
+**`compliance/SECURITY-RISK-ASSESSMENT.md` threat #5 re-rated**: Medium/High/High →
+**Low/High/Medium**. Reasoning: the 2026-08-16 Medium likelihood reflected two subprocessors, one
+(Anthropic) with no BAA and no contractual security assurances — a real elevated-likelihood factor
+that no longer exists now that AWS is the sole subprocessor (mature, audited, active BAA — the same
+profile already rated Low for threat #7's infrastructure-attack scenario). Impact stays High (a
+subprocessor breach exposing PHI is high-impact regardless of subprocessor count); Low+High nets to
+Medium per this document's own established rating pattern (see threat #4). Explicitly flagged in
+the document itself that this was re-rated by this session at your request, not by you walking
+through the reasoning independently as the original 2026-08-16 assessment was — worth a quick sanity
+check against your own risk tolerance next time you're in the document, not treated as final on my
+reasoning alone. Only row 5 was touched; the other nine threats' ratings are unchanged from
+2026-08-16.
 
 ## 🟢 Real iPad/phone responsive audit — two real layout bugs found and fixed (2026-08-21)
 
