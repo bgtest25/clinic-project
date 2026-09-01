@@ -1,10 +1,10 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (Claude-suggested speaker roles shipped on top of the manual-assignment
+**Last updated:** 2026-09-01 (Claude-suggested speaker roles shipped on top of the manual-assignment
 feature — you asked about going further with an automatic SageMaker+LangGraph multi-agent pipeline;
 recommended against that specific architecture and built a lighter suggestion layer on the existing
 Bedrock call instead, with the clinician still required to click Confirm before anything is written.
-See 🟢 entry below. Previously, 2026-09-01: clinician-assigned speaker labels shipped — the transcript speaker
+See 🟢 entry below. Earlier the same day, 2026-09-01: clinician-assigned speaker labels shipped — the transcript speaker
 view now lets the reviewing clinician label each speaker "Clinician," the real patient's name, or a
 custom label like "Interpreter," saved permanently with the encounter, instead of showing only
 generic "Speaker 1/2." Deliberately still never inferred automatically — see 🟢 entry below. Earlier, 2026-08-31: SRA Tool round 4 completes the workbook at your request — every one
@@ -56,7 +56,7 @@ surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
 
-## 🟢 Claude-suggested speaker roles — one-click "Confirm" on top of manual assignment (2026-08-31)
+## 🟢 Claude-suggested speaker roles — one-click "Confirm" on top of manual assignment (2026-09-01)
 
 You asked whether to go further than the manual-assignment feature below and have Claude
 auto-detect who's the clinician vs. patient, proposing an Amazon SageMaker + LangGraph +
