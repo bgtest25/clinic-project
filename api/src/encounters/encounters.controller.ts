@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { CreateEncounterDto } from './dto/create-encounter.dto';
+import { UpdateSpeakerLabelsDto } from './dto/update-speaker-labels.dto';
 import { EncountersService } from './encounters.service';
 
 @UseGuards(CognitoAuthGuard)
@@ -26,5 +27,10 @@ export class EncountersController {
   @Patch(':id/consent')
   captureConsent(@Param('id') id: string, @Req() req: any) {
     return this.encountersService.captureConsent(req.user.sub, id);
+  }
+
+  @Patch(':id/transcript/speaker-labels')
+  updateSpeakerLabels(@Param('id') id: string, @Body() dto: UpdateSpeakerLabelsDto, @Req() req: any) {
+    return this.encountersService.updateSpeakerLabels(req.user.sub, id, dto.labels);
   }
 }

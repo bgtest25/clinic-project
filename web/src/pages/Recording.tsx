@@ -31,6 +31,7 @@ export function Recording({
   const [encounterStatus, setEncounterStatus] = useState<string>('');
   const [transcript, setTranscript] = useState<string | null>(null);
   const [diarizedSegments, setDiarizedSegments] = useState<DiarizedSegment[] | null>(null);
+  const [speakerLabels, setSpeakerLabels] = useState<Record<string, string> | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [visitDate, setVisitDate] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -52,6 +53,7 @@ export function Recording({
       // only treat it as real segments if it's actually a non-empty array.
       const segments = latest.transcript?.diarizedSegments;
       setDiarizedSegments(Array.isArray(segments) && segments.length > 0 ? segments : null);
+      setSpeakerLabels(latest.transcript?.speakerLabels ?? null);
       setState('review');
     } else if (latest.status === 'FAILED') {
       setError(latest.processingError ?? 'Processing failed.');
@@ -205,6 +207,8 @@ export function Recording({
           encounterId={encounterId}
           transcript={transcript}
           diarizedSegments={diarizedSegments}
+          speakerLabels={speakerLabels}
+          onSpeakerLabelsChange={setSpeakerLabels}
           patient={patient}
           visitDate={visitDate}
           clinic={clinic}

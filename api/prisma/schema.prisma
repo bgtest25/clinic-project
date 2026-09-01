@@ -136,6 +136,15 @@ model Transcript {
   encounter        Encounter @relation(fields: [encounterId], references: [id])
   rawText          String
   diarizedSegments Json?
+  // Maps a raw diarization speaker key (e.g. "spk_0") to a human-assigned
+  // label ("Clinician", the patient's name, "Interpreter", etc.) — set by
+  // the reviewing clinician, never inferred automatically. Diarization on
+  // real recordings in this account is noisy (the same speaker can jump
+  // labels mid-conversation), so asserting a role automatically would bake
+  // a guess into the record as if it were fact; a clinician who was
+  // actually in the room assigning it after the fact avoids that risk
+  // entirely. Absent keys fall back to "Speaker N" in the UI.
+  speakerLabels    Json?
   sttProvider      String    @default("aws-transcribe-medical")
   createdAt        DateTime  @default(now())
 

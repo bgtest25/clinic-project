@@ -71,13 +71,103 @@ describe('NoteReview', () => {
     await screen.findByDisplayValue('Cough for 3 days.');
     expect(screen.getByText('How can I help you today?')).toBeInTheDocument();
     expect(screen.getByText('My throat hurts.')).toBeInTheDocument();
-    expect(screen.getByText('Speaker 1')).toBeInTheDocument();
-    expect(screen.getByText('Speaker 2')).toBeInTheDocument();
+    // "Speaker 1"/"Speaker 2" each appear twice now — once in the
+    // assignment legend, once as the actual turn label.
+    expect(screen.getAllByText('Speaker 1')).toHaveLength(2);
+    expect(screen.getAllByText('Speaker 2')).toHaveLength(2);
     expect(screen.queryByText('raw transcript text')).not.toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Raw text' }));
     expect(screen.getByText('raw transcript text')).toBeInTheDocument();
     expect(screen.queryByText('My throat hurts.')).not.toBeInTheDocument();
+  });
+
+  it('lets the clinician assign "Clinician" to a speaker and saves it immediately', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [
+        { speaker: 'spk_0', text: 'How can I help you today?', startTime: '0', endTime: '1' },
+        { speaker: 'spk_1', text: 'My throat hurts.', startTime: '1', endTime: '2' },
+      ],
+    });
+    await screen.findByDisplayValue('Cough for 3 days.');
+    vi.mocked(apiFetch).mockResolvedValueOnce({});
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clinician' })[0]);
+
+    expect(apiFetch).toHaveBeenCalledWith('/encounters/enc-1/transcript/speaker-labels', 'tok', {
+      method: 'PATCH',
+      body: JSON.stringify({ labels: [{ speaker: 'spk_0', label: 'Clinician' }] }),
+    });
+    // The turn label updates immediately, everywhere that speaker appears.
+    expect(await screen.findAllByText('Clinician')).toHaveLength(2);
+    expect(screen.queryByText('Speaker 1')).not.toBeInTheDocument();
+  });
+
+  it("offers a quick-assign button for the patient's real name when a patient is given", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [
+        { speaker: 'spk_0', text: 'How can I help you today?', startTime: '0', endTime: '1' },
+        { speaker: 'spk_1', text: 'My throat hurts.', startTime: '1', endTime: '2' },
+      ],
+      patient: { id: 'pat-1', clinicId: 'clinic-a', name: 'Jane Doe', dateOfBirth: '1990-01-01' },
+    });
+    await screen.findByDisplayValue('Cough for 3 days.');
+    vi.mocked(apiFetch).mockResolvedValueOnce({});
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Jane Doe' })[1]);
+
+    expect(apiFetch).toHaveBeenCalledWith('/encounters/enc-1/transcript/speaker-labels', 'tok', {
+      method: 'PATCH',
+      body: JSON.stringify({ labels: [{ speaker: 'spk_1', label: 'Jane Doe' }] }),
+    });
+    expect(await screen.findAllByText('Jane Doe')).toHaveLength(2);
+  });
+
+  it('saves a custom label typed into the "Other" field on Enter', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [{ speaker: 'spk_0', text: 'Relaying for the patient.', startTime: '0', endTime: '1' }],
+    });
+    await screen.findByDisplayValue('Cough for 3 days.');
+    vi.mocked(apiFetch).mockResolvedValueOnce({});
+
+    const input = screen.getByPlaceholderText('Other (e.g. Interpreter)');
+    fireEvent.change(input, { target: { value: 'Interpreter' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(apiFetch).toHaveBeenCalledWith('/encounters/enc-1/transcript/speaker-labels', 'tok', {
+      method: 'PATCH',
+      body: JSON.stringify({ labels: [{ speaker: 'spk_0', label: 'Interpreter' }] }),
+    });
+    expect(await screen.findAllByText('Interpreter')).toHaveLength(2);
+  });
+
+  it('shows an error toast and leaves the label unchanged if saving fails', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [{ speaker: 'spk_0', text: 'How can I help you today?', startTime: '0', endTime: '1' }],
+    });
+    await screen.findByDisplayValue('Cough for 3 days.');
+    vi.mocked(apiFetch).mockRejectedValueOnce(new Error('Network error'));
+
+    fireEvent.click(screen.getAllByRole('button', { name: 'Clinician' })[0]);
+
+    expect(await screen.findByText('Network error')).toBeInTheDocument();
+    expect(screen.getAllByText('Speaker 1')).toHaveLength(2);
   });
 
   it('shows only raw text with no toggle when there are no diarized segments', async () => {

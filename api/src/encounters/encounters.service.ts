@@ -1,7 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
 import { CreateEncounterDto } from './dto/create-encounter.dto';
+import { SpeakerLabelDto } from './dto/update-speaker-labels.dto';
 
 @Injectable()
 export class EncountersService {
@@ -61,6 +63,47 @@ export class EncountersService {
     return this.prisma.encounter.update({
       where: { id },
       data: { consentCapturedAt: new Date(), consentCapturedBy: actor.id },
+    });
+  }
+
+  // Never inferred automatically (see the schema comment on
+  // Transcript.speakerLabels) — the reviewing clinician assigns these after
+  // the fact, having actually been in the room, which is the only way to
+  // label a speaker as "Clinician"/a patient's name without risking a wrong
+  // guess baked into the record as if it were fact.
+  async updateSpeakerLabels(cognitoSub: string, encounterId: string, labels: SpeakerLabelDto[]) {
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    await this.assertClinicOwnsEncounter(encounterId, actor.clinicId);
+
+    const transcript = await this.prisma.transcript.findUnique({ where: { encounterId } });
+    if (!transcript) throw new NotFoundException('Transcript not found for this encounter');
+
+    // Reject labels for a speaker key that was never actually diarized —
+    // catches a stale client sending an assignment against an outdated
+    // transcript view, rather than silently storing a label that can never
+    // match anything.
+    const knownSpeakers = new Set(
+      Array.isArray(transcript.diarizedSegments)
+        ? (transcript.diarizedSegments as Array<{ speaker?: string }>).map((s) => s.speaker)
+        : [],
+    );
+    const unknown = labels.find((l) => !knownSpeakers.has(l.speaker));
+    if (unknown) {
+      throw new NotFoundException(`Speaker "${unknown.speaker}" was not found in this transcript`);
+    }
+
+    // Merge, not replace — assigning one speaker's label shouldn't clear a
+    // label already set for the other speaker in an earlier request.
+    const existing =
+      transcript.speakerLabels && typeof transcript.speakerLabels === 'object'
+        ? (transcript.speakerLabels as Record<string, string>)
+        : {};
+    const merged: Record<string, string> = { ...existing };
+    for (const l of labels) merged[l.speaker] = l.label;
+
+    return this.prisma.transcript.update({
+      where: { encounterId },
+      data: { speakerLabels: merged as Prisma.InputJsonValue },
     });
   }
 

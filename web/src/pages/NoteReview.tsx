@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
 import type { Clinic, ClinicalNote, DiarizedSegment, Patient } from '../api/types';
 import { CheckIcon, PrintIcon, StarIcon } from '../icons';
@@ -41,6 +41,8 @@ export function NoteReview({
   encounterId,
   transcript,
   diarizedSegments = null,
+  speakerLabels = null,
+  onSpeakerLabelsChange,
   patient = null,
   visitDate = null,
   clinic = null,
@@ -49,6 +51,8 @@ export function NoteReview({
   encounterId: string;
   transcript: string | null;
   diarizedSegments?: DiarizedSegment[] | null;
+  speakerLabels?: Record<string, string> | null;
+  onSpeakerLabelsChange?: (labels: Record<string, string>) => void;
   patient?: Patient | null;
   visitDate?: string | null;
   clinic?: Clinic | null;
@@ -61,6 +65,13 @@ export function NoteReview({
   // paragraph, but always leave the raw block one click away for a
   // clinician who wants to double-check against the unsegmented original.
   const [transcriptView, setTranscriptView] = useState<'speaker' | 'raw'>(hasSpeakerView ? 'speaker' : 'raw');
+  // Speaker labels are never inferred automatically (see the notice in the
+  // speaker view below) — this is the clinician's own assignment, made
+  // after the fact having actually been in the room. Initialized from
+  // whatever's already been saved for this encounter; each assignment below
+  // is saved immediately, not batched behind a form submit.
+  const [speakerLabelsState, setSpeakerLabelsState] = useState<Record<string, string>>(speakerLabels ?? {});
+  const [savingSpeaker, setSavingSpeaker] = useState<string | null>(null);
   const [note, setNote] = useState<ClinicalNote | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [editing, setEditing] = useState(false);
@@ -81,6 +92,39 @@ export function NoteReview({
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load the note'));
   }, [encounterId, token]);
+
+  // Raw diarization speaker keys ("spk_0"), in first-appearance order —
+  // shared by the legend and the per-turn labels below so both agree on
+  // which one is "Speaker 1" vs "Speaker 2".
+  const speakerOrder = useMemo(() => {
+    if (!diarizedSegments) return [] as Array<[string, number]>;
+    const order = new Map<string, number>();
+    for (const segment of diarizedSegments) {
+      if (!order.has(segment.speaker)) order.set(segment.speaker, order.size + 1);
+    }
+    return [...order.entries()];
+  }, [diarizedSegments]);
+
+  function speakerDisplayLabel(rawKey: string, displayNumber: number): string {
+    return speakerLabelsState[rawKey] ?? `Speaker ${displayNumber}`;
+  }
+
+  async function assignSpeakerLabel(rawKey: string, label: string) {
+    setSavingSpeaker(rawKey);
+    try {
+      await apiFetch(`/encounters/${encounterId}/transcript/speaker-labels`, token, {
+        method: 'PATCH',
+        body: JSON.stringify({ labels: [{ speaker: rawKey, label }] }),
+      });
+      const next = { ...speakerLabelsState, [rawKey]: label };
+      setSpeakerLabelsState(next);
+      onSpeakerLabelsChange?.(next);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to save the speaker label', 'error');
+    } finally {
+      setSavingSpeaker(null);
+    }
+  }
 
   async function handleSave() {
     if (!form) return;
@@ -327,23 +371,72 @@ export function NoteReview({
           </div>
           {hasSpeakerView && transcriptView === 'speaker' ? (
             <div className="transcript-speaker-view">
-              {/* Diarization is best-effort, not verified per-turn — labels are
-                  generic ("Speaker 1/2"), numbered by first appearance to match
-                  what the model itself was shown, rather than guessing
-                  Clinician/Patient, since a wrong role label here would be
-                  taken as fact rather than the estimate it is. */}
-              {(() => {
-                const labelOrder = new Map<string, number>();
-                return diarizedSegments!.map((segment, i) => {
-                  if (!labelOrder.has(segment.speaker)) labelOrder.set(segment.speaker, labelOrder.size + 1);
+              {/* Diarization is best-effort, not verified per-turn, and the
+                  same speaker can jump labels mid-conversation on real
+                  recordings — labels default to generic ("Speaker 1/2")
+                  rather than guessing Clinician/Patient automatically, since
+                  a wrong role label here would be taken as fact rather than
+                  the estimate it is. You were in the room, though — assign
+                  who's who below and it's saved with this visit. */}
+              <div className="transcript-speaker-legend">
+                {speakerOrder.map(([rawKey, num]) => {
+                  const current = speakerDisplayLabel(rawKey, num);
+                  const saving = savingSpeaker === rawKey;
+                  const isPreset = current === 'Clinician' || (!!patient?.name && current === patient.name);
                   return (
-                    <p key={i} className="transcript-turn">
-                      <span className="transcript-speaker-label">Speaker {labelOrder.get(segment.speaker)}</span>
-                      {segment.text}
-                    </p>
+                    <div key={rawKey} className="transcript-speaker-legend-row">
+                      <span className="transcript-speaker-legend-current">{current}</span>
+                      <div className="transcript-speaker-legend-actions">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          disabled={saving || current === 'Clinician'}
+                          onClick={() => assignSpeakerLabel(rawKey, 'Clinician')}
+                        >
+                          Clinician
+                        </button>
+                        {patient?.name && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            disabled={saving || current === patient.name}
+                            onClick={() => assignSpeakerLabel(rawKey, patient.name!)}
+                          >
+                            {patient.name}
+                          </button>
+                        )}
+                        <input
+                          key={`${rawKey}-${current}`}
+                          type="text"
+                          className="transcript-speaker-legend-custom"
+                          placeholder="Other (e.g. Interpreter)"
+                          defaultValue={isPreset ? '' : speakerLabelsState[rawKey] ?? ''}
+                          disabled={saving}
+                          maxLength={100}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return;
+                            const value = e.currentTarget.value.trim();
+                            if (value) assignSpeakerLabel(rawKey, value);
+                          }}
+                          onBlur={(e) => {
+                            const value = e.currentTarget.value.trim();
+                            if (value && value !== speakerLabelsState[rawKey]) assignSpeakerLabel(rawKey, value);
+                          }}
+                        />
+                      </div>
+                    </div>
                   );
-                });
-              })()}
+                })}
+              </div>
+              {diarizedSegments!.map((segment, i) => {
+                const num = speakerOrder.find(([key]) => key === segment.speaker)?.[1] ?? 0;
+                return (
+                  <p key={i} className="transcript-turn">
+                    <span className="transcript-speaker-label">{speakerDisplayLabel(segment.speaker, num)}</span>
+                    {segment.text}
+                  </p>
+                );
+              })}
             </div>
           ) : (
             <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>

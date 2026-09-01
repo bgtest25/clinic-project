@@ -12,6 +12,7 @@ describe('EncountersService', () => {
       patient: { findFirst: jest.fn() },
       user: { findFirst: jest.fn() },
       encounter: { create: jest.fn(), findMany: jest.fn(), findFirst: jest.fn(), update: jest.fn() },
+      transcript: { findUnique: jest.fn(), update: jest.fn() },
     };
     usersService = { findByCognitoSub: jest.fn().mockResolvedValue(actor) };
     service = new EncountersService(prisma, usersService);
@@ -77,6 +78,87 @@ describe('EncountersService', () => {
     it('resolves silently when the encounter belongs to the given clinic', async () => {
       prisma.encounter.findFirst.mockResolvedValue({ id: 'enc-1' });
       await expect(service.assertClinicOwnsEncounter('enc-1', 'clinic-a')).resolves.toBeUndefined();
+    });
+  });
+
+  describe('updateSpeakerLabels', () => {
+    const diarizedTranscript = {
+      encounterId: 'enc-1',
+      diarizedSegments: [
+        { speaker: 'spk_0', text: 'hi' },
+        { speaker: 'spk_1', text: 'hello' },
+      ],
+      speakerLabels: null,
+    };
+
+    it('checks clinic ownership before touching the transcript', async () => {
+      prisma.encounter.findFirst.mockResolvedValue(null);
+      await expect(
+        service.updateSpeakerLabels('sub-1', 'enc-1', [{ speaker: 'spk_0', label: 'Clinician' }]),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.transcript.findUnique).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException if the encounter has no transcript yet', async () => {
+      prisma.encounter.findFirst.mockResolvedValue({ id: 'enc-1' });
+      prisma.transcript.findUnique.mockResolvedValue(null);
+      await expect(
+        service.updateSpeakerLabels('sub-1', 'enc-1', [{ speaker: 'spk_0', label: 'Clinician' }]),
+      ).rejects.toThrow(NotFoundException);
+    });
+
+    it('rejects a speaker key that was never actually diarized', async () => {
+      prisma.encounter.findFirst.mockResolvedValue({ id: 'enc-1' });
+      prisma.transcript.findUnique.mockResolvedValue(diarizedTranscript);
+      await expect(
+        service.updateSpeakerLabels('sub-1', 'enc-1', [{ speaker: 'spk_9', label: 'Clinician' }]),
+      ).rejects.toThrow(NotFoundException);
+      expect(prisma.transcript.update).not.toHaveBeenCalled();
+    });
+
+    it('writes the label for a real speaker key', async () => {
+      prisma.encounter.findFirst.mockResolvedValue({ id: 'enc-1' });
+      prisma.transcript.findUnique.mockResolvedValue(diarizedTranscript);
+      prisma.transcript.update.mockResolvedValue({ ...diarizedTranscript, speakerLabels: { spk_0: 'Clinician' } });
+
+      await service.updateSpeakerLabels('sub-1', 'enc-1', [{ speaker: 'spk_0', label: 'Clinician' }]);
+
+      expect(prisma.transcript.update).toHaveBeenCalledWith({
+        where: { encounterId: 'enc-1' },
+        data: { speakerLabels: { spk_0: 'Clinician' } },
+      });
+    });
+
+    it("merges into existing labels instead of wiping the other speaker's assignment", async () => {
+      prisma.encounter.findFirst.mockResolvedValue({ id: 'enc-1' });
+      prisma.transcript.findUnique.mockResolvedValue({
+        ...diarizedTranscript,
+        speakerLabels: { spk_0: 'Clinician' },
+      });
+      prisma.transcript.update.mockResolvedValue({});
+
+      await service.updateSpeakerLabels('sub-1', 'enc-1', [{ speaker: 'spk_1', label: 'Jane Doe' }]);
+
+      expect(prisma.transcript.update).toHaveBeenCalledWith({
+        where: { encounterId: 'enc-1' },
+        data: { speakerLabels: { spk_0: 'Clinician', spk_1: 'Jane Doe' } },
+      });
+    });
+
+    it('overwrites a previous label for the same speaker rather than duplicating it', async () => {
+      prisma.encounter.findFirst.mockResolvedValue({ id: 'enc-1' });
+      prisma.transcript.findUnique.mockResolvedValue({
+        ...diarizedTranscript,
+        speakerLabels: { spk_0: 'Speaker 1' },
+      });
+      prisma.transcript.update.mockResolvedValue({});
+
+      await service.updateSpeakerLabels('sub-1', 'enc-1', [{ speaker: 'spk_0', label: 'Clinician' }]);
+
+      expect(prisma.transcript.update).toHaveBeenCalledWith({
+        where: { encounterId: 'enc-1' },
+        data: { speakerLabels: { spk_0: 'Clinician' } },
+      });
     });
   });
 });

@@ -39,6 +39,11 @@ export interface Transcript {
   // Rows written before speaker diarization was wired up hold `{}`, not an
   // array — always check Array.isArray before rendering as segments.
   diarizedSegments: unknown;
+  // Maps a raw diarization speaker key (e.g. "spk_0") to a clinician-
+  // assigned label ("Clinician", the patient's name, etc.) — set via
+  // PATCH /encounters/:id/transcript/speaker-labels, never inferred
+  // automatically. Absent keys fall back to "Speaker N" in the UI.
+  speakerLabels: Record<string, string> | null;
   sttProvider: string;
   createdAt: string;
 }

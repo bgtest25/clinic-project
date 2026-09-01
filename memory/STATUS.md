@@ -1,6 +1,9 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (SRA Tool round 4 completes the workbook at your request — every one
+**Last updated:** 2026-09-01 (clinician-assigned speaker labels shipped — the transcript speaker
+view now lets the reviewing clinician label each speaker "Clinician," the real patient's name, or a
+custom label like "Interpreter," saved permanently with the encounter, instead of showing only
+generic "Speaker 1/2." Deliberately still never inferred automatically — see 🟢 entry below. Previously, 2026-08-31: SRA Tool round 4 completes the workbook at your request — every one
 of the 125 real questions now carries an explicit mark, 91 real answers plus 32 consciously flagged
 via the tool's own "Flag this question for later" rather than left silently blank (2 the tool itself
 has no flag option for). See 🟢 entry below. Earlier the same day: built the structural guard rail
@@ -48,6 +51,50 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Clinician-assigned speaker labels — "Speaker 1/2" no longer the only option (2026-09-01)
+
+You asked to improve the speaker view's generic "Speaker 1/2" labels — name the patient, name the
+clinician. Recalled why they were generic in the first place before changing anything: real
+diarization on this account's recordings is noisy (the same speaker can jump labels mid-
+conversation), so having the AI or diarization guess "Clinician"/"Patient" automatically would bake
+a wrong guess into the medical record as if it were fact — the exact reasoning behind the original
+2026-08-15 design. The fix isn't to guess better; it's to let the person who was actually in the
+room decide, after the fact, with zero risk of the guess being wrong.
+
+**How it works**: each speaker in the review UI's speaker-view legend gets two one-click buttons
+("Clinician" and the patient's real name, pulled from the already-loaded `Patient` record) plus a
+free-text field for anything else (interpreter, family member relaying for the patient — a real
+scenario this pipeline's own transcript-generation prompt already explicitly handles). Assigning a
+label relabels every turn from that speaker instantly, and — per your explicit choice on
+persistence — is saved permanently with the encounter, not just for the current viewing session.
+
+**Backend**: `Transcript.speakerLabels` (new nullable `Json` column, migration
+`20260901000000_add_transcript_speaker_labels`) maps a raw diarization key ("spk_0") to the
+clinician's label. New `PATCH /encounters/:id/transcript/speaker-labels` endpoint
+(`UsersService`-style clinic-ownership check via the existing `assertClinicOwnsEncounter`
+chokepoint, merges into existing labels rather than replacing them, rejects a speaker key that was
+never actually diarized). Immediately re-verified by the architecture guard rail built earlier
+today (`api/src/architecture.spec.ts`) — the new endpoint has `@Req()` and references
+`req.user.sub`, and its DTO has no `clinicId` field, both confirmed automatically, not just by
+eye. 7 new service tests, 109/109 API tests total, `tsc` clean.
+
+**Frontend**: `NoteReview.tsx`'s speaker view gained a per-speaker assignment legend above the
+transcript turns; `Recording.tsx` threads the saved labels through from the encounter-detail fetch.
+4 new interaction tests (button click saves and relabels everywhere, patient-name button, custom
+label via Enter, error toast on failure) plus the existing speaker-view test updated for the
+legend's now-duplicate "Speaker 1/2" text. 81/81 web tests, `tsc` clean, production build clean.
+
+**Verified in a real browser, not just jsdom** — genuinely necessary this time: a first real-Chromium
+pass (a temporary local harness, deleted before committing, never touching production) caught a
+real CSS bug jsdom couldn't have shown — the custom-label input's fixed `width: 10rem` didn't
+respect the transcript pane's actual available width, clipping the "Jane Doe" button at the pane's
+edge instead of wrapping cleanly onto its own line. Same *class* of bug as the 2026-08-21 iPad
+audit's `.filter-search` finding (a fixed flex-basis/width ignoring the real container), fixed the
+same way: `flex: 1 1 auto` with a `min-width` instead of a fixed width. Re-verified after the fix —
+clean layout, both quick-assign buttons and the custom field visible and usable, labels updating
+correctly across the legend and every matching transcript turn after a real click. Confirmed zero
+console/page errors throughout.
 
 ## 🟢 SRA Tool complete — all 125 questions marked (2026-08-31, round 4)
 
