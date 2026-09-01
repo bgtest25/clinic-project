@@ -21,10 +21,11 @@ Anthropic API). See `../memory/STATUS.md` for the full history.
       architecture this replaced
 - [ ] A formal, documented HIPAA Security Risk Assessment — `compliance/SECURITY-RISK-ASSESSMENT.md`
       is complete with likelihood/impact/risk ratings (signed 2026-08-16, revised 2026-08-31); the
-      HHS/ONC SRA Tool cross-check is genuinely in progress, not just prepped — 79/125 questions
+      HHS/ONC SRA Tool cross-check is genuinely in progress, not just prepped — 88/125 questions
       answered in the real downloaded workbook (`compliance/SRA-Tool-v3.6.1-Partial.xlsx`), the
-      remaining ~46 are judgment calls only you can make. Sign-off checkbox stays unchecked until
-      those are done
+      remaining 37 need you directly (6 require reading AWS's confidential BAA text yourself; the
+      rest are workforce/physical/contingency-planning specifics). Sign-off checkbox stays unchecked
+      until those are done
 - [ ] An independent security review / penetration test, by someone who wasn't involved in
       building the system — see `compliance/SECURITY-REVIEW-SCOPE.md`
 

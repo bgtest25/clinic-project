@@ -109,10 +109,10 @@ AWS" rather than leaving blank, since HIPAA still expects the question to be add
 
 ---
 
-## Real progress: 79/125 questions already answered (2026-08-31, two rounds)
+## Real progress: 88/125 questions already answered (2026-08-31, three rounds)
 
 `compliance/SRA-Tool-v3.6.1-Partial.xlsx` in this same directory is the actual downloaded tool
-(v3.6.1, healthit.gov), with 79 of the 125 questions genuinely checked off — not a mockup. Built by
+(v3.6.1, healthit.gov), with 88 of the 125 questions genuinely checked off — not a mockup. Built by
 parsing the real workbook (`xlsx` npm package, in a throwaway scratch install, not a project
 dependency) rather than guessing its layout, then mechanically placing a `✔` in column C of the
 matching answer row.
@@ -137,13 +137,28 @@ policy questions (vendor BAA-clause specifics not independently verified, workfo
 questions that don't structurally fit a team of one) — these remain in the "still unanswered"
 list below, same as always.
 
-**Verified before treating either round as done**: independently re-read the written file after
-each round and confirmed every checkmark landed on the exact intended row (not just that the script
+**Round 3 (9 more), from real answers you gave when directly asked**: rather than continue guessing
+at questions no established fact could settle, asked you a small number of consolidated questions
+covering the underlying facts behind many of the remaining tool questions at once — disk encryption
+on your dev workstation (yes), device-disposal practice (wipe + a certified third-party destruction
+service with certificates), workspace privacy (private home office), device inventory (none kept),
+whether the 2026-08-16 backup drill has been repeated (not yet, one-time only), and which emergency
+types have actually been considered (cyberattack + infrastructure only, not comprehensively).
+Mapped each real answer to its matching tool question, staying conservative where a periodic-
+testing claim would have overstated a one-time drill as an established cadence (Section 7 Q14/15
+deliberately picked the option that doesn't claim periodic testing, since only one real drill has
+happened). **Also found a hard technical limit while researching**: AWS's actual BAA text is
+confidential under the AWS Artifact NDA (confirmed via `aws artifact list-customer-agreements`) —
+Section 6's remaining BAA-clause-specific questions (Q5, 9, 11, 13, 14, 15) genuinely cannot be
+answered by reading the document myself; only you can, by opening AWS Artifact directly.
+
+**Verified before treating any round as done**: independently re-read the written file after each
+round and confirmed every checkmark landed on the exact intended row (not just that the script
 exited cleanly), and confirmed no question ended up with two conflicting answers checked at once.
 Round 1's re-read caught a real problem: the original downloaded template ships with 2 pre-existing
 example checkmarks (Section 1, an internal sample answer) — found by an unexpected count mismatch,
 cleared before applying ours. Confirmed the workbook's internal scoring formulas (`Risk_Logic`
-sheet) are byte-for-byte intact after each write, not just that the file opens.
+sheet) are byte-for-byte intact after every write, not just that the file opens.
 
 **Two real findings surfaced while doing this, worth flagging directly** (not silently corrected
 in the cells above, since they contradict this document's own earlier prose):
@@ -160,12 +175,21 @@ in the cells above, since they contradict this document's own earlier prose):
   unchecked in round 2 too — this is a genuine compliance gap, not a translation judgment call, and
   picking either the compliant or non-compliant option without your input would misrepresent it.
 
+**A structural category worth naming separately**: 8 of the 37 remaining questions (Section 2 Q8;
+Section 3 Q5, 6, 7, 9, 12, 17, 19) ask about workforce processes — screening, training records,
+role documentation, sanction-policy contents — that don't apply given a confirmed team of one (you
+directly confirmed this 2026-08-31). These aren't compliance gaps and aren't really "needs your
+input" either; the tool simply has no clean "not applicable, no additional workforce" option among
+its choices, and forcing a "No" would misleadingly read as a real gap rather than a structural
+non-issue. Left unchecked rather than picked either way — worth deciding for yourself how you want
+to represent this in the actual tool (some versions let you write a free-text note per question).
+
 ## What to actually do with this
 
 1. Open `compliance/SRA-Tool-v3.6.1-Partial.xlsx` directly (Excel or the free SRA Tool Windows app)
-   — the 79 auto-filled answers are already there; spot-check a few against the cited sources
+   — the 88 auto-filled answers are already there; spot-check a few against the cited sources
    above rather than trusting them blindly, and double-check the Section 4 Q29 call specifically.
-2. Work through the remaining ~46 questions using the prose answers above as a starting point
+2. Work through the remaining 37 questions using the prose answers above as a starting point
    where given, and your own honest judgment for everything marked "Needs your input" or left
    unchecked above — including "no" or "not yet" where that's the truth. The tool is designed to
    surface gaps, not to be gamed into a clean scorecard.

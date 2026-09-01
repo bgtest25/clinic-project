@@ -1,8 +1,12 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (SRA Tool pushed further at your explicit request — 24 more questions
-answered in a second round, 79/125 total now genuinely checked in the real downloaded workbook,
-Section 1 fully complete — see 🟢 entry below. Earlier the same day: a remediation pass on threats
+**Last updated:** 2026-08-31 (SRA Tool round 3 — 9 more questions answered from real facts you gave
+when directly asked (disk encryption, device disposal, workspace privacy, backup-drill recurrence,
+emergency-type coverage), 88/125 total now genuinely checked. Also hit a hard limit worth knowing:
+AWS's actual BAA text is confidential under the AWS Artifact NDA, so 6 remaining Section 6 questions
+genuinely can't be answered by me — see 🟢 entry below. Earlier the same day: 24 more questions
+answered in a second round, 79/125 total at that point, Section 1 fully complete — see 🟢 entry
+below. Earlier still: a remediation pass on threats
 #8/#10 plus the SRA Tool's first round — a second unused-but-reachable admin over-permission found
 and removed (`POST /clinics`), IAM Access Analyzer enabled, a real GuardDuty-findings-go-nowhere gap
 found and fixed, and the SRA Tool's first 55/125 questions genuinely answered, with two real
@@ -36,6 +40,57 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 SRA Tool round 3 — 9 more from real answers, 88/125 total, a hard NDA limit found (2026-08-31)
+
+You asked to complete the remaining 46 now. Rather than keep guessing at questions no established
+project fact could settle, asked you a small set of consolidated questions covering the underlying
+facts behind many remaining tool questions at once, then mapped your real answers back to the
+specific rows.
+
+**What you told me, and what it resolved**: still just you (no other workforce — this makes 8
+remaining questions structurally not-applicable rather than answerable either way, see below);
+disk encryption is on for your dev workstation (answers Section 4 Q12); you work from a private
+home office (informs but doesn't cleanly answer several Section 5 facility questions — the tool's
+options assume a multi-person workforce context that genuinely doesn't fit, even now that the
+underlying fact is known); device disposal is wipe-then-certified-third-party-destruction-with-
+certificates (answers Section 5 Q19, the strongest compliance tier the tool offers); no formal
+device inventory exists (Section 5 Q7); the 2026-08-16 backup-restore drill has been run exactly
+once, not on a recurring schedule (Section 7 Q15, and informed Q14 — deliberately picked the option
+that doesn't claim periodic testing, so a real one-time drill doesn't get overstated as an
+established cadence); only cyberattack and infrastructure-failure emergency types have actually
+been considered, not comprehensively (Section 7 Q5, Q6, Q7 — honestly answered "No"/partial rather
+than claiming broader disaster planning that hasn't happened).
+
+**A hard technical limit found while trying to research the remaining BAA-clause questions myself**:
+attempted to look up AWS's actual BAA text (Section 6 Qs about subcontractor terms, Omnibus Rule
+compliance, change-notification language) to answer them without bothering you — `aws artifact
+list-customer-agreements` shows the agreement text itself is confidential, "subject to the terms of
+the AWS Artifact NDA." This isn't a research-effort problem, it's a real access restriction: I
+cannot read this document, and even if I somehow could, quoting its contents would raise the NDA
+issue directly. Six Section 6 questions (5, 9, 11, 13, 14, 15) stay genuinely open — only you, by
+opening AWS Artifact yourself and reading the actual agreement, can answer them.
+
+**A structural gap worth naming, not a compliance gap**: 8 questions (Section 2 Q8; Section 3 Q5,
+6, 7, 9, 12, 17, 19) ask about workforce processes — screening, training records, sanction-policy
+content — that don't apply now that "still just you" is a confirmed fact, not an assumption. The
+tool has no clean "not applicable, no additional workforce" option for these, so forcing a "No"
+would misleadingly read as a real gap rather than a non-issue. Left unchecked rather than guessed
+either direction; noted explicitly in `SRA-TOOL-CROSS-CHECK.md` so this doesn't get miscounted as
+"still needs judgment" the next time someone looks at the remaining total.
+
+**Verified with the same rigor as rounds 1 and 2**: independently re-read the written file,
+confirmed all 88 checkmarks (55 + 24 + 9) land on the exact intended rows, confirmed zero
+double-checked questions, confirmed the `Risk_Logic` sheet's formulas are still byte-for-byte
+intact. `compliance/SRA-Tool-v3.6.1-Partial.xlsx` updated in place, committed.
+
+**Where this actually leaves it**: 37 questions remain — 6 genuinely blocked on you reading AWS's
+confidential BAA (nothing more to do here without that), 8 are the workforce non-issue above, and
+the rest are physical-facility specifics and contingency-planning details (Section 7 Q4's periodic-
+testing-claim tension, Q11's team-of-one hiring mismatch, Q16-18's undocumented activation/
+termination procedures) that are genuine judgment calls, not inference gaps. This is very likely
+close to the practical ceiling of what's answerable without you personally reading source documents
+or making organizational-practice decisions — not a stopping point chosen for convenience.
 
 ## 🟢 SRA Tool round 2 — 24 more questions, 79/125 total, Section 1 fully complete (2026-08-31)
 
