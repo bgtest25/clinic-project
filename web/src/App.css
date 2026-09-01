@@ -1246,6 +1246,22 @@
   gap: 0.4rem;
 }
 
+.transcript-speaker-legend-suggestion {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+}
+
+.transcript-speaker-legend-suggestion-text {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
 /* flex: 1 1 auto with a min-width, not a fixed width — a fixed width on a
    flex child ignores the row's actual available space and can overflow the
    transcript pane instead of wrapping onto its own line (the exact bug

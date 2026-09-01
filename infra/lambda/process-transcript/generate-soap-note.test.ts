@@ -9,7 +9,7 @@ jest.mock('@aws-sdk/client-bedrock-runtime', () => {
 });
 
 import { BedrockRuntimeClient } from '@aws-sdk/client-bedrock-runtime';
-import { generateSoapNote, searchIcd10Codes } from './index';
+import { generateSoapNote, mapSuggestedSpeakerRoles, searchIcd10Codes } from './index';
 
 // index.ts's live-call branch instantiates a single module-level
 // BedrockRuntimeClient at import time — grab the `send` mock off that first
@@ -587,6 +587,135 @@ describe('generateSoapNote', () => {
 
     await expect(generateSoapNote(VIRAL_URI_TRANSCRIPT)).rejects.toThrow('exceeded');
     expect(mockSend.mock.calls.length).toBeLessThanOrEqual(10);
+  });
+});
+
+describe('generateSoapNote suggestedSpeakerRoles', () => {
+  const originalEnv = process.env;
+
+  beforeEach(() => {
+    process.env = { ...originalEnv };
+    mockSend.mockReset();
+  });
+
+  afterAll(() => {
+    process.env = originalEnv;
+  });
+
+  it('parses a valid suggestedSpeakerRoles object through unchanged', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({
+          subjective: '',
+          objective: '',
+          assessment: '',
+          plan: '',
+          suggestedCodes: '',
+          suggestedSpeakerRoles: { '1': 'Clinician', '2': 'Patient' },
+        }),
+      ),
+    );
+
+    const note = await generateSoapNote(VIRAL_URI_TRANSCRIPT);
+
+    expect(note.suggestedSpeakerRoles).toEqual({ '1': 'Clinician', '2': 'Patient' });
+  });
+
+  it('drops a malformed (non-object) suggestedSpeakerRoles rather than throwing', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({
+          subjective: '',
+          objective: '',
+          assessment: '',
+          plan: '',
+          suggestedCodes: '',
+          suggestedSpeakerRoles: 'Clinician',
+        }),
+      ),
+    );
+
+    const note = await generateSoapNote(VIRAL_URI_TRANSCRIPT);
+
+    expect(note.suggestedSpeakerRoles).toBeUndefined();
+  });
+
+  it('leaves suggestedSpeakerRoles undefined when the model omits it', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({ subjective: '', objective: '', assessment: '', plan: '', suggestedCodes: '' }),
+      ),
+    );
+
+    const note = await generateSoapNote(VIRAL_URI_TRANSCRIPT);
+
+    expect(note.suggestedSpeakerRoles).toBeUndefined();
+  });
+
+  it('sends the speaker-role suggestion instructions in the system prompt', async () => {
+    process.env.MOCK_SOAP_NOTE = 'false';
+    mockSend.mockResolvedValue(
+      bedrockTextResponse(
+        JSON.stringify({ subjective: '', objective: '', assessment: '', plan: '', suggestedCodes: '' }),
+      ),
+    );
+
+    await generateSoapNote(VIRAL_URI_TRANSCRIPT);
+
+    const [command] = mockSend.mock.calls[0];
+    const systemText = command.input.system[0].text;
+    expect(systemText).toContain('suggestedSpeakerRoles');
+    expect(systemText).toContain('never guess');
+    expect(systemText).toContain('an empty object is always safer than a wrong guess');
+  });
+});
+
+describe('mapSuggestedSpeakerRoles', () => {
+  it('translates a display number back to its raw diarization speaker key', () => {
+    const labelOrder = new Map([
+      ['spk_0', 1],
+      ['spk_1', 2],
+    ]);
+
+    expect(mapSuggestedSpeakerRoles({ '1': 'Clinician', '2': 'Patient' }, labelOrder)).toEqual({
+      spk_0: 'Clinician',
+      spk_1: 'Patient',
+    });
+  });
+
+  it('drops any value other than exactly "Clinician" or "Patient"', () => {
+    const labelOrder = new Map([
+      ['spk_0', 1],
+      ['spk_1', 2],
+    ]);
+
+    expect(mapSuggestedSpeakerRoles({ '1': 'Jane Doe', '2': 'Patient' }, labelOrder)).toEqual({
+      spk_1: 'Patient',
+    });
+  });
+
+  it('drops a display number that has no matching diarized speaker', () => {
+    const labelOrder = new Map([['spk_0', 1]]);
+
+    expect(mapSuggestedSpeakerRoles({ '1': 'Clinician', '3': 'Patient' }, labelOrder)).toEqual({
+      spk_0: 'Clinician',
+    });
+  });
+
+  it('returns an empty object when raw is undefined', () => {
+    expect(mapSuggestedSpeakerRoles(undefined, new Map())).toEqual({});
+  });
+
+  it('returns an empty object when the model suggested nothing', () => {
+    const labelOrder = new Map([
+      ['spk_0', 1],
+      ['spk_1', 2],
+    ]);
+
+    expect(mapSuggestedSpeakerRoles({}, labelOrder)).toEqual({});
   });
 });
 

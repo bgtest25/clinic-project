@@ -1,9 +1,13 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-09-01 (clinician-assigned speaker labels shipped — the transcript speaker
+**Last updated:** 2026-08-31 (Claude-suggested speaker roles shipped on top of the manual-assignment
+feature — you asked about going further with an automatic SageMaker+LangGraph multi-agent pipeline;
+recommended against that specific architecture and built a lighter suggestion layer on the existing
+Bedrock call instead, with the clinician still required to click Confirm before anything is written.
+See 🟢 entry below. Previously, 2026-09-01: clinician-assigned speaker labels shipped — the transcript speaker
 view now lets the reviewing clinician label each speaker "Clinician," the real patient's name, or a
 custom label like "Interpreter," saved permanently with the encounter, instead of showing only
-generic "Speaker 1/2." Deliberately still never inferred automatically — see 🟢 entry below. Previously, 2026-08-31: SRA Tool round 4 completes the workbook at your request — every one
+generic "Speaker 1/2." Deliberately still never inferred automatically — see 🟢 entry below. Earlier, 2026-08-31: SRA Tool round 4 completes the workbook at your request — every one
 of the 125 real questions now carries an explicit mark, 91 real answers plus 32 consciously flagged
 via the tool's own "Flag this question for later" rather than left silently blank (2 the tool itself
 has no flag option for). See 🟢 entry below. Earlier the same day: built the structural guard rail
@@ -51,6 +55,58 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Claude-suggested speaker roles — one-click "Confirm" on top of manual assignment (2026-08-31)
+
+You asked whether to go further than the manual-assignment feature below and have Claude
+auto-detect who's the clinician vs. patient, proposing an Amazon SageMaker + LangGraph +
+multi-agent pipeline where "each agent should have a job." Recommended against that specific
+architecture: this is one bounded classification task (given an already-diarized transcript, guess
+which speaker is which), not something that benefits from custom model training or multi-agent
+orchestration — it would add real infra, cost, and a new subprocessor surface to verify, for zero
+accuracy gain over a single well-designed Bedrock call. More importantly, full automation would
+reopen exactly the risk the manual-assignment design below was built to avoid: this account's
+diarization is genuinely noisy, and a wrong AI guess here becomes medical-record fact, not just a
+UI annoyance. Landed on a middle path instead: Claude proposes a role, the clinician still clicks
+to confirm before it's written anywhere.
+
+**How it works**: the same Bedrock/Converse call that already drafts the SOAP note
+(`infra/lambda/process-transcript/index.ts`) is now also asked for a `suggestedSpeakerRoles` field
+— e.g. `{"1": "Clinician", "2": "Patient"}` — but only when the model is confident from clear
+conversational role patterns (asking history questions and giving a diagnosis/plan vs. reporting
+symptoms and answering them); explicitly told to return an empty object rather than guess, and
+restricted to the exact values "Clinician"/"Patient" only, never a name or any other role. A new
+pure `mapSuggestedSpeakerRoles()` function translates the model's display-number keys back to the
+real diarization speaker key (e.g. "1" → "spk_0"), dropping anything malformed, an unrecognized
+role value, or a number with no matching diarized speaker.
+
+The suggestion is stored in a new `Transcript.suggestedSpeakerRoles` column (migration
+`20260901010000_add_transcript_suggested_speaker_roles`) — deliberately separate from the
+clinician-owned `speakerLabels` column, so a suggestion can never be confused with a confirmed
+assignment at the data layer either. Nothing new was needed on the API side: `findOne` already
+returns the full transcript object, so the field flows through for free, same as `speakerLabels`
+did.
+
+**Frontend**: `NoteReview.tsx`'s legend now shows "Claude suggests: Clinician" with a one-click
+Confirm button next to any speaker who has a suggestion and no confirmed label yet — clicking it
+calls the *exact same* `PATCH /encounters/:id/transcript/speaker-labels` endpoint a manual
+assignment already used, so the write path and its validation are completely unchanged. A
+suggestion never appears on the transcript turns themselves, only in the legend as a proposal, and
+it disappears the instant a speaker has any confirmed label (manual or via Confirm) — a stale or
+conflicting suggestion can never resurface once the clinician has assigned something by hand.
+
+**Tests**: 9 new lambda tests (system-prompt content, valid/malformed/omitted
+`suggestedSpeakerRoles` parsing, `mapSuggestedSpeakerRoles`'s key-translation and sanitization
+behavior) — 33/33 lambda tests, `tsc` clean. 2 new web tests (a suggestion is shown and Confirm
+writes through the existing endpoint; a suggestion never resurfaces over an already-confirmed
+label) — 83/83 web tests, `tsc` clean. 109/109 API tests unaffected (no API code changed at all —
+the existing endpoint and its guard rails were reused as-is).
+
+**Verified in a real browser, not just jsdom**: a temporary local harness (deleted before
+committing, never touching production) confirmed the suggestion chip and Confirm button render
+correctly, clicking Confirm relabels the legend and every matching transcript turn immediately, a
+still-pending suggestion for the other speaker survives that click untouched, and no suggestion
+text remains once both speakers are confirmed. Zero console/page errors throughout.
 
 ## 🟢 Clinician-assigned speaker labels — "Speaker 1/2" no longer the only option (2026-09-01)
 

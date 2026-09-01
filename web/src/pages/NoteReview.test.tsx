@@ -170,6 +170,56 @@ describe('NoteReview', () => {
     expect(screen.getAllByText('Speaker 1')).toHaveLength(2);
   });
 
+  it("shows Claude's suggested speaker role and confirms it via the same PATCH endpoint as a manual assignment", async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [
+        { speaker: 'spk_0', text: 'How can I help you today?', startTime: '0', endTime: '1' },
+        { speaker: 'spk_1', text: 'My throat hurts.', startTime: '1', endTime: '2' },
+      ],
+      suggestedSpeakerRoles: { spk_0: 'Clinician', spk_1: 'Patient' },
+    });
+    await screen.findByDisplayValue('Cough for 3 days.');
+    expect(screen.getByText('Claude suggests: Clinician')).toBeInTheDocument();
+    expect(screen.getByText('Claude suggests: Patient')).toBeInTheDocument();
+    // A suggestion is a proposal only — it must never appear on the actual
+    // transcript turns until the clinician clicks Confirm.
+    expect(screen.getAllByText('Speaker 1')).toHaveLength(2);
+
+    vi.mocked(apiFetch).mockResolvedValueOnce({});
+    fireEvent.click(screen.getAllByRole('button', { name: 'Confirm' })[0]);
+
+    expect(apiFetch).toHaveBeenCalledWith('/encounters/enc-1/transcript/speaker-labels', 'tok', {
+      method: 'PATCH',
+      body: JSON.stringify({ labels: [{ speaker: 'spk_0', label: 'Clinician' }] }),
+    });
+    expect(await screen.findAllByText('Clinician')).toHaveLength(2);
+    // Confirming one speaker's suggestion doesn't touch the other's.
+    expect(screen.getByText('Claude suggests: Patient')).toBeInTheDocument();
+  });
+
+  it('never shows a suggestion for a speaker that already has a confirmed label', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(draftNote);
+    renderNoteReview({
+      token: 'tok',
+      encounterId: 'enc-1',
+      transcript: 'raw transcript text',
+      diarizedSegments: [{ speaker: 'spk_0', text: 'How can I help you today?', startTime: '0', endTime: '1' }],
+      speakerLabels: { spk_0: 'Clinician' },
+      // A stale/conflicting suggestion should never resurface once a
+      // clinician has already assigned this speaker — confirmed always wins.
+      suggestedSpeakerRoles: { spk_0: 'Patient' },
+    });
+    await screen.findByDisplayValue('Cough for 3 days.');
+    expect(screen.queryByText(/Claude suggests/)).not.toBeInTheDocument();
+    // Legend current label + the (now-disabled) "Clinician" quick-assign
+    // button + the turn label — all reflecting the confirmed assignment.
+    expect(screen.getAllByText('Clinician')).toHaveLength(3);
+  });
+
   it('shows only raw text with no toggle when there are no diarized segments', async () => {
     vi.mocked(apiFetch).mockResolvedValue(draftNote);
     renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: 'raw transcript text' });

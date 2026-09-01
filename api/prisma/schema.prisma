@@ -145,6 +145,15 @@ model Transcript {
   // actually in the room assigning it after the fact avoids that risk
   // entirely. Absent keys fall back to "Speaker N" in the UI.
   speakerLabels    Json?
+  // Claude's suggested role ("Clinician" or "Patient" only — never a name or
+  // other role) for a speaker, produced by the same Bedrock call that drafts
+  // the SOAP note and keyed by the same raw diarization speaker key as
+  // speakerLabels. Shown to the clinician as a one-click "Confirm" proposal
+  // in the transcript legend — writing it into speakerLabels still requires
+  // that click through the existing PATCH endpoint, so a wrong suggestion
+  // never reaches the record on its own. A speaker the model wasn't
+  // confident about is simply absent here, not guessed.
+  suggestedSpeakerRoles Json?
   sttProvider      String    @default("aws-transcribe-medical")
   createdAt        DateTime  @default(now())
 

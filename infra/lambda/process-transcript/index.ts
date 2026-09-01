@@ -33,8 +33,9 @@ const SOAP_SYSTEM_PROMPT = [
     'before it becomes part of the medical record — you are producing a starting point, not a ' +
     'final note.',
   '',
-  'Produce a JSON object with exactly these string fields: "subjective", "objective", ' +
-    '"assessment", "plan", "suggestedCodes".',
+  'Produce a JSON object with exactly these fields: "subjective", "objective", "assessment", ' +
+    '"plan", and "suggestedCodes" (all strings), plus "suggestedSpeakerRoles" (an object, ' +
+    'described below).',
   '',
   '- "subjective": the patient\'s own account — chief complaint, history of present illness, ' +
     'relevant past medical/surgical/medication/allergy history, and review of systems — but ONLY ' +
@@ -52,6 +53,18 @@ const SOAP_SYSTEM_PROMPT = [
     'code from memory that the tool did not return. Only include codes you are confident are ' +
     'directly supported by the assessment; these are suggestions for the clinician to verify, ' +
     'not a diagnosis. If the tool returns no good match, use an empty string rather than guessing.',
+  '- "suggestedSpeakerRoles": an object suggesting which speaker number is the clinician and which ' +
+    'is the patient, e.g. {"1": "Clinician", "2": "Patient"} — based on clear conversational role ' +
+    'patterns (asking history questions, examining, and giving a diagnosis/plan vs. reporting ' +
+    'symptoms/history and answering questions). Only include a speaker number you are reasonably ' +
+    'confident about; if you can\'t tell, if a speaker\'s turns don\'t read as a single consistent ' +
+    'role (a sign the "Speaker N" labels themselves may be mixing two real speakers), or if there ' +
+    'is no clear clinician/patient pair (e.g. only one speaker, or a multi-party visit you can\'t ' +
+    'confidently sort), leave that speaker\'s number out of this object entirely — never guess. ' +
+    'Only ever use the exact values "Clinician" or "Patient"; never a name or any other role ' +
+    '(interpreter, guardian, etc.) — those are for the clinician to assign by hand. This is shown ' +
+    'to the clinician as a one-click suggestion to confirm, never written to the record on its own, ' +
+    'so an empty object is always safer than a wrong guess.',
   '',
   'Hard rules:',
   '- Never invent a symptom, finding, medication, or history detail that is not in the ' +
@@ -136,15 +149,48 @@ async function fetchTranscript(
 // can jump labels mid-conversation) — relabeling spk_0/spk_1 as "Clinician"/"Patient"
 // here would bake a guess into the model's input as if it were fact. Numbering by
 // first-appearance order instead keeps the structure (turn-taking) without asserting
-// a role the diarization can't actually promise.
-function formatSpeakerLabeledTranscript(segments: DiarizedSegment[], fallbackText: string): string {
-  if (segments.length === 0) return fallbackText;
+// a role the diarization can't actually promise. The returned labelOrder map (raw
+// diarization key -> display number) is what lets suggestedSpeakerRoles below be
+// translated back to a real speaker key, since the model only ever sees numbers.
+function formatSpeakerLabeledTranscript(
+  segments: DiarizedSegment[],
+  fallbackText: string,
+): { text: string; labelOrder: Map<string, number> } {
   const labelOrder = new Map<string, number>();
+  if (segments.length === 0) return { text: fallbackText, labelOrder };
   const lines = segments.map((seg) => {
     if (!labelOrder.has(seg.speaker)) labelOrder.set(seg.speaker, labelOrder.size + 1);
     return `Speaker ${labelOrder.get(seg.speaker)}: ${seg.text}`;
   });
-  return lines.join('\n');
+  return { text: lines.join('\n'), labelOrder };
+}
+
+const ALLOWED_SUGGESTED_SPEAKER_ROLES = new Set(['Clinician', 'Patient']);
+
+// Translates Claude's suggestedSpeakerRoles (keyed by the display number it was
+// shown, e.g. "1") back to the raw diarization speaker key (e.g. "spk_0") so the
+// frontend can match a suggestion against speakerOrder the same way it matches a
+// clinician-confirmed label. Only "Clinician"/"Patient" values survive — any other
+// value, or a display number that doesn't correspond to a real diarized speaker
+// (a malformed or hallucinated key), is dropped rather than stored. This is a pure
+// sanitization step: the actual write to speakerLabels still only ever happens
+// through updateSpeakerLabels when the clinician clicks Confirm.
+export function mapSuggestedSpeakerRoles(
+  raw: Record<string, string> | undefined,
+  labelOrder: Map<string, number>,
+): Record<string, string> {
+  if (!raw) return {};
+  const numberToRawKey = new Map<number, string>();
+  for (const [rawKey, num] of labelOrder) numberToRawKey.set(num, rawKey);
+
+  const result: Record<string, string> = {};
+  for (const [displayNum, role] of Object.entries(raw)) {
+    if (!ALLOWED_SUGGESTED_SPEAKER_ROLES.has(role)) continue;
+    const rawKey = numberToRawKey.get(Number(displayNum));
+    if (!rawKey) continue;
+    result[rawKey] = role;
+  }
+  return result;
 }
 
 const ICD10_SEARCH_TOOL = {
@@ -271,6 +317,7 @@ export async function generateSoapNote(transcriptText: string) {
       assessment: '[MOCK NOTE]',
       plan: '[MOCK NOTE]',
       suggestedCodes: '',
+      suggestedSpeakerRoles: undefined as Record<string, string> | undefined,
     };
   }
 
@@ -278,13 +325,27 @@ export async function generateSoapNote(transcriptText: string) {
 
   const jsonMatch = text.match(/\{[\s\S]*\}/);
   if (!jsonMatch) throw new Error(`Bedrock response was not JSON: ${text}`);
-  return JSON.parse(jsonMatch[0]) as {
+  const parsed = JSON.parse(jsonMatch[0]) as {
     subjective?: string;
     objective?: string;
     assessment?: string;
     plan?: string;
     suggestedCodes?: string;
+    suggestedSpeakerRoles?: unknown;
   };
+
+  // Guard against a malformed/hallucinated shape (e.g. a string or array
+  // instead of an object) before it ever reaches mapSuggestedSpeakerRoles —
+  // Object.entries on a non-object produces garbage keys rather than
+  // throwing, so this has to be checked here, not assumed from the type cast.
+  const suggestedSpeakerRoles =
+    parsed.suggestedSpeakerRoles &&
+    typeof parsed.suggestedSpeakerRoles === 'object' &&
+    !Array.isArray(parsed.suggestedSpeakerRoles)
+      ? (parsed.suggestedSpeakerRoles as Record<string, string>)
+      : undefined;
+
+  return { ...parsed, suggestedSpeakerRoles };
 }
 
 // Best-effort: opens its own connection so it works whether it's called from
@@ -308,18 +369,26 @@ async function processTranscript(event: ProcessEvent) {
   const { encounterId, bucket, transcriptKey } = event;
 
   const { rawText, segments } = await fetchTranscript(bucket, transcriptKey);
-  const speakerLabeledText = formatSpeakerLabeledTranscript(segments, rawText);
+  const { text: speakerLabeledText, labelOrder } = formatSpeakerLabeledTranscript(segments, rawText);
   const note = await generateSoapNote(speakerLabeledText);
+  const suggestedSpeakerRoles = mapSuggestedSpeakerRoles(note.suggestedSpeakerRoles, labelOrder);
 
   const client = new Client(resolveDatabaseConfig());
   await client.connect();
   try {
     await client.query('BEGIN');
     await client.query(
-      `INSERT INTO "transcripts" ("id", "encounterId", "rawText", "diarizedSegments", "sttProvider", "createdAt")
-       VALUES ($1, $2, $3, $4, $5, now())
-       ON CONFLICT ("encounterId") DO UPDATE SET "rawText" = EXCLUDED."rawText", "diarizedSegments" = EXCLUDED."diarizedSegments"`,
-      [randomUUID(), encounterId, rawText, JSON.stringify(segments), 'aws-transcribe-medical'],
+      `INSERT INTO "transcripts" ("id", "encounterId", "rawText", "diarizedSegments", "suggestedSpeakerRoles", "sttProvider", "createdAt")
+       VALUES ($1, $2, $3, $4, $5, $6, now())
+       ON CONFLICT ("encounterId") DO UPDATE SET "rawText" = EXCLUDED."rawText", "diarizedSegments" = EXCLUDED."diarizedSegments", "suggestedSpeakerRoles" = EXCLUDED."suggestedSpeakerRoles"`,
+      [
+        randomUUID(),
+        encounterId,
+        rawText,
+        JSON.stringify(segments),
+        Object.keys(suggestedSpeakerRoles).length > 0 ? JSON.stringify(suggestedSpeakerRoles) : null,
+        'aws-transcribe-medical',
+      ],
     );
     await client.query(
       `INSERT INTO "clinical_notes"

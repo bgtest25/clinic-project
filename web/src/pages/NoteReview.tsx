@@ -43,6 +43,7 @@ export function NoteReview({
   diarizedSegments = null,
   speakerLabels = null,
   onSpeakerLabelsChange,
+  suggestedSpeakerRoles = null,
   patient = null,
   visitDate = null,
   clinic = null,
@@ -53,6 +54,7 @@ export function NoteReview({
   diarizedSegments?: DiarizedSegment[] | null;
   speakerLabels?: Record<string, string> | null;
   onSpeakerLabelsChange?: (labels: Record<string, string>) => void;
+  suggestedSpeakerRoles?: Record<string, string> | null;
   patient?: Patient | null;
   visitDate?: string | null;
   clinic?: Clinic | null;
@@ -376,16 +378,36 @@ export function NoteReview({
                   recordings — labels default to generic ("Speaker 1/2")
                   rather than guessing Clinician/Patient automatically, since
                   a wrong role label here would be taken as fact rather than
-                  the estimate it is. You were in the room, though — assign
-                  who's who below and it's saved with this visit. */}
+                  the estimate it is. Claude may propose a role below (from
+                  the same call that drafted this note) when it's confident,
+                  but that's only ever a suggestion — it never overwrites the
+                  generic label until you click Confirm. You were in the
+                  room, though — assign who's who below and it's saved with
+                  this visit. */}
               <div className="transcript-speaker-legend">
                 {speakerOrder.map(([rawKey, num]) => {
                   const current = speakerDisplayLabel(rawKey, num);
                   const saving = savingSpeaker === rawKey;
                   const isPreset = current === 'Clinician' || (!!patient?.name && current === patient.name);
+                  const suggestion = !speakerLabelsState[rawKey] ? suggestedSpeakerRoles?.[rawKey] : undefined;
                   return (
                     <div key={rawKey} className="transcript-speaker-legend-row">
                       <span className="transcript-speaker-legend-current">{current}</span>
+                      {suggestion && (
+                        <div className="transcript-speaker-legend-suggestion">
+                          <span className="transcript-speaker-legend-suggestion-text">
+                            Claude suggests: {suggestion}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            disabled={saving}
+                            onClick={() => assignSpeakerLabel(rawKey, suggestion)}
+                          >
+                            Confirm
+                          </button>
+                        </div>
+                      )}
                       <div className="transcript-speaker-legend-actions">
                         <button
                           type="button"

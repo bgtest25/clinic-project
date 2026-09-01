@@ -32,6 +32,7 @@ export function Recording({
   const [transcript, setTranscript] = useState<string | null>(null);
   const [diarizedSegments, setDiarizedSegments] = useState<DiarizedSegment[] | null>(null);
   const [speakerLabels, setSpeakerLabels] = useState<Record<string, string> | null>(null);
+  const [suggestedSpeakerRoles, setSuggestedSpeakerRoles] = useState<Record<string, string> | null>(null);
   const [patient, setPatient] = useState<Patient | null>(null);
   const [visitDate, setVisitDate] = useState<string | null>(null);
   const [isPaused, setIsPaused] = useState(false);
@@ -54,6 +55,7 @@ export function Recording({
       const segments = latest.transcript?.diarizedSegments;
       setDiarizedSegments(Array.isArray(segments) && segments.length > 0 ? segments : null);
       setSpeakerLabels(latest.transcript?.speakerLabels ?? null);
+      setSuggestedSpeakerRoles(latest.transcript?.suggestedSpeakerRoles ?? null);
       setState('review');
     } else if (latest.status === 'FAILED') {
       setError(latest.processingError ?? 'Processing failed.');
@@ -209,6 +211,7 @@ export function Recording({
           diarizedSegments={diarizedSegments}
           speakerLabels={speakerLabels}
           onSpeakerLabelsChange={setSpeakerLabels}
+          suggestedSpeakerRoles={suggestedSpeakerRoles}
           patient={patient}
           visitDate={visitDate}
           clinic={clinic}

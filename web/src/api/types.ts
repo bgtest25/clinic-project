@@ -44,6 +44,11 @@ export interface Transcript {
   // PATCH /encounters/:id/transcript/speaker-labels, never inferred
   // automatically. Absent keys fall back to "Speaker N" in the UI.
   speakerLabels: Record<string, string> | null;
+  // Claude's suggested role ("Clinician" or "Patient" only) for a speaker,
+  // keyed the same way as speakerLabels — produced by the same Bedrock call
+  // that drafts the SOAP note. Shown as a one-click "Confirm" proposal;
+  // writing it into speakerLabels still requires that click.
+  suggestedSpeakerRoles: Record<string, string> | null;
   sttProvider: string;
   createdAt: string;
 }
