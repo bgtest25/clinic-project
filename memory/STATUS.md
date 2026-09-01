@@ -1,6 +1,11 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (SRA Tool round 3 — 9 more questions answered from real facts you gave
+**Last updated:** 2026-08-31 (built the structural guard rail against threat #10's bug class you
+asked for — a static test (`api/src/architecture.spec.ts`) that fails CI if a DTO ever gets a
+client-supplied `clinicId` field again, or a mutating controller endpoint ever skips identifying
+the caller — the exact shape of both the `invite()` and `POST /clinics` bugs. Verified it actually
+discriminates by temporarily reintroducing each real bug and confirming failure, not just trusting
+it passes today — see 🟢 entry below. Earlier the same day: SRA Tool round 3 — 9 more questions answered from real facts you gave
 when directly asked (disk encryption, device disposal, workspace privacy, backup-drill recurrence,
 emergency-type coverage), 88/125 total now genuinely checked. Also hit a hard limit worth knowing:
 AWS's actual BAA text is confidential under the AWS Artifact NDA, so 6 remaining Section 6 questions
@@ -40,6 +45,44 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 Structural guard rail against threat #10's bug class (2026-08-31)
+
+You asked what would actually reduce threat #10's risk going forward, not just document the two
+bugs found the same day. Offered three options; you picked building a guard rail that makes the
+mistake structurally harder to make, not just easier to catch after the fact.
+
+**`api/src/architecture.spec.ts`** — a static test using the TypeScript compiler API directly (no
+NestJS bootstrap, no mocking, just parsing real source files as an AST), so it runs in the exact
+same `npm test` as everything else, in CI, on every push. Two checks:
+
+1. **No `*.dto.ts` file may have a `clinicId` property.** Regression guard for the exact
+   `UsersService.invite()` bug shape — `clinicId` is the tenant boundary in this system and must
+   always come from the caller's own resolved identity, never the request body.
+2. **Every mutating (`POST`/`PATCH`/`PUT`/`DELETE`) controller method must have an `@Req()`
+   parameter and reference `.user.sub` in its body.** Regression guard for the exact `POST /clinics`
+   bug shape — an admin-gated action that never referenced the calling user at all, so nothing
+   could scope it to anyone.
+
+24 tests generated dynamically (one per DTO file, one per mutating controller method) — all pass
+against the current, already-fixed codebase.
+
+**Verified the checks actually discriminate, not just that they pass today** — same standard this
+project has applied to every other detection mechanism it's built (the CI smoke test, the
+`ApiErrorLogsPresent`/`AdminActionBurst` alarms): temporarily reintroduced a bare `clinicId: string`
+field into `CreatePatientDto` and confirmed the first check fails with a clear diff; temporarily
+stripped `@Req()`/`req.user.sub` from `PatientsController.create` and confirmed the second check
+fails; reverted both immediately after (confirmed via `git status`/`git diff` showing zero residual
+changes to either file). Full suite re-run clean afterward: 101/101 API tests (77 + 24 new), `tsc`
+clean, e2e suite clean.
+
+**What this does and doesn't do, stated plainly**: it makes these two specific bug *shapes*
+structurally impossible to reintroduce silently — a real, permanent improvement. It does not verify
+that an ownership check is *correct*, only that the structural precondition for one (knowing who's
+calling) can't be skipped — that's still the service-layer clinic-scoping tests' job. And it can't
+catch a genuinely novel third bug shape nobody has thought of yet. Documented honestly in
+`SECURITY-RISK-ASSESSMENT.md` threat #10's row — still not re-rated down, on the same reasoning as
+before: one day of guard-rail-building doesn't yet prove out as a lasting pattern change.
 
 ## 🟢 SRA Tool round 3 — 9 more from real answers, 88/125 total, a hard NDA limit found (2026-08-31)
 
