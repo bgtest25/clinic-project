@@ -56,11 +56,11 @@ WAF added, admin-activity alarm added, GuardDuty findings wired to real alerting
 authorization vulnerabilities found/fixed and test coverage added) — point revisions to specific
 rows, not a full re-walk of all ten threats. Worth a full re-review before this is treated as
 current on every row.
-**Reviewed alongside:** HHS/ONC Security Risk Assessment Tool — ☐ yes ☑ no. **Real progress
-2026-08-31**: 88/125 questions genuinely answered in the actual downloaded workbook
-(`compliance/SRA-Tool-v3.6.1-Partial.xlsx`, three rounds) — still not complete, 37 remain: 6 need
-you to read AWS's actual BAA text yourself (confidential, under NDA, not something readable on your
-behalf), 8 are workforce questions that don't cleanly apply to a confirmed team of one, and the rest
-are physical-facility/contingency-planning specifics genuinely requiring your own judgment; don't
-flip this to "yes" until they're done
+**Reviewed alongside:** HHS/ONC Security Risk Assessment Tool — ☐ yes ☑ no. **2026-08-31**: all 125
+questions in the actual downloaded workbook (`compliance/SRA-Tool-v3.6.1-Partial.xlsx`, four rounds)
+now carry an explicit mark — 91 real answers, 32 deliberately flagged via the tool's own "Flag this
+question for later" (a conscious deferral, not a silent gap), 2 with no mark possible at all (the
+tool offers no flag option on those two specifically). Still don't flip this checkbox to "yes" — the
+32 flagged questions are genuine judgment calls only you can make, and 6 of them specifically
+require you to read AWS's confidential BAA text yourself first
 **Next scheduled review:** 2027-08-16 (annual), or sooner if team size or a new subprocessor changes materially.

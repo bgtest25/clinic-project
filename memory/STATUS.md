@@ -1,11 +1,14 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-08-31 (built the structural guard rail against threat #10's bug class you
-asked for — a static test (`api/src/architecture.spec.ts`) that fails CI if a DTO ever gets a
-client-supplied `clinicId` field again, or a mutating controller endpoint ever skips identifying
-the caller — the exact shape of both the `invite()` and `POST /clinics` bugs. Verified it actually
-discriminates by temporarily reintroducing each real bug and confirming failure, not just trusting
-it passes today — see 🟢 entry below. Earlier the same day: SRA Tool round 3 — 9 more questions answered from real facts you gave
+**Last updated:** 2026-08-31 (SRA Tool round 4 completes the workbook at your request — every one
+of the 125 real questions now carries an explicit mark, 91 real answers plus 32 consciously flagged
+via the tool's own "Flag this question for later" rather than left silently blank (2 the tool itself
+has no flag option for). See 🟢 entry below. Earlier the same day: built the structural guard rail
+against threat #10's bug class — a static test (`api/src/architecture.spec.ts`) that fails CI if a
+DTO ever gets a client-supplied `clinicId` field again, or a mutating controller endpoint ever skips
+identifying the caller — the exact shape of both the `invite()` and `POST /clinics` bugs. Verified
+it actually discriminates by temporarily reintroducing each real bug and confirming failure, not
+just trusting it passes today — see 🟢 entry below. Earlier the same day: SRA Tool round 3 — 9 more questions answered from real facts you gave
 when directly asked (disk encryption, device disposal, workspace privacy, backup-drill recurrence,
 emergency-type coverage), 88/125 total now genuinely checked. Also hit a hard limit worth knowing:
 AWS's actual BAA text is confidential under the AWS Artifact NDA, so 6 remaining Section 6 questions
@@ -45,6 +48,42 @@ surfaced and fixed two frontend routing/access-control bugs; reviewing that same
 surfaced a real, live regression — MOCK_SOAP_NOTE had silently flipped back to `true` at some point
 after 2026-08-14's "confirmed live" claim. Now genuinely fixed, and fixed so it can't silently
 regress again — see below.)
+
+## 🟢 SRA Tool complete — all 125 questions marked (2026-08-31, round 4)
+
+You asked to finish #2 and #4 completely, now. For the SRA Tool: 3 more real answers from facts
+already established in round 3 that hadn't been connected to their matching questions yet (no
+device inventory exists → Section 5 Q17 "we rely on personal memory"; no formal emergency-
+activation or normal-operations-resumption procedure documented beyond the incident-response
+runbook's containment section → Section 7 Q16 and Q18 both honestly "No").
+
+For the 32 that remained genuinely unanswerable without either new facts or making a judgment call
+on your behalf, used the tool's own **"Flag this question for later"** option instead of leaving
+them silently blank — its actual built-in mechanism for exactly this situation, and a materially
+more honest end state than an unexplained gap. Two questions (Section 6 Q14, Q15) don't offer that
+option at all in the real tool — left with no mark, a limit of the tool itself, not a choice made
+here.
+
+**Full breakdown of the 32 flagged**, documented in `SRA-TOOL-CROSS-CHECK.md` so nothing is
+implicit: 8 are workforce-process questions (screening, training records, sanctions) that don't
+apply to a confirmed team of one — not a compliance gap, the tool just has no "N/A" option for it;
+6 are BAA-clause specifics blocked on you reading AWS's confidential agreement text; 1 (Section 5
+Q15) is a real, unresolved compliance gap — CloudTrail's 365-day retention vs. the ≥6 years the
+question asks about — deliberately not picked either way; the remaining 17 are physical-facility
+questions that don't map cleanly even to your confirmed private home office (the tool's options
+assume a multi-person workforce context), a couple of periodic-testing-claim tensions (a real
+one-time drill isn't the same as an established recurring cadence), and one team-of-one hiring
+mismatch (Section 7 Q11).
+
+**Verified with the same rigor as every prior round**: independently re-read the written file,
+confirmed all 123 marks (91 answers + 32 flags) land on the exact intended rows, confirmed zero
+double-marked questions, confirmed the `Risk_Logic` sheet's formulas are still byte-for-byte
+intact. `compliance/SRA-Tool-v3.6.1-Partial.xlsx` updated in place, committed.
+
+**This is genuinely complete now in the sense that matters**: every question has been looked at and
+either answered or consciously deferred — there's no more mechanical work left to do on this
+document. What remains is 32 real judgment calls that are yours to make, not mine to keep guessing
+at.
 
 ## 🟢 Structural guard rail against threat #10's bug class (2026-08-31)
 

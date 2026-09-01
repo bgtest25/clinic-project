@@ -109,13 +109,16 @@ AWS" rather than leaving blank, since HIPAA still expects the question to be add
 
 ---
 
-## Real progress: 88/125 questions already answered (2026-08-31, three rounds)
+## Complete: all 125 questions now marked (2026-08-31, four rounds)
 
 `compliance/SRA-Tool-v3.6.1-Partial.xlsx` in this same directory is the actual downloaded tool
-(v3.6.1, healthit.gov), with 88 of the 125 questions genuinely checked off — not a mockup. Built by
-parsing the real workbook (`xlsx` npm package, in a throwaway scratch install, not a project
-dependency) rather than guessing its layout, then mechanically placing a `✔` in column C of the
-matching answer row.
+(v3.6.1, healthit.gov). Every one of the 125 questions now carries an explicit mark — 91 genuine
+answers plus 32 deliberately flagged via the tool's own **"Flag this question for later"** option
+(the mechanism it provides for exactly this: consciously deferred, not silently skipped). Only 2
+questions (Section 6 Q14, Q15) have no mark at all, because the real tool doesn't offer a "flag for
+later" choice on those two specifically — nothing to select, not an oversight here. Built by parsing
+the real workbook (`xlsx` npm package, in a throwaway scratch install, not a project dependency)
+rather than guessing its layout, then mechanically placing a `✔` in column C of the matching row.
 
 **Round 1 (55 questions)**: only where the translation from this doc's cited answer to the tool's
 exact wording was low-risk — a plain Yes/No/IDK question, or a multi-choice question where one
@@ -175,24 +178,43 @@ in the cells above, since they contradict this document's own earlier prose):
   unchecked in round 2 too — this is a genuine compliance gap, not a translation judgment call, and
   picking either the compliant or non-compliant option without your input would misrepresent it.
 
-**A structural category worth naming separately**: 8 of the 37 remaining questions (Section 2 Q8;
-Section 3 Q5, 6, 7, 9, 12, 17, 19) ask about workforce processes — screening, training records,
-role documentation, sanction-policy contents — that don't apply given a confirmed team of one (you
-directly confirmed this 2026-08-31). These aren't compliance gaps and aren't really "needs your
-input" either; the tool simply has no clean "not applicable, no additional workforce" option among
-its choices, and forcing a "No" would misleadingly read as a real gap rather than a structural
-non-issue. Left unchecked rather than picked either way — worth deciding for yourself how you want
-to represent this in the actual tool (some versions let you write a free-text note per question).
+**Round 4 (35 more), completing the workbook, at your explicit request to finish this now**: added
+3 real answers from facts already established in round 3 that hadn't been connected to their
+matching questions yet — no device inventory exists, so Section 5 Q17 ("how do you maintain
+awareness of device movement") honestly answers "We rely on personal memory..."; no formal
+emergency-activation or normal-operations-resumption procedure is documented beyond the incident-
+response runbook's containment section, so Section 7 Q16 and Q18 both honestly answer "No, we don't
+have that procedure." For the remaining 32, rather than force an answer that would misrepresent
+either a structural non-issue (the team-of-one workforce questions) or a genuine unresolved
+question (BAA-clause text, physical-facility specifics that don't map to a private single-occupant
+home, a couple of periodic-testing-claim tensions), used the tool's own **"Flag this question for
+later"** option — its built-in mechanism for exactly this situation, distinct from leaving a
+question silently blank. Two questions (Section 6 Q14, Q15) don't offer that option at all in the
+real tool and are left with no mark — a limit of the tool itself, not a choice made here.
+
+**Full list of what's flagged, for your own follow-up**: Section 2 Q8; Section 3 Q5, 6, 7, 9, 12,
+17, 19 (workforce processes that don't apply to a confirmed team of one — not a gap, just no clean
+"N/A" option exists); Section 4 Q6, 7, 10, 11 (code-enforced access control vs. "written
+procedures" nuance; alternative-safeguards questions that don't apply since encryption is used
+everywhere); Section 5 Q1, 2, 3, 4, 5, 6, 8, 9, 10, 13, 16, 23 (physical-facility questions that
+don't map cleanly even to a known private home office, since the tool's options assume a
+multi-person workforce context); Section 5 Q15 (a real, unresolved compliance gap — CloudTrail's
+365-day retention vs. the ≥6 years this question asks about — deliberately not picked either way);
+Section 6 Q5, 9, 11, 13 (BAA-clause specifics — see the confidential-text limit above); Section 7
+Q4 (same periodic-testing-claim tension as Q14/15 above), Q11 (team-of-one hiring mismatch), Q17
+(no physical facility to coordinate disaster access for). Section 6 Q14, Q15: no mark at all
+possible in the real tool.
 
 ## What to actually do with this
 
 1. Open `compliance/SRA-Tool-v3.6.1-Partial.xlsx` directly (Excel or the free SRA Tool Windows app)
-   — the 88 auto-filled answers are already there; spot-check a few against the cited sources
-   above rather than trusting them blindly, and double-check the Section 4 Q29 call specifically.
-2. Work through the remaining 37 questions using the prose answers above as a starting point
-   where given, and your own honest judgment for everything marked "Needs your input" or left
-   unchecked above — including "no" or "not yet" where that's the truth. The tool is designed to
-   surface gaps, not to be gamed into a clean scorecard.
+   — 91 real answers plus 32 consciously flagged questions are already there; spot-check a few
+   against the cited sources above rather than trusting them blindly, and double-check the Section
+   4 Q29 call specifically.
+2. Work through the flagged questions listed above using your own honest judgment — including "no"
+   or "not yet" where that's the truth, and Section 6's specifically requires actually opening AWS
+   Artifact and reading the real BAA text first. The tool is designed to surface gaps, not to be
+   gamed into a clean scorecard.
 3. Once complete, update `compliance/SECURITY-RISK-ASSESSMENT.md`'s sign-off block: change
    "Reviewed alongside: HHS/ONC Security Risk Assessment Tool — ☐ yes ☑ no" to reflect that it's
    now been run.
