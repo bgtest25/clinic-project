@@ -179,6 +179,10 @@ model ClinicalNote {
   // measured review-time/edit-count metrics (see MetricsService).
   satisfactionRating Int?
   feedbackComment    String?
+  // Plain-language patient summary generated from this note, written at a
+  // 6th-grade reading level with no medical jargon. Generated on-demand via
+  // POST /encounters/:id/note/avs after the note is signed.
+  afterVisitSummary  String?
   createdAt          DateTime   @default(now())
   updatedAt          DateTime   @updatedAt
 

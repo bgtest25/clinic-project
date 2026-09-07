@@ -67,6 +67,7 @@ export interface ClinicalNote {
   signedAt: string | null;
   satisfactionRating: number | null;
   feedbackComment: string | null;
+  afterVisitSummary: string | null;
   createdAt: string;
   updatedAt: string;
 }

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
 import type { Clinic, ClinicalNote, DiarizedSegment, Patient } from '../api/types';
-import { CheckIcon, PrintIcon, StarIcon } from '../icons';
+import { CheckIcon, PrintIcon, StarIcon, DocumentIcon } from '../icons';
 import { CodePicker } from '../components/CodePicker';
 import { TemplateMenu } from '../components/TemplateMenu';
 import { Skeleton } from '../components/Skeleton';
@@ -84,6 +84,8 @@ export function NoteReview({
   const [feedbackComment, setFeedbackComment] = useState('');
   const [feedbackBusy, setFeedbackBusy] = useState(false);
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
+  const [avsGenerating, setAvsGenerating] = useState(false);
+  const [avsError, setAvsError] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token)
@@ -195,6 +197,49 @@ export function NoteReview({
     } finally {
       setFeedbackBusy(false);
     }
+  }
+
+  async function handleGenerateAvs() {
+    setAvsGenerating(true);
+    setAvsError(null);
+    try {
+      const updated = await apiFetch<ClinicalNote>(`/encounters/${encounterId}/note/avs`, token, {
+        method: 'POST',
+      });
+      setNote(updated);
+      showToast('Patient summary generated.');
+    } catch (err) {
+      setAvsError(err instanceof Error ? err.message : 'Failed to generate patient summary');
+    } finally {
+      setAvsGenerating(false);
+    }
+  }
+
+  function handlePrintAvs() {
+    if (!note?.afterVisitSummary) return;
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Patient Visit Summary</title>
+          <style>
+            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+            h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+            .meta { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+            .content { white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <h1>Visit Summary</h1>
+          <div class="meta">${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}</div>
+          <div class="content">${note.afterVisitSummary}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   }
 
   async function handleCopy() {
@@ -345,6 +390,37 @@ export function NoteReview({
             </button>
           </div>
         ))}
+
+      {note.status === 'SIGNED' && (
+        <div className="card avs-card">
+          <h2>
+            <DocumentIcon /> Patient Summary
+          </h2>
+          {note.afterVisitSummary ? (
+            <>
+              <div className="avs-content">{note.afterVisitSummary}</div>
+              <div className="avs-actions">
+                <button className="btn btn-secondary" onClick={handlePrintAvs}>
+                  <PrintIcon /> Print for patient
+                </button>
+                <button className="btn btn-ghost" onClick={handleGenerateAvs} disabled={avsGenerating}>
+                  {avsGenerating ? 'Regenerating…' : 'Regenerate'}
+                </button>
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="avs-description">
+                Generate a plain-language summary of this visit for the patient to take home.
+              </p>
+              {avsError && <p className="error">{avsError}</p>}
+              <button className="btn btn-primary" onClick={handleGenerateAvs} disabled={avsGenerating}>
+                {avsGenerating ? 'Generating…' : 'Generate Patient Summary'}
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="review-columns">
         <div className="transcript-pane">

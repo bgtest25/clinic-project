@@ -13,6 +13,7 @@ describe('NotesService', () => {
   let prisma: any;
   let usersService: any;
   let encountersService: any;
+  let aiService: any;
   let service: NotesService;
 
   beforeEach(() => {
@@ -31,7 +32,10 @@ describe('NotesService', () => {
     encountersService = {
       assertClinicOwnsEncounter: jest.fn().mockResolvedValue(undefined),
     };
-    service = new NotesService(prisma, usersService, encountersService);
+    aiService = {
+      generateAfterVisitSummary: jest.fn().mockResolvedValue('Sample AVS content'),
+    };
+    service = new NotesService(prisma, usersService, encountersService, aiService);
   });
 
   describe('findLatest', () => {
@@ -377,6 +381,97 @@ describe('NotesService', () => {
         where: { id: 'enc-1' },
         include: { patient: true, clinician: true },
       });
+    });
+  });
+
+  describe('generateAfterVisitSummary', () => {
+    it('checks clinic ownership before generating AVS', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Cough',
+        objective: '',
+        assessment: 'URI',
+        plan: 'Rest',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'Jane Doe' },
+        clinician: { clinic: { name: 'Test Clinic' } },
+      });
+      prisma.$transaction.mockResolvedValue([{ id: 'note-1', afterVisitSummary: 'Summary' }]);
+
+      await service.generateAfterVisitSummary('enc-1', 'sub-1');
+
+      expect(encountersService.assertClinicOwnsEncounter).toHaveBeenCalledWith('enc-1', 'clinic-a');
+    });
+
+    it('rejects AVS generation for unsigned notes', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'DRAFT',
+      });
+
+      await expect(service.generateAfterVisitSummary('enc-1', 'sub-1')).rejects.toThrow(
+        ForbiddenException,
+      );
+    });
+
+    it('calls the AI service and saves the summary', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Cough for 3 days',
+        objective: 'Vitals normal',
+        assessment: 'Viral URI',
+        plan: 'Rest and fluids',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'Jane Doe' },
+        clinician: { clinic: { name: 'Test Clinic' } },
+      });
+      prisma.$transaction.mockResolvedValue([{ id: 'note-1', afterVisitSummary: 'Sample AVS content' }]);
+
+      await service.generateAfterVisitSummary('enc-1', 'sub-1');
+
+      expect(aiService.generateAfterVisitSummary).toHaveBeenCalledWith({
+        patientName: 'Jane Doe',
+        visitDate: expect.any(String),
+        clinicName: 'Test Clinic',
+        subjective: 'Cough for 3 days',
+        objective: 'Vitals normal',
+        assessment: 'Viral URI',
+        plan: 'Rest and fluids',
+      });
+    });
+  });
+
+  describe('getAfterVisitSummary', () => {
+    it('returns the existing AVS if present', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        afterVisitSummary: 'Existing summary',
+      });
+
+      const result = await service.getAfterVisitSummary('enc-1', 'sub-1');
+
+      expect(result).toEqual({ afterVisitSummary: 'Existing summary' });
+    });
+
+    it('returns null AVS if not yet generated', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        afterVisitSummary: null,
+      });
+
+      const result = await service.getAfterVisitSummary('enc-1', 'sub-1');
+
+      expect(result).toEqual({ afterVisitSummary: null });
     });
   });
 });

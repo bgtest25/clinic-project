@@ -44,4 +44,14 @@ export class NotesController {
     doc.pipe(res);
     doc.end();
   }
+
+  @Post('avs')
+  generateAfterVisitSummary(@Param('encounterId') encounterId: string, @Req() req: any) {
+    return this.notesService.generateAfterVisitSummary(encounterId, req.user.sub);
+  }
+
+  @Get('avs')
+  getAfterVisitSummary(@Param('encounterId') encounterId: string, @Req() req: any) {
+    return this.notesService.getAfterVisitSummary(encounterId, req.user.sub);
+  }
 }

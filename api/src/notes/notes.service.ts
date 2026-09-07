@@ -1,6 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { DeleteObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import { Prisma } from '@prisma/client';
+import { AiService } from '../ai/ai.service';
 import { EncountersService } from '../encounters/encounters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
@@ -28,6 +29,7 @@ export class NotesService {
     private readonly prisma: PrismaService,
     private readonly usersService: UsersService,
     private readonly encountersService: EncountersService,
+    private readonly aiService: AiService,
   ) {}
 
   // Every public entry point funnels through here first — verifies the
@@ -148,6 +150,54 @@ export class NotesService {
     ]);
 
     return note;
+  }
+
+  async generateAfterVisitSummary(encounterId: string, cognitoSub: string) {
+    const latest = await this.findLatest(encounterId, cognitoSub);
+    if (latest.status !== 'SIGNED') {
+      throw new ForbiddenException('After-visit summary can only be generated for a signed note');
+    }
+
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: { include: { clinic: true } } },
+    });
+
+    const summary = await this.aiService.generateAfterVisitSummary({
+      patientName: encounter.patient.name,
+      visitDate: encounter.visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      clinicName: encounter.clinician.clinic.name,
+      subjective: latest.subjective ?? '',
+      objective: latest.objective ?? '',
+      assessment: latest.assessment ?? '',
+      plan: latest.plan ?? '',
+    });
+
+    const [note] = await this.prisma.$transaction([
+      this.prisma.clinicalNote.update({
+        where: { id: latest.id },
+        data: { afterVisitSummary: summary },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          encounterId,
+          actorId: actor.id,
+          action: 'note.avs_generated',
+        },
+      }),
+    ]);
+
+    return note;
+  }
+
+  async getAfterVisitSummary(encounterId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
+    return { afterVisitSummary: note.afterVisitSummary };
   }
 
   // actorId here is the signing clinician — the purge is a direct, synchronous

@@ -145,3 +145,18 @@ export function StarIcon({ filled }: { filled: boolean }) {
     </svg>
   );
 }
+
+export function DocumentIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path
+        d="M6 4h9l4 4v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinejoin="round"
+      />
+      <path d="M15 4v4h4" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+      <path d="M8 13h8M8 17h5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+    </svg>
+  );
+}

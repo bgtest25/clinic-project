@@ -30,6 +30,7 @@ const draftNote: ClinicalNote = {
   signedAt: null,
   satisfactionRating: null,
   feedbackComment: null,
+  afterVisitSummary: null,
   createdAt: '2026-07-01T00:00:00.000Z',
   updatedAt: '2026-07-01T00:00:00.000Z',
 };
@@ -360,5 +361,36 @@ describe('NoteReview', () => {
     fireEvent.click(screen.getByText(/Follow up in 2 weeks/));
 
     expect(screen.getByDisplayValue(/Rest and fluids\.\s*Follow up in 2 weeks/)).toBeInTheDocument();
+  });
+
+  it('shows the AVS generation button for signed notes without a summary', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(signedNote);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+
+    expect(await screen.findByText('Generate Patient Summary')).toBeInTheDocument();
+    expect(screen.getByText(/plain-language summary/)).toBeInTheDocument();
+  });
+
+  it('generates and displays the after-visit summary', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(signedNote);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+    await screen.findByText('Generate Patient Summary');
+
+    const noteWithAvs = { ...signedNote, afterVisitSummary: 'WHAT WE TALKED ABOUT:\nYou came in for a cough.' };
+    vi.mocked(apiFetch).mockResolvedValueOnce(noteWithAvs);
+    fireEvent.click(screen.getByText('Generate Patient Summary'));
+
+    expect(await screen.findByText(/WHAT WE TALKED ABOUT/)).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenLastCalledWith('/encounters/enc-1/note/avs', 'tok', { method: 'POST' });
+  });
+
+  it('shows the existing AVS with print and regenerate options if already generated', async () => {
+    const noteWithAvs = { ...signedNote, afterVisitSummary: 'Your visit summary here.' };
+    vi.mocked(apiFetch).mockResolvedValueOnce(noteWithAvs);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+
+    expect(await screen.findByText('Your visit summary here.')).toBeInTheDocument();
+    expect(screen.getByText('Print for patient')).toBeInTheDocument();
+    expect(screen.getByText('Regenerate')).toBeInTheDocument();
   });
 });

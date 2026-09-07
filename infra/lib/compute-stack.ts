@@ -91,6 +91,7 @@ export class ClinicComputeStack extends cdk.Stack {
           COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
           MEDIA_BUCKET_NAME: mediaBucket.bucketName,
           PIPELINE_STATE_MACHINE_ARN: pipelineStateMachine.stateMachineArn,
+          BEDROCK_MODEL_ID: this.node.tryGetContext('bedrockModelId') || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
         },
         secrets: {
           DB_HOST: ecs.Secret.fromSecretsManager(dbSecret, 'host'),
@@ -139,6 +140,19 @@ export class ClinicComputeStack extends cdk.Stack {
           'cognito-idp:AdminUserGlobalSignOut',
         ],
         resources: [userPool.userPoolArn],
+      }),
+    );
+
+    // For AiService.generateAfterVisitSummary() — the API calls Bedrock directly
+    // to generate patient-friendly summaries from signed SOAP notes.
+    const bedrockModelId = this.node.tryGetContext('bedrockModelId') || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+    this.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
+        resources: [
+          `arn:aws:bedrock:${this.region}::foundation-model/${bedrockModelId}`,
+          `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${bedrockModelId}`,
+        ],
       }),
     );
 
