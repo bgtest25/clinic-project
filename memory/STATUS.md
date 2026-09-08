@@ -1,10 +1,57 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-09-08 (Professional clinic onboarding system built — full HIPAA-compliant
-5-stage wizard with BAA signing, NPI verification via NPPES API, clinic profile setup, clinician
-profile with credentials, digital signature capture, and HIPAA training attestation. Backend
-complete with schema, migrations, services, controllers. Frontend wizard integrated. PDF templates
-enhanced with professional clinic branding. See 🟢 entry below.)
+**Last updated:** 2026-09-08 (Major onboarding UI redesign deployed — real signature canvas with
+react-signature-canvas supporting typed and drawn modes, logo upload with drag-and-drop, professional
+visual overhaul with sidebar progress navigation and trust badges, full BAA document with scroll
+tracking, comprehensive HIPAA training content, mobile responsive design. All end-to-end verified
+live on app.havenote.health. See 🟢 entry below.)
+
+## 🟢 Onboarding UI/UX professional redesign — signature canvas + visual overhaul (2026-09-08)
+
+Major professional redesign of the onboarding wizard to match enterprise healthcare standards.
+
+**Signature canvas** (`web/src/pages/Onboarding.tsx`):
+- react-signature-canvas integration for real drawn signatures
+- Dual mode: typed (cursive preview) or drawn (freehand canvas)
+- Canvas with signature line, clear/retry, legal acknowledgment
+- Saves as base64 data URL with signatureType metadata
+
+**Logo upload**:
+- Drag-and-drop zone with file picker fallback
+- Real-time preview of uploaded logo
+- 5MB max file size with validation
+
+**Visual redesign**:
+- Left sidebar with step-by-step progress navigation
+- Trust badges: "HIPAA Compliant", "256-bit Encryption"
+- Smooth animations for step transitions
+- Professional color scheme with new CSS variables
+- Added icons: ShieldIcon, LockIcon, CheckCircleIcon
+
+**BAA document improvements**:
+- Full multi-section legal document (RECITALS, DEFINITIONS, OBLIGATIONS, etc.)
+- Scroll tracking — must read to end before checkbox enables
+- Signatory info capture with title, email for BAA copy delivery
+
+**HIPAA training content**:
+- Comprehensive training covering PHI, minimum necessary, patient rights, security safeguards
+- Penalty table, breach notification requirements
+- Progress bar showing scroll completion percentage
+- Must scroll through 95% before acknowledgment checkbox unlocks
+
+**Mobile responsive**:
+- Sidebar collapses to horizontal stepper on mobile
+- Form fields stack vertically on narrow screens
+- Signature canvas adapts to container width
+
+**Backend updates** (`api/src/onboarding/onboarding.service.ts`):
+- `getOnboardingStatus()` now returns `nextStep` field for frontend routing
+- `completeOnboarding()` allows STAFF role to skip signature requirement
+- User status includes profileComplete, signatureUploaded, hipaaTrainingComplete
+
+Deployed via GitHub Actions: Deploy Web (CDK to S3+CloudFront) + Deploy API (ECS).
+
+---
 
 ## 🟢 Professional clinic onboarding system — HIPAA-compliant 5-stage wizard (2026-09-08)
 
