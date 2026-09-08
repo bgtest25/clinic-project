@@ -1,10 +1,39 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-09-08 (Major onboarding UI redesign deployed — real signature canvas with
-react-signature-canvas supporting typed and drawn modes, logo upload with drag-and-drop, professional
-visual overhaul with sidebar progress navigation and trust badges, full BAA document with scroll
-tracking, comprehensive HIPAA training content, mobile responsive design. All end-to-end verified
-live on app.havenote.health. See 🟢 entry below.)
+**Last updated:** 2026-09-08 (Full day session: onboarding UI redesign with signature canvas, bug
+fixes for signature upload and welcome page, comprehensive text overflow audit and fixes across all
+pages. Everything deployed and verified live on app.havenote.health.)
+
+## 🟢 Text overflow audit and fixes — site-wide (2026-09-08)
+
+Deep audit of text placement across all pages. Fixed overflow issues that caused text to fall out
+of line on various screens.
+
+**Fixes deployed** (`web/src/App.css`):
+- **Topbar**: user/clinic names truncate at 320px with ellipsis
+- **Tables**: patient names (200px), emails (220px) truncate properly
+- **Toast messages**: max-width 400px, word-break for long messages
+- **Template menu**: saved phrases truncate instead of awkward multi-line wrap
+- **Code picker**: ICD-10 descriptions clamp to 2 lines
+- **Confirm buttons**: wrap properly on narrow screens
+- **Review header**: long titles truncate with ellipsis
+- **Data requests table**: horizontal scroll on mobile, reason/resolution columns truncate
+- **Dashboard header**: h1 with badge wraps cleanly on mobile
+
+---
+
+## 🟢 Bug fixes — signature upload + welcome page (2026-09-08)
+
+Two bugs found during testing:
+
+1. **Signature upload "failed to fetch"** — base64 canvas signatures exceeded default 100kb JSON
+   body limit. Fixed by adding `app.use(json({ limit: '5mb' }))` in `api/src/main.ts`.
+
+2. **Welcome page disappeared instantly** — `loadStatus()` was auto-exiting when
+   `onboardingComplete` became true, before user could read the welcome message. Fixed by not
+   calling `loadStatus()` after HIPAA training completes, letting user click "Get Started" manually.
+
+---
 
 ## 🟢 Onboarding UI/UX professional redesign — signature canvas + visual overhaul (2026-09-08)
 
