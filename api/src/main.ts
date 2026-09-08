@@ -1,9 +1,12 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
+import { json } from 'express';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  // Increase body size limit for base64 signature images (default is 100kb)
+  app.use(json({ limit: '5mb' }));
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   // The web frontend (havenote.health / app.havenote.health) and the API
   // (api.havenote.health) are different origins — without this, every
