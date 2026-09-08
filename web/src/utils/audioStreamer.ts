@@ -18,7 +18,6 @@ export class AudioStreamer {
   private mediaStream: MediaStream | null = null;
   private processor: ScriptProcessorNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
-  private sessionId: string | null = null;
 
   async connect(token: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -48,7 +47,6 @@ export class AudioStreamer {
         { encounterId, token },
         (response: { success: boolean; sessionId?: string; error?: string }) => {
           if (response.success && response.sessionId) {
-            this.sessionId = response.sessionId;
             resolve(response.sessionId);
           } else {
             reject(new Error(response.error || 'Failed to start stream'));
@@ -142,7 +140,6 @@ export class AudioStreamer {
       this.socket.disconnect();
       this.socket = null;
     }
-    this.sessionId = null;
   }
 
   getMediaStream(): MediaStream | null {
