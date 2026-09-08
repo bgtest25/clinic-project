@@ -12,6 +12,7 @@ import { PatientDataRequestsModule } from './patient-data-requests/patient-data-
 import { PatientsModule } from './patients/patients.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RecordingsModule } from './recordings/recordings.module';
+import { TranscriptionModule } from './transcription/transcription.module';
 import { UsersModule } from './users/users.module';
 
 @Module({
@@ -31,6 +32,7 @@ import { UsersModule } from './users/users.module';
     PatientDataRequestsModule,
     EncountersModule,
     RecordingsModule,
+    TranscriptionModule,
     UsersModule,
     NotesModule,
     MetricsModule,

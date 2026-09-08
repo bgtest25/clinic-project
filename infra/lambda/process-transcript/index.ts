@@ -19,13 +19,18 @@ interface ProcessEvent {
   transcriptKey: string;
 }
 
+interface ProcessStreamedEvent {
+  mode: 'processStreamed';
+  encounterId: string;
+}
+
 interface MarkFailedEvent {
   mode: 'markFailed';
   encounterId: string;
   reason: string;
 }
 
-type PipelineEvent = ProcessEvent | MarkFailedEvent;
+type PipelineEvent = ProcessEvent | ProcessStreamedEvent | MarkFailedEvent;
 
 const SOAP_SYSTEM_PROMPT = [
   'You are a clinical documentation assistant helping a clinician draft a SOAP note from a raw ' +
@@ -365,6 +370,67 @@ async function markEncounterFailed(encounterId: string, reason: string) {
   }
 }
 
+// Process a transcript that was streamed in real-time (already saved in DB)
+async function processStreamedTranscript(encounterId: string) {
+  const client = new Client(resolveDatabaseConfig());
+  await client.connect();
+
+  try {
+    // Fetch the already-saved transcript from DB
+    const result = await client.query(
+      `SELECT "rawText", "diarizedSegments" FROM "transcripts" WHERE "encounterId" = $1`,
+      [encounterId],
+    );
+
+    if (result.rows.length === 0) {
+      throw new Error(`No transcript found for encounter ${encounterId}`);
+    }
+
+    const rawText = result.rows[0].rawText;
+    const segments: DiarizedSegment[] = JSON.parse(result.rows[0].diarizedSegments || '[]');
+
+    const { text: speakerLabeledText, labelOrder } = formatSpeakerLabeledTranscript(segments, rawText);
+    const note = await generateSoapNote(speakerLabeledText);
+    const suggestedSpeakerRoles = mapSuggestedSpeakerRoles(note.suggestedSpeakerRoles, labelOrder);
+
+    await client.query('BEGIN');
+
+    // Update transcript with suggested speaker roles
+    if (Object.keys(suggestedSpeakerRoles).length > 0) {
+      await client.query(
+        `UPDATE "transcripts" SET "suggestedSpeakerRoles" = $2 WHERE "encounterId" = $1`,
+        [encounterId, JSON.stringify(suggestedSpeakerRoles)],
+      );
+    }
+
+    await client.query(
+      `INSERT INTO "clinical_notes"
+         ("id", "encounterId", "version", "subjective", "objective", "assessment", "plan", "suggestedCodes", "status", "createdAt", "updatedAt")
+       VALUES ($1, $2, 1, $3, $4, $5, $6, $7, 'DRAFT', now(), now())`,
+      [
+        randomUUID(),
+        encounterId,
+        note.subjective ?? '',
+        note.objective ?? '',
+        note.assessment ?? '',
+        note.plan ?? '',
+        JSON.stringify(note.suggestedCodes ?? ''),
+      ],
+    );
+    await client.query(`UPDATE "encounters" SET "status" = 'IN_REVIEW', "updatedAt" = now() WHERE "id" = $1`, [
+      encounterId,
+    ]);
+    await client.query('COMMIT');
+
+    return { encounterId, status: 'IN_REVIEW' };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    await client.end();
+  }
+}
+
 async function processTranscript(event: ProcessEvent) {
   const { encounterId, bucket, transcriptKey } = event;
 
@@ -422,6 +488,17 @@ export const handler = async (event: PipelineEvent) => {
   if (event.mode === 'markFailed') {
     await markEncounterFailed(event.encounterId, event.reason);
     return { encounterId: event.encounterId, status: 'FAILED' };
+  }
+
+  if (event.mode === 'processStreamed') {
+    // Transcript already saved via streaming — just generate the SOAP note
+    try {
+      return await processStreamedTranscript(event.encounterId);
+    } catch (err) {
+      const reason = err instanceof Error ? err.message : String(err);
+      await markEncounterFailed(event.encounterId, reason).catch(() => {});
+      throw err;
+    }
   }
 
   try {
