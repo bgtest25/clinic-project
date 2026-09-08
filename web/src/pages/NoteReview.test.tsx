@@ -384,13 +384,14 @@ describe('NoteReview', () => {
     expect(apiFetch).toHaveBeenLastCalledWith('/encounters/enc-1/note/avs', 'tok', { method: 'POST' });
   });
 
-  it('shows the existing AVS with print and regenerate options if already generated', async () => {
+  it('shows the existing AVS with download PDF, print, and regenerate options if already generated', async () => {
     const noteWithAvs = { ...signedNote, afterVisitSummary: 'Your visit summary here.' };
     vi.mocked(apiFetch).mockResolvedValueOnce(noteWithAvs);
     renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
 
     expect(await screen.findByText('Your visit summary here.')).toBeInTheDocument();
-    expect(screen.getByText('Print for patient')).toBeInTheDocument();
+    expect(screen.getAllByText('Download PDF').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Print').length).toBeGreaterThan(0);
     expect(screen.getByText('Regenerate')).toBeInTheDocument();
   });
 

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
 import type { Clinic, ClinicalNote, DiarizedSegment, Patient, PriorAuth, ReferralLetter } from '../api/types';
-import { CheckIcon, PrintIcon, StarIcon, DocumentIcon } from '../icons';
+import { CheckIcon, PrintIcon, StarIcon, DocumentIcon, DownloadIcon } from '../icons';
 import { CodePicker } from '../components/CodePicker';
 import { TemplateMenu } from '../components/TemplateMenu';
 import { Skeleton } from '../components/Skeleton';
@@ -366,6 +366,38 @@ export function NoteReview({
     printWindow.print();
   }
 
+  async function handleDownloadAvsPdf() {
+    try {
+      await apiDownload(`/encounters/${encounterId}/note/avs/pdf`, token, `visit-summary-${encounterId}.pdf`);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to download PDF');
+    }
+  }
+
+  async function handleDownloadReferralPdf(letter: ReferralLetter) {
+    try {
+      await apiDownload(
+        `/encounters/${encounterId}/note/referrals/${letter.id}/pdf`,
+        token,
+        `referral-${letter.specialty.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to download PDF');
+    }
+  }
+
+  async function handleDownloadPriorAuthPdf(pa: PriorAuth) {
+    try {
+      await apiDownload(
+        `/encounters/${encounterId}/note/prior-auths/${pa.id}/pdf`,
+        token,
+        `prior-auth-${pa.procedureOrMed.toLowerCase().replace(/\s+/g, '-')}.pdf`,
+      );
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to download PDF');
+    }
+  }
+
   async function handleCopy() {
     if (!form) return;
     const text = [
@@ -524,8 +556,11 @@ export function NoteReview({
             <>
               <div className="avs-content">{note.afterVisitSummary}</div>
               <div className="avs-actions">
-                <button className="btn btn-secondary" onClick={handlePrintAvs}>
-                  <PrintIcon /> Print for patient
+                <button className="btn btn-secondary" onClick={handleDownloadAvsPdf}>
+                  <DownloadIcon /> Download PDF
+                </button>
+                <button className="btn btn-ghost" onClick={handlePrintAvs}>
+                  <PrintIcon /> Print
                 </button>
                 <button className="btn btn-ghost" onClick={handleGenerateAvs} disabled={avsGenerating}>
                   {avsGenerating ? 'Regenerating…' : 'Regenerate'}
@@ -618,7 +653,10 @@ export function NoteReview({
                       </div>
                       <div className="referral-item-letter">{letter.letterContent}</div>
                       <div className="referral-item-actions">
-                        <button className="btn btn-secondary" onClick={() => handlePrintReferral(letter)}>
+                        <button className="btn btn-secondary" onClick={() => handleDownloadReferralPdf(letter)}>
+                          <DownloadIcon /> Download PDF
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => handlePrintReferral(letter)}>
                           <PrintIcon /> Print
                         </button>
                         <button
@@ -717,7 +755,10 @@ export function NoteReview({
                       )}
                       <div className="prior-auth-item-rationale">{pa.clinicalRationale}</div>
                       <div className="prior-auth-item-actions">
-                        <button className="btn btn-secondary" onClick={() => handlePrintPriorAuth(pa)}>
+                        <button className="btn btn-secondary" onClick={() => handleDownloadPriorAuthPdf(pa)}>
+                          <DownloadIcon /> Download PDF
+                        </button>
+                        <button className="btn btn-ghost" onClick={() => handlePrintPriorAuth(pa)}>
                           <PrintIcon /> Print
                         </button>
                         <button

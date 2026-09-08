@@ -202,6 +202,33 @@ export class NotesService {
     return { afterVisitSummary: note.afterVisitSummary };
   }
 
+  async getAvsForPdf(encounterId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
+    if (!note.afterVisitSummary) {
+      throw new NotFoundException('No after-visit summary exists for this encounter');
+    }
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: { include: { clinic: true } } },
+    });
+    return {
+      patientName: encounter.patient.name,
+      patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      visitDate: encounter.visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      clinicName: encounter.clinician.clinic.name,
+      clinicianName: encounter.clinician.name,
+      summary: note.afterVisitSummary,
+    };
+  }
+
   async generateReferralLetter(encounterId: string, cognitoSub: string, dto: CreateReferralLetterDto) {
     const latest = await this.findLatest(encounterId, cognitoSub);
     if (latest.status !== 'SIGNED') {
@@ -264,6 +291,38 @@ export class NotesService {
       where: { noteId: note.id },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getReferralForPdf(encounterId: string, letterId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
+    const letter = await this.prisma.referralLetter.findFirst({
+      where: { id: letterId, noteId: note.id },
+    });
+    if (!letter) {
+      throw new NotFoundException('Referral letter not found');
+    }
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: { include: { clinic: true } } },
+    });
+    return {
+      patientName: encounter.patient.name,
+      patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      visitDate: encounter.visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      clinicName: encounter.clinician.clinic.name,
+      clinicianName: encounter.clinician.name,
+      specialty: letter.specialty,
+      reason: letter.reason,
+      letterContent: letter.letterContent,
+    };
   }
 
   async generatePriorAuth(encounterId: string, cognitoSub: string, dto: CreatePriorAuthDto) {
@@ -330,6 +389,39 @@ export class NotesService {
       where: { noteId: note.id },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  async getPriorAuthForPdf(encounterId: string, priorAuthId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
+    const priorAuth = await this.prisma.priorAuth.findFirst({
+      where: { id: priorAuthId, noteId: note.id },
+    });
+    if (!priorAuth) {
+      throw new NotFoundException('Prior authorization not found');
+    }
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: { include: { clinic: true } } },
+    });
+    return {
+      patientName: encounter.patient.name,
+      patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      visitDate: encounter.visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      clinicName: encounter.clinician.clinic.name,
+      clinicianName: encounter.clinician.name,
+      procedureOrMed: priorAuth.procedureOrMed,
+      diagnosisCode: priorAuth.diagnosisCode,
+      insurerName: priorAuth.insurerName,
+      clinicalRationale: priorAuth.clinicalRationale,
+    };
   }
 
   // actorId here is the signing clinician — the purge is a direct, synchronous

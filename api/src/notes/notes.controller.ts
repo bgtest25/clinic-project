@@ -1,7 +1,10 @@
 import { Body, Controller, Get, Param, Patch, Post, Req, Res, UseGuards } from '@nestjs/common';
 import type { Response } from 'express';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
+import { buildAvsPdf } from './avs-pdf';
 import { buildNotePdf } from './note-pdf';
+import { buildPriorAuthPdf } from './prior-auth-pdf';
+import { buildReferralPdf } from './referral-pdf';
 import { NotesService } from './notes.service';
 import { CreatePriorAuthDto } from './dto/create-prior-auth.dto';
 import { CreateReferralLetterDto } from './dto/create-referral-letter.dto';
@@ -57,6 +60,16 @@ export class NotesController {
     return this.notesService.getAfterVisitSummary(encounterId, req.user.sub);
   }
 
+  @Get('avs/pdf')
+  async downloadAvsPdf(@Param('encounterId') encounterId: string, @Res() res: Response, @Req() req: any) {
+    const data = await this.notesService.getAvsForPdf(encounterId, req.user.sub);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="visit-summary-${encounterId}.pdf"`);
+    const doc = buildAvsPdf(data);
+    doc.pipe(res);
+    doc.end();
+  }
+
   @Post('referrals')
   generateReferralLetter(
     @Param('encounterId') encounterId: string,
@@ -71,6 +84,21 @@ export class NotesController {
     return this.notesService.getReferralLetters(encounterId, req.user.sub);
   }
 
+  @Get('referrals/:letterId/pdf')
+  async downloadReferralPdf(
+    @Param('encounterId') encounterId: string,
+    @Param('letterId') letterId: string,
+    @Res() res: Response,
+    @Req() req: any,
+  ) {
+    const data = await this.notesService.getReferralForPdf(encounterId, letterId, req.user.sub);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="referral-${data.specialty.toLowerCase().replace(/\s+/g, '-')}-${letterId}.pdf"`);
+    const doc = buildReferralPdf(data);
+    doc.pipe(res);
+    doc.end();
+  }
+
   @Post('prior-auths')
   generatePriorAuth(
     @Param('encounterId') encounterId: string,
@@ -83,5 +111,20 @@ export class NotesController {
   @Get('prior-auths')
   getPriorAuths(@Param('encounterId') encounterId: string, @Req() req: any) {
     return this.notesService.getPriorAuths(encounterId, req.user.sub);
+  }
+
+  @Get('prior-auths/:priorAuthId/pdf')
+  async downloadPriorAuthPdf(
+    @Param('encounterId') encounterId: string,
+    @Param('priorAuthId') priorAuthId: string,
+    @Res() res: Response,
+    @Req() req: any,
+  ) {
+    const data = await this.notesService.getPriorAuthForPdf(encounterId, priorAuthId, req.user.sub);
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="prior-auth-${priorAuthId}.pdf"`);
+    const doc = buildPriorAuthPdf(data);
+    doc.pipe(res);
+    doc.end();
   }
 }
