@@ -145,13 +145,20 @@ export class ClinicComputeStack extends cdk.Stack {
 
     // For AiService.generateAfterVisitSummary() — the API calls Bedrock directly
     // to generate patient-friendly summaries from signed SOAP notes.
+    // bedrockModelId is a cross-region inference profile id (e.g.
+    // "us.anthropic.claude-sonnet-4-5-20250929-v1:0") that fans out to multiple
+    // regional foundation-model endpoints — IAM must allow both the profile AND
+    // the underlying foundation models in each region it routes to.
     const bedrockModelId = this.node.tryGetContext('bedrockModelId') || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0';
+    const bedrockFoundationModelId = bedrockModelId.replace(/^(us|global|apac|eu)\./, '');
     this.taskDefinition.taskRole.addToPrincipalPolicy(
       new iam.PolicyStatement({
         actions: ['bedrock:InvokeModel', 'bedrock:InvokeModelWithResponseStream'],
         resources: [
-          `arn:aws:bedrock:${this.region}::foundation-model/${bedrockModelId}`,
           `arn:aws:bedrock:${this.region}:${this.account}:inference-profile/${bedrockModelId}`,
+          `arn:aws:bedrock:us-east-1::foundation-model/${bedrockFoundationModelId}`,
+          `arn:aws:bedrock:us-east-2::foundation-model/${bedrockFoundationModelId}`,
+          `arn:aws:bedrock:us-west-2::foundation-model/${bedrockFoundationModelId}`,
         ],
       }),
     );
