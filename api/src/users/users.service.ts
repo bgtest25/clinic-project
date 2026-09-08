@@ -91,11 +91,13 @@ export class UsersService {
       );
     }
 
+    // Map roles to Cognito groups - OWNER and ADMIN get admin group, others get clinician
+    const cognitoGroup = dto.role === 'ADMIN' || dto.role === 'OWNER' ? 'admin' : 'clinician';
     await this.cognito.send(
       new AdminAddUserToGroupCommand({
         UserPoolId: userPoolId,
         Username: dto.email,
-        GroupName: dto.role === 'ADMIN' ? 'admin' : 'clinician',
+        GroupName: cognitoGroup,
       }),
     );
 
