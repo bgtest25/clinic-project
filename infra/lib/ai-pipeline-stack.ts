@@ -167,8 +167,11 @@ export class ClinicAiPipelineStack extends cdk.Stack {
     });
     startTranscription.addCatch(markFailedFromException, { resultPath: '$.errorInfo' });
 
+    // Shorter polling interval for faster response — Transcribe Medical typically
+    // finishes a 2-minute recording in 30-45 seconds; polling every 5s means we
+    // detect completion within 5s of it happening instead of waiting up to 30s.
     const waitForTranscription = new sfn.Wait(this, 'WaitForTranscription', {
-      time: sfn.WaitTime.duration(cdk.Duration.seconds(30)),
+      time: sfn.WaitTime.duration(cdk.Duration.seconds(5)),
     });
 
     const getTranscriptionStatus = new tasks.CallAwsService(this, 'GetTranscriptionStatus', {
