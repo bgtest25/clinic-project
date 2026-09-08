@@ -7,6 +7,7 @@ import { EncountersModule } from './encounters/encounters.module';
 import { HealthModule } from './health/health.module';
 import { MetricsModule } from './metrics/metrics.module';
 import { NotesModule } from './notes/notes.module';
+import { OnboardingModule } from './onboarding/onboarding.module';
 import { PatientDataRequestsModule } from './patient-data-requests/patient-data-requests.module';
 import { PatientsModule } from './patients/patients.module';
 import { PrismaModule } from './prisma/prisma.module';
@@ -33,6 +34,7 @@ import { UsersModule } from './users/users.module';
     UsersModule,
     NotesModule,
     MetricsModule,
+    OnboardingModule,
   ],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
 })

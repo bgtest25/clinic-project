@@ -1,5 +1,26 @@
 import PDFDocument from 'pdfkit';
 
+interface ClinicInfo {
+  name: string;
+  addressStreet?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressZip?: string;
+  phone?: string;
+  fax?: string;
+  npi?: string;
+  logoUrl?: string;
+}
+
+interface ClinicianInfo {
+  name: string;
+  credentials?: string;
+  title?: string;
+  specialty?: string;
+  individualNpi?: string;
+  signatureImageUrl?: string;
+}
+
 interface PriorAuthData {
   patientName: string;
   patientDob: string;
@@ -14,6 +35,8 @@ interface PriorAuthData {
   diagnosisCode: string | null;
   insurerName: string | null;
   clinicalRationale: string;
+  clinic?: ClinicInfo;
+  clinician?: ClinicianInfo;
 }
 
 const BRAND_COLOR = '#0f766e';
@@ -24,13 +47,29 @@ const BOX_BORDER = '#e2e8f0';
 
 export function buildPriorAuthPdf(data: PriorAuthData): PDFKit.PDFDocument {
   const doc = new PDFDocument({ size: 'LETTER', margins: { top: 40, bottom: 40, left: 54, right: 54 } });
+  const clinic = data.clinic;
+  const clinician = data.clinician;
+  const clinicDisplayName = clinic?.name || data.clinicName;
 
   // Header banner
-  doc.rect(0, 0, 612, 80).fillColor(BRAND_COLOR).fill();
-  doc.fontSize(22).font('Helvetica-Bold').fillColor('#ffffff').text('PRIOR AUTHORIZATION REQUEST', 54, 25, { align: 'center' });
-  doc.fontSize(12).font('Helvetica').text(data.clinicName, 54, 52, { align: 'center' });
+  doc.rect(0, 0, 612, 90).fillColor(BRAND_COLOR).fill();
+  doc.fontSize(22).font('Helvetica-Bold').fillColor('#ffffff').text('PRIOR AUTHORIZATION REQUEST', 54, 20, { align: 'center' });
+  doc.fontSize(13).font('Helvetica').text(clinicDisplayName, 54, 48, { align: 'center' });
 
-  doc.y = 95;
+  // Clinic contact info in header
+  const address = clinic?.addressStreet
+    ? [clinic.addressStreet, clinic.addressCity, clinic.addressState, clinic.addressZip].filter(Boolean).join(', ')
+    : data.clinicAddress;
+  if (address) {
+    doc.fontSize(9).text(address, 54, 65, { align: 'center' });
+  }
+  const phone = clinic?.phone || data.clinicPhone;
+  if (phone || clinic?.fax) {
+    const contactLine = [phone ? `Tel: ${formatPhone(phone)}` : '', clinic?.fax ? `Fax: ${formatPhone(clinic.fax)}` : ''].filter(Boolean).join('  |  ');
+    doc.fontSize(9).text(contactLine, 54, 76, { align: 'center' });
+  }
+
+  doc.y = 100;
   doc.x = 54;
   doc.fillColor(TEXT_COLOR);
 
@@ -107,23 +146,41 @@ export function buildPriorAuthPdf(data: PriorAuthData): PDFKit.PDFDocument {
   );
   doc.moveDown(0.5);
   doc.x = 64;
-  doc.font('Helvetica-Bold').text(data.clinicianName, { continued: true });
-  if (data.clinicianCredentials) {
-    doc.font('Helvetica').text(`, ${data.clinicianCredentials}`, { continued: true });
+  const providerName = clinician?.name || data.clinicianName;
+  const providerCreds = clinician?.credentials || data.clinicianCredentials;
+  doc.font('Helvetica-Bold').text(providerName, { continued: true });
+  if (providerCreds) {
+    doc.font('Helvetica').text(`, ${providerCreds}`, { continued: true });
   }
-  doc.font('Helvetica').fillColor(MUTED_COLOR).text(`  |  ${data.clinicName}`);
+  doc.font('Helvetica').fillColor(MUTED_COLOR).text(`  |  ${clinicDisplayName}`);
+  if (clinician?.individualNpi) {
+    doc.x = 64;
+    doc.fontSize(9).text(`Provider NPI: ${clinician.individualNpi}`, { continued: false });
+  }
 
   // Footer
   const footerY = 720;
   doc.y = footerY;
   doc.moveTo(54, footerY).lineTo(558, footerY).strokeColor(BOX_BORDER).lineWidth(1).stroke();
   doc.moveDown(0.5);
-  doc.fontSize(9).fillColor(MUTED_COLOR).text(`Generated ${new Date().toLocaleDateString()} | ${data.clinicName}`, { align: 'center' });
-  if (data.clinicNpi) {
-    doc.text(`NPI: ${data.clinicNpi}`, { align: 'center' });
+  const clinicNpi = clinic?.npi || data.clinicNpi;
+  doc.fontSize(9).fillColor(MUTED_COLOR).text(
+    `Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} | ${clinicDisplayName}`,
+    { align: 'center' },
+  );
+  if (clinicNpi) {
+    doc.text(`Organization NPI: ${clinicNpi}`, { align: 'center' });
   }
 
   return doc;
+}
+
+function formatPhone(phone: string): string {
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  return phone;
 }
 
 function parseRationale(rationale: string): Array<{ title: string; content: string }> {

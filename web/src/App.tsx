@@ -13,6 +13,7 @@ import { InviteClinician } from './pages/InviteClinician';
 import { Login } from './pages/Login';
 import { Metrics } from './pages/Metrics';
 import { NewEncounter } from './pages/NewEncounter';
+import { Onboarding } from './pages/Onboarding';
 import { PatientDetail } from './pages/PatientDetail';
 import { Patients } from './pages/Patients';
 import { Recording } from './pages/Recording';
@@ -35,7 +36,7 @@ function RecordingRoute({ token, clinic }: { token: string; clinic: Clinic | nul
 // authenticated clinician who landed here (stale URL, bookmark, back button)
 // saw a fully-rendered admin form before any request ever went out.
 function AdminRoute({ me, children }: { me: Me; children: ReactNode }) {
-  if (me.role !== 'ADMIN') return <Navigate to="/" replace />;
+  if (me.role !== 'ADMIN' && me.role !== 'OWNER') return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 
@@ -76,12 +77,18 @@ function AuthenticatedApp({ token }: { token: string }) {
   const [me, setMe] = useState<Me | null>(null);
   const [clinic, setClinic] = useState<Clinic | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showOnboarding, setShowOnboarding] = useState(false);
 
   const idle = useIdleTimer({ warningMs: IDLE_WARNING_MS, logoutMs: IDLE_LOGOUT_MS, onTimeout: logout });
 
   useEffect(() => {
     apiFetch<Me>('/users/me', token)
-      .then(setMe)
+      .then((user) => {
+        setMe(user);
+        if (!user.onboardingComplete) {
+          setShowOnboarding(true);
+        }
+      })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load your account'));
   }, [token]);
 
@@ -91,6 +98,11 @@ function AuthenticatedApp({ token }: { token: string }) {
       .then((clinics) => setClinic(clinics[0] ?? null))
       .catch(() => {});
   }, [token]);
+
+  function handleOnboardingComplete() {
+    setShowOnboarding(false);
+    apiFetch<Me>('/users/me', token).then(setMe).catch(() => {});
+  }
 
   if (error) {
     return (
@@ -104,6 +116,10 @@ function AuthenticatedApp({ token }: { token: string }) {
   }
 
   if (!me) return <div className="page">Loading…</div>;
+
+  if (showOnboarding) {
+    return <Onboarding token={token} me={me} clinic={clinic} onComplete={handleOnboardingComplete} />;
+  }
 
   return (
     <div>

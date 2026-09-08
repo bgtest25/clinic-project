@@ -3,8 +3,16 @@ export interface Me {
   cognitoSub: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'CLINICIAN';
+  role: 'OWNER' | 'ADMIN' | 'CLINICIAN' | 'STAFF';
   clinicId: string;
+  credentials?: string;
+  title?: string;
+  specialty?: string;
+  individualNpi?: string;
+  signatureImageUrl?: string;
+  signatureType?: 'typed' | 'drawn' | 'uploaded';
+  onboardingComplete: boolean;
+  hipaaTrainingCompletedAt?: string;
 }
 
 export interface Patient {
@@ -106,7 +114,7 @@ export interface EncounterListItem extends Encounter {
 export interface InviteUserPayload {
   email: string;
   name: string;
-  role: 'ADMIN' | 'CLINICIAN';
+  role: 'OWNER' | 'ADMIN' | 'CLINICIAN' | 'STAFF';
 }
 
 export interface MetricsSummary {
@@ -138,6 +146,54 @@ export interface DataRequest {
 export interface Clinic {
   id: string;
   name: string;
+  addressStreet?: string;
+  addressCity?: string;
+  addressState?: string;
+  addressZip?: string;
+  phone?: string;
+  fax?: string;
+  npi?: string;
+  taxId?: string;
+  logoUrl?: string;
+  timezone: string;
+  status: 'PENDING_BAA' | 'PENDING_SETUP' | 'ACTIVE' | 'SUSPENDED';
+}
+
+export interface OnboardingStatus {
+  clinicId: string;
+  userId: string;
+  clinic: {
+    status: 'PENDING_BAA' | 'PENDING_SETUP' | 'ACTIVE' | 'SUSPENDED';
+    baaSigned: boolean;
+    profileComplete: boolean;
+    logoUploaded: boolean;
+  };
+  user: {
+    role: string;
+    profileComplete: boolean;
+    signatureUploaded: boolean;
+    hipaaTrainingComplete: boolean;
+    onboardingComplete: boolean;
+  };
+  nextStep: 'baa' | 'clinic_profile' | 'user_profile' | 'signature' | 'hipaa_training' | 'complete' | null;
+}
+
+export interface NpiVerificationResult {
+  valid: boolean;
+  npi?: string;
+  type?: 'individual' | 'organization';
+  name?: string;
+  credentials?: string;
+  specialty?: string;
+  taxonomyCode?: string;
+  address?: {
+    street: string;
+    city: string;
+    state: string;
+    zip: string;
+  };
+  phone?: string;
+  fax?: string;
 }
 
 export interface CreateDataRequestPayload {

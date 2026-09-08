@@ -10,8 +10,10 @@ datasource db {
 }
 
 enum UserRole {
+  OWNER
   ADMIN
   CLINICIAN
+  STAFF
 }
 
 enum EncounterStatus {
@@ -29,16 +31,91 @@ enum NoteStatus {
   AMENDED
 }
 
+enum ClinicStatus {
+  PENDING_BAA
+  PENDING_SETUP
+  ACTIVE
+  SUSPENDED
+}
+
 model Clinic {
-  id        String   @id @default(uuid())
+  id        String       @id @default(uuid())
   name      String
+  status    ClinicStatus @default(PENDING_BAA)
+
+  // Contact & Address
+  addressStreet String?
+  addressCity   String?
+  addressState  String?
+  addressZip    String?
+  phone         String?
+  fax           String?
+  email         String?
+
+  // Organizational identifiers
+  npi   String? // Organizational NPI (10 digits)
+  taxId String? // For BAA records
+
+  // Branding
+  logoUrl String? // S3 URL
+
+  // Settings
+  timezone String @default("America/New_York")
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  users    User[]
-  patients Patient[]
+  users         User[]
+  patients      Patient[]
+  locations     Location[]
+  baaSignatures BaaSignature[]
 
   @@map("clinics")
+}
+
+model Location {
+  id       String @id @default(uuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  name          String
+  addressStreet String?
+  addressCity   String?
+  addressState  String?
+  addressZip    String?
+  phone         String?
+  fax           String?
+  npi           String? // Location-specific NPI if different from org
+
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([clinicId])
+  @@map("locations")
+}
+
+model BaaSignature {
+  id       String @id @default(uuid())
+  clinicId String
+  clinic   Clinic @relation(fields: [clinicId], references: [id])
+
+  signatoryName    String
+  signatoryTitle   String
+  signatoryEmail   String
+  signedAt         DateTime
+  ipAddress        String?
+  signedByUserId   String?
+  signedByUser     User?   @relation(fields: [signedByUserId], references: [id])
+
+  // Store reference to the BAA version signed
+  baaVersion    String
+  documentS3Key String? // Signed BAA PDF stored in S3
+
+  createdAt DateTime @default(now())
+
+  @@index([clinicId])
+  @@map("baa_signatures")
 }
 
 model User {
@@ -51,6 +128,23 @@ model User {
   clinic     Clinic   @relation(fields: [clinicId], references: [id])
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+
+  // Clinician credentials & profile
+  credentials       String?  // MD, DO, NP, PA, APRN, RN, LCSW, PhD, etc.
+  title             String?  // "Primary Care Physician", "Nurse Practitioner"
+  specialty         String?  // Taxonomy code or specialty name
+  individualNpi     String?  // Individual NPI (10 digits)
+  licenseNumber     String?  // State license number
+  licenseState      String?  // State of licensure
+
+  // Digital signature for documents
+  signatureImageUrl String?  // S3 URL of signature image
+  signatureType     String?  // 'typed' | 'drawn' | 'uploaded'
+
+  // Onboarding status
+  onboardingComplete Boolean  @default(false)
+  hipaaTrainingCompletedAt DateTime?
+  confidentialitySignedAt  DateTime?
 
   // Offboarding: null while active. The row itself is never deleted — that
   // would orphan ClinicalNote.signedById / AuditLog.actorId and corrupt the
@@ -66,10 +160,29 @@ model User {
   deactivatedUsers     User[]               @relation("UserDeactivatedBy")
   loggedDataRequests   PatientDataRequest[] @relation("PatientDataRequestLoggedBy")
   resolvedDataRequests PatientDataRequest[] @relation("PatientDataRequestResolvedBy")
+  hipaaTrainingRecords HipaaTraining[]
+  baaSignatures        BaaSignature[]
 
   @@index([clinicId])
   @@index([deactivatedById])
   @@map("users")
+}
+
+model HipaaTraining {
+  id     String @id @default(uuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id])
+
+  trainingType   String   // 'initial' | 'annual_refresher'
+  completedAt    DateTime
+  expiresAt      DateTime // Typically 1 year from completedAt
+  attestationText String  // The text they acknowledged
+  ipAddress      String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("hipaa_training")
 }
 
 model Patient {

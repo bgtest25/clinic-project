@@ -211,6 +211,8 @@ export class NotesService {
       where: { id: encounterId },
       include: { patient: true, clinician: { include: { clinic: true } } },
     });
+    const { clinic } = encounter.clinician;
+    const clinician = encounter.clinician;
     return {
       patientName: encounter.patient.name,
       patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
@@ -223,9 +225,28 @@ export class NotesService {
         month: 'long',
         day: 'numeric',
       }),
-      clinicName: encounter.clinician.clinic.name,
-      clinicianName: encounter.clinician.name,
+      clinicName: clinic.name,
+      clinicianName: clinician.name,
       summary: note.afterVisitSummary,
+      clinic: {
+        name: clinic.name,
+        addressStreet: clinic.addressStreet ?? undefined,
+        addressCity: clinic.addressCity ?? undefined,
+        addressState: clinic.addressState ?? undefined,
+        addressZip: clinic.addressZip ?? undefined,
+        phone: clinic.phone ?? undefined,
+        fax: clinic.fax ?? undefined,
+        npi: clinic.npi ?? undefined,
+        logoUrl: clinic.logoUrl ?? undefined,
+      },
+      clinician: {
+        name: clinician.name,
+        credentials: clinician.credentials ?? undefined,
+        title: clinician.title ?? undefined,
+        specialty: clinician.specialty ?? undefined,
+        individualNpi: clinician.individualNpi ?? undefined,
+        signatureImageUrl: clinician.signatureImageUrl ?? undefined,
+      },
     };
   }
 
@@ -305,6 +326,8 @@ export class NotesService {
       where: { id: encounterId },
       include: { patient: true, clinician: { include: { clinic: true } } },
     });
+    const { clinic } = encounter.clinician;
+    const clinician = encounter.clinician;
     return {
       patientName: encounter.patient.name,
       patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
@@ -317,11 +340,30 @@ export class NotesService {
         month: 'long',
         day: 'numeric',
       }),
-      clinicName: encounter.clinician.clinic.name,
-      clinicianName: encounter.clinician.name,
+      clinicName: clinic.name,
+      clinicianName: clinician.name,
       specialty: letter.specialty,
       reason: letter.reason,
       letterContent: letter.letterContent,
+      clinic: {
+        name: clinic.name,
+        addressStreet: clinic.addressStreet ?? undefined,
+        addressCity: clinic.addressCity ?? undefined,
+        addressState: clinic.addressState ?? undefined,
+        addressZip: clinic.addressZip ?? undefined,
+        phone: clinic.phone ?? undefined,
+        fax: clinic.fax ?? undefined,
+        npi: clinic.npi ?? undefined,
+        logoUrl: clinic.logoUrl ?? undefined,
+      },
+      clinician: {
+        name: clinician.name,
+        credentials: clinician.credentials ?? undefined,
+        title: clinician.title ?? undefined,
+        specialty: clinician.specialty ?? undefined,
+        individualNpi: clinician.individualNpi ?? undefined,
+        signatureImageUrl: clinician.signatureImageUrl ?? undefined,
+      },
     };
   }
 
@@ -403,6 +445,8 @@ export class NotesService {
       where: { id: encounterId },
       include: { patient: true, clinician: { include: { clinic: true } } },
     });
+    const { clinic } = encounter.clinician;
+    const clinician = encounter.clinician;
     return {
       patientName: encounter.patient.name,
       patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
@@ -415,12 +459,33 @@ export class NotesService {
         month: 'long',
         day: 'numeric',
       }),
-      clinicName: encounter.clinician.clinic.name,
-      clinicianName: encounter.clinician.name,
+      clinicName: clinic.name,
+      clinicNpi: clinic.npi ?? undefined,
+      clinicianName: clinician.name,
+      clinicianCredentials: clinician.credentials ?? undefined,
       procedureOrMed: priorAuth.procedureOrMed,
       diagnosisCode: priorAuth.diagnosisCode,
       insurerName: priorAuth.insurerName,
       clinicalRationale: priorAuth.clinicalRationale,
+      clinic: {
+        name: clinic.name,
+        addressStreet: clinic.addressStreet ?? undefined,
+        addressCity: clinic.addressCity ?? undefined,
+        addressState: clinic.addressState ?? undefined,
+        addressZip: clinic.addressZip ?? undefined,
+        phone: clinic.phone ?? undefined,
+        fax: clinic.fax ?? undefined,
+        npi: clinic.npi ?? undefined,
+        logoUrl: clinic.logoUrl ?? undefined,
+      },
+      clinician: {
+        name: clinician.name,
+        credentials: clinician.credentials ?? undefined,
+        title: clinician.title ?? undefined,
+        specialty: clinician.specialty ?? undefined,
+        individualNpi: clinician.individualNpi ?? undefined,
+        signatureImageUrl: clinician.signatureImageUrl ?? undefined,
+      },
     };
   }
 

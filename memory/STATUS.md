@@ -1,6 +1,55 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-09-01 (Claude-suggested speaker roles shipped on top of the manual-assignment
+**Last updated:** 2026-09-08 (Professional clinic onboarding system built — full HIPAA-compliant
+5-stage wizard with BAA signing, NPI verification via NPPES API, clinic profile setup, clinician
+profile with credentials, digital signature capture, and HIPAA training attestation. Backend
+complete with schema, migrations, services, controllers. Frontend wizard integrated. PDF templates
+enhanced with professional clinic branding. See 🟢 entry below.)
+
+## 🟢 Professional clinic onboarding system — HIPAA-compliant 5-stage wizard (2026-09-08)
+
+You asked to build a professional clinic onboarding flow with HIPAA compliance. Implemented a
+complete 5-stage wizard that mirrors what real hospital systems use.
+
+**Schema additions** (`api/prisma/schema.prisma`, migration `20260908120000_add_onboarding_schema`):
+- `ClinicStatus` enum: `PENDING_BAA`, `PENDING_SETUP`, `ACTIVE`, `SUSPENDED`
+- `UserRole` extended: `OWNER`, `STAFF` (added to existing `ADMIN`, `CLINICIAN`)
+- `Clinic`: address fields, phone/fax, NPI, taxId, logoUrl, timezone, status
+- `User`: credentials, title, specialty, individualNpi, signatureImageUrl, signatureType,
+  onboardingComplete, hipaaTrainingCompletedAt
+- New `Location` model for multi-location clinics
+- New `BaaSignature` model with signatory info, IP address, version tracking
+- New `HipaaTraining` model with training type, expiration (1 year), attestation
+
+**Backend API** (`api/src/onboarding/`):
+- `NppesService` — real-time NPI verification against CMS NPPES API, returns org/individual type,
+  name, credentials, specialty, taxonomy, address, phone, fax
+- `OnboardingService` — `signBaa()`, `updateClinicProfile()`, `uploadClinicLogo()`,
+  `activateClinic()`, `updateUserProfile()`, `uploadSignature()`, `completeHipaaTraining()`,
+  `completeOnboarding()`, `getOnboardingStatus()` with `nextStep` guidance
+- `OnboardingController` — REST endpoints with auth guards and DTOs
+- All DTOs with class-validator for NPI/phone/ZIP format validation
+
+**Frontend wizard** (`web/src/pages/Onboarding.tsx`):
+- 5-step progress indicator with current/completed/skipped states
+- BAA Step: document viewer, signatory capture, checkbox agreement (admin/owner only)
+- Clinic Profile Step: NPI verify + auto-fill from NPPES, address form (admin/owner only)
+- User Profile Step: credentials dropdown, title, specialty, individual NPI verify
+- Signature Step: typed signature with preview (drawn placeholder)
+- HIPAA Training Step: scrollable content, scroll-to-unlock, attestation
+- Integration: checks `me.onboardingComplete`, shows wizard if false
+
+**PDF enhancements** (`avs-pdf.ts`, `referral-pdf.ts`, `prior-auth-pdf.ts`):
+- Professional letterhead with clinic name/address/phone/fax
+- Clinic NPI in footer, provider credentials/NPI on signature blocks
+- `formatPhone()` for consistent (XXX) XXX-XXXX formatting
+
+**Tests**: 162 API tests pass, 89 web tests pass, TypeScript clean. Architecture guard rails
+verified the new `signBaa` endpoint correctly identifies the caller.
+
+---
+
+**Previous (2026-09-01):** Claude-suggested speaker roles shipped on top of the manual-assignment
 feature — you asked about going further with an automatic SageMaker+LangGraph multi-agent pipeline;
 recommended against that specific architecture and built a lighter suggestion layer on the existing
 Bedrock call instead, with the clinician still required to click Confirm before anything is written.
