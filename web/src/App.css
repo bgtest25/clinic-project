@@ -69,6 +69,14 @@
   gap: 1rem;
   font-size: 0.9rem;
   color: var(--color-text-secondary);
+  min-width: 0;
+}
+
+.topbar-user > span {
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .topbar-user strong {
@@ -190,6 +198,7 @@
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
 }
 
 .table-actions-cell {
@@ -456,6 +465,17 @@
   margin-bottom: 1.5rem;
 }
 
+.dashboard-header > div:first-child {
+  min-width: 0;
+}
+
+.dashboard-header h1 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .dashboard-header-actions {
   display: flex;
   gap: 0.75rem;
@@ -465,8 +485,9 @@
 }
 
 .dashboard-ready-badge {
-  margin-left: 0.75rem;
+  margin-left: 0.25rem;
   vertical-align: middle;
+  white-space: nowrap;
 }
 
 .dashboard-header p {
@@ -500,6 +521,23 @@
   padding: 1rem 1.5rem;
   border-bottom: 1px solid var(--color-border);
   font-size: 0.92rem;
+  word-break: break-word;
+}
+
+/* Cells with potentially long text need truncation */
+.encounter-table .cell-truncate {
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Email cells */
+.encounter-table td:has(> a[href^="mailto:"]) {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .encounter-table tr:last-child td {
@@ -650,6 +688,8 @@
   font-size: 0.88rem;
   font-weight: 600;
   animation: toast-in 0.15s ease-out;
+  max-width: 400px;
+  word-break: break-word;
 }
 
 .toast svg {
@@ -862,6 +902,11 @@
 .code-picker-desc {
   font-size: 0.8rem;
   color: var(--color-text-secondary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
 }
 
 .code-picker-caption {
@@ -914,6 +959,7 @@
 
 .template-menu-item-text {
   flex: 1;
+  min-width: 0;
   text-align: left;
   background: none;
   border: none;
@@ -923,6 +969,9 @@
   padding: 0.35rem 0.4rem;
   border-radius: var(--radius-sm);
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .template-menu-item-text:hover {
@@ -963,16 +1012,36 @@
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .table-primary-cell {
   font-weight: 600;
   color: var(--color-text);
   white-space: nowrap;
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .data-requests-card {
   margin-top: 1.5rem;
+  overflow-x: auto;
+}
+
+.data-requests-card .encounter-table {
+  min-width: 700px;
+}
+
+/* Reason and resolution note columns */
+.data-requests-card td:nth-child(3),
+.data-requests-card td:nth-child(6) {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .request-actions {
@@ -1642,15 +1711,25 @@
   justify-content: space-between;
   gap: 1rem;
   margin-bottom: 1rem;
+  min-width: 0;
 }
 
 .review-header h1 {
   display: flex;
   align-items: center;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.review-header h1 span:first-child {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .review-header h1 .status-badge {
   margin-left: 0.75rem;
+  flex-shrink: 0;
 }
 
 /* ---------- tablet responsive pass ---------- */
