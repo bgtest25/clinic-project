@@ -128,7 +128,7 @@ export function PatientDetail({
   }
 
   return (
-    <div className="page">
+    <div className="page page-wide">
       <button type="button" className="link-button back-link" onClick={onBack}>
         ← Back to patients
       </button>
@@ -171,7 +171,7 @@ export function PatientDetail({
       {patient && (
         <div className="card data-requests-card">
           <h1>Data requests</h1>
-          <p className="auth-subtitle">
+          <p className="card-description">
             Deletion and amendment requests are logged for review. Nothing here deletes or changes
             clinical records automatically.
           </p>
