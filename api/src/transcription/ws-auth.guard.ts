@@ -1,11 +1,11 @@
 import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
-import { CognitoJwtVerifier, CognitoJwtVerifierSingleUserPool } from 'aws-jwt-verify';
+import { CognitoJwtVerifier } from 'aws-jwt-verify';
 import { Socket } from 'socket.io';
 
 @Injectable()
 export class WsAuthGuard implements CanActivate {
   private readonly logger = new Logger(WsAuthGuard.name);
-  private verifier: CognitoJwtVerifierSingleUserPool<{ userPoolId: string; clientId: string; tokenUse: 'access' }> | null = null;
+  private verifier: ReturnType<typeof CognitoJwtVerifier.create> | null = null;
 
   private getVerifier() {
     if (!this.verifier) {
