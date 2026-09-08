@@ -5,6 +5,7 @@ import { AiService } from '../ai/ai.service';
 import { EncountersService } from '../encounters/encounters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { CreatePriorAuthDto } from './dto/create-prior-auth.dto';
 import { CreateReferralLetterDto } from './dto/create-referral-letter.dto';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
@@ -260,6 +261,72 @@ export class NotesService {
   async getReferralLetters(encounterId: string, cognitoSub: string) {
     const note = await this.findLatest(encounterId, cognitoSub);
     return this.prisma.referralLetter.findMany({
+      where: { noteId: note.id },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async generatePriorAuth(encounterId: string, cognitoSub: string, dto: CreatePriorAuthDto) {
+    const latest = await this.findLatest(encounterId, cognitoSub);
+    if (latest.status !== 'SIGNED') {
+      throw new ForbiddenException('Prior authorization can only be generated for a signed note');
+    }
+
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: { include: { clinic: true } } },
+    });
+
+    const clinicalRationale = await this.aiService.generatePriorAuth({
+      patientName: encounter.patient.name,
+      patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      visitDate: encounter.visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      clinicName: encounter.clinician.clinic.name,
+      clinicianName: encounter.clinician.name,
+      procedureOrMed: dto.procedureOrMed,
+      diagnosisCode: dto.diagnosisCode ?? null,
+      insurerName: dto.insurerName ?? null,
+      subjective: latest.subjective ?? '',
+      objective: latest.objective ?? '',
+      assessment: latest.assessment ?? '',
+      plan: latest.plan ?? '',
+    });
+
+    const [priorAuth] = await this.prisma.$transaction([
+      this.prisma.priorAuth.create({
+        data: {
+          noteId: latest.id,
+          procedureOrMed: dto.procedureOrMed,
+          diagnosisCode: dto.diagnosisCode ?? null,
+          insurerName: dto.insurerName ?? null,
+          clinicalRationale,
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          encounterId,
+          actorId: actor.id,
+          action: 'note.prior_auth_generated',
+          newValue: dto.procedureOrMed,
+        },
+      }),
+    ]);
+
+    return priorAuth;
+  }
+
+  async getPriorAuths(encounterId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
+    return this.prisma.priorAuth.findMany({
       where: { noteId: note.id },
       orderBy: { createdAt: 'desc' },
     });

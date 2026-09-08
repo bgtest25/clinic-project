@@ -187,6 +187,7 @@ model ClinicalNote {
   updatedAt          DateTime   @updatedAt
 
   referralLetters ReferralLetter[]
+  priorAuths      PriorAuth[]
 
   @@index([encounterId])
   @@map("clinical_notes")
@@ -204,6 +205,21 @@ model ReferralLetter {
 
   @@index([noteId])
   @@map("referral_letters")
+}
+
+model PriorAuth {
+  id                  String       @id @default(uuid())
+  noteId              String
+  note                ClinicalNote @relation(fields: [noteId], references: [id])
+  procedureOrMed      String
+  diagnosisCode       String?
+  insurerName         String?
+  clinicalRationale   String
+  createdAt           DateTime     @default(now())
+  updatedAt           DateTime     @updatedAt
+
+  @@index([noteId])
+  @@map("prior_auths")
 }
 
 model AuditLog {

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
-import type { Clinic, ClinicalNote, DiarizedSegment, Patient, ReferralLetter } from '../api/types';
+import type { Clinic, ClinicalNote, DiarizedSegment, Patient, PriorAuth, ReferralLetter } from '../api/types';
 import { CheckIcon, PrintIcon, StarIcon, DocumentIcon } from '../icons';
 import { CodePicker } from '../components/CodePicker';
 import { TemplateMenu } from '../components/TemplateMenu';
@@ -92,6 +92,13 @@ export function NoteReview({
   const [referralGenerating, setReferralGenerating] = useState(false);
   const [referralError, setReferralError] = useState<string | null>(null);
   const [expandedReferral, setExpandedReferral] = useState<string | null>(null);
+  const [priorAuths, setPriorAuths] = useState<PriorAuth[]>([]);
+  const [priorAuthProcedure, setPriorAuthProcedure] = useState('');
+  const [priorAuthDiagnosis, setPriorAuthDiagnosis] = useState('');
+  const [priorAuthInsurer, setPriorAuthInsurer] = useState('');
+  const [priorAuthGenerating, setPriorAuthGenerating] = useState(false);
+  const [priorAuthError, setPriorAuthError] = useState<string | null>(null);
+  const [expandedPriorAuth, setExpandedPriorAuth] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token)
@@ -102,6 +109,9 @@ export function NoteReview({
         if (n.status === 'SIGNED') {
           apiFetch<ReferralLetter[]>(`/encounters/${encounterId}/note/referrals`, token)
             .then(setReferralLetters)
+            .catch(() => {});
+          apiFetch<PriorAuth[]>(`/encounters/${encounterId}/note/prior-auths`, token)
+            .then(setPriorAuths)
             .catch(() => {});
         }
       })
@@ -272,6 +282,62 @@ export function NoteReview({
     } finally {
       setReferralGenerating(false);
     }
+  }
+
+  async function handleGeneratePriorAuth() {
+    if (!priorAuthProcedure.trim()) return;
+    setPriorAuthGenerating(true);
+    setPriorAuthError(null);
+    try {
+      const priorAuth = await apiFetch<PriorAuth>(`/encounters/${encounterId}/note/prior-auths`, token, {
+        method: 'POST',
+        body: JSON.stringify({
+          procedureOrMed: priorAuthProcedure.trim(),
+          diagnosisCode: priorAuthDiagnosis.trim() || undefined,
+          insurerName: priorAuthInsurer.trim() || undefined,
+        }),
+      });
+      setPriorAuths((prev) => [priorAuth, ...prev]);
+      setPriorAuthProcedure('');
+      setPriorAuthDiagnosis('');
+      setPriorAuthInsurer('');
+      setExpandedPriorAuth(priorAuth.id);
+      showToast('Prior authorization generated.');
+    } catch (err) {
+      setPriorAuthError(err instanceof Error ? err.message : 'Failed to generate prior authorization');
+    } finally {
+      setPriorAuthGenerating(false);
+    }
+  }
+
+  function handlePrintPriorAuth(pa: PriorAuth) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Prior Authorization - ${pa.procedureOrMed}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+            h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+            .meta { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+            .content { white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <h1>Prior Authorization Request</h1>
+          <div class="meta">
+            ${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}
+            ${pa.diagnosisCode ? ` &middot; ${pa.diagnosisCode}` : ''}
+            ${pa.insurerName ? ` &middot; ${pa.insurerName}` : ''}
+          </div>
+          <div class="content">${pa.clinicalRationale}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
   }
 
   function handlePrintReferral(letter: ReferralLetter) {
@@ -560,6 +626,105 @@ export function NoteReview({
                           onClick={() => {
                             navigator.clipboard.writeText(letter.letterContent);
                             showToast('Letter copied to clipboard.');
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {note.status === 'SIGNED' && (
+        <div className="card prior-auth-card">
+          <h2>
+            <DocumentIcon /> Prior Authorizations
+          </h2>
+          <div className="prior-auth-form">
+            <label className="field">
+              Procedure / Medication
+              <input
+                type="text"
+                value={priorAuthProcedure}
+                onChange={(e) => setPriorAuthProcedure(e.target.value)}
+                placeholder="e.g., MRI Brain, Humira 40mg"
+                disabled={priorAuthGenerating}
+                maxLength={200}
+              />
+            </label>
+            <label className="field">
+              Diagnosis Code (optional)
+              <input
+                type="text"
+                value={priorAuthDiagnosis}
+                onChange={(e) => setPriorAuthDiagnosis(e.target.value)}
+                placeholder="e.g., G43.909"
+                disabled={priorAuthGenerating}
+                maxLength={20}
+              />
+            </label>
+            <label className="field">
+              Insurance (optional)
+              <input
+                type="text"
+                value={priorAuthInsurer}
+                onChange={(e) => setPriorAuthInsurer(e.target.value)}
+                placeholder="e.g., Blue Cross Blue Shield"
+                disabled={priorAuthGenerating}
+                maxLength={100}
+              />
+            </label>
+            {priorAuthError && <p className="error">{priorAuthError}</p>}
+            <button
+              className="btn btn-primary"
+              onClick={handleGeneratePriorAuth}
+              disabled={priorAuthGenerating || !priorAuthProcedure.trim()}
+            >
+              {priorAuthGenerating ? 'Generating…' : 'Generate Prior Authorization'}
+            </button>
+          </div>
+          {priorAuths.length > 0 && (
+            <div className="prior-auth-list">
+              <h3>Generated Authorizations</h3>
+              {priorAuths.map((pa) => (
+                <div key={pa.id} className="prior-auth-item">
+                  <button
+                    type="button"
+                    className="prior-auth-item-header"
+                    onClick={() => setExpandedPriorAuth(expandedPriorAuth === pa.id ? null : pa.id)}
+                  >
+                    <span className="prior-auth-item-procedure">{pa.procedureOrMed}</span>
+                    <span className="prior-auth-item-date">
+                      {new Date(pa.createdAt).toLocaleDateString()}
+                    </span>
+                  </button>
+                  {expandedPriorAuth === pa.id && (
+                    <div className="prior-auth-item-content">
+                      {pa.diagnosisCode && (
+                        <div className="prior-auth-item-meta">
+                          <strong>Diagnosis:</strong> {pa.diagnosisCode}
+                        </div>
+                      )}
+                      {pa.insurerName && (
+                        <div className="prior-auth-item-meta">
+                          <strong>Insurance:</strong> {pa.insurerName}
+                        </div>
+                      )}
+                      <div className="prior-auth-item-rationale">{pa.clinicalRationale}</div>
+                      <div className="prior-auth-item-actions">
+                        <button className="btn btn-secondary" onClick={() => handlePrintPriorAuth(pa)}>
+                          <PrintIcon /> Print
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => {
+                            navigator.clipboard.writeText(pa.clinicalRationale);
+                            showToast('Prior auth copied to clipboard.');
                           }}
                         >
                           Copy

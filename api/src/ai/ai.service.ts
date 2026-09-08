@@ -1,6 +1,25 @@
 import { Injectable } from '@nestjs/common';
 import { BedrockRuntimeClient, ConverseCommand } from '@aws-sdk/client-bedrock-runtime';
 
+const PRIOR_AUTH_SYSTEM_PROMPT = `You are helping a clinician write a prior authorization request to an insurance company. The goal is to clearly document medical necessity so the insurer approves the requested procedure, test, or medication.
+
+Format the clinical rationale as follows:
+1. PATIENT INFORMATION — name, DOB, and diagnosis
+2. REQUESTED SERVICE — the specific procedure, test, or medication being requested
+3. CLINICAL INDICATION — why this service is medically necessary for this patient
+4. SUPPORTING EVIDENCE — relevant symptoms, exam findings, failed treatments, and test results from the clinical note
+5. TREATMENT HISTORY — what has already been tried (if applicable) and why alternatives are insufficient
+6. EXPECTED BENEFIT — what outcome is expected from the requested service
+7. URGENCY — whether this is routine, urgent, or emergent, with justification if urgent/emergent
+
+Rules:
+- Use clinical terminology appropriate for insurance medical reviewers
+- Be thorough but concise — reviewers process many requests
+- Cite specific findings from the note to support medical necessity
+- Never invent information not in the source note
+- If the note lacks information for a section, note "Not documented in visit note"
+- Output plain text only, no markdown formatting`;
+
 const REFERRAL_LETTER_SYSTEM_PROMPT = `You are helping a primary care physician draft a referral letter to a specialist. The letter should be professional, concise, and contain all information the specialist needs to evaluate and treat the patient.
 
 Format the letter as follows:
@@ -56,6 +75,21 @@ interface ReferralLetterInput {
   clinicianName: string;
   specialty: string;
   reason: string;
+  subjective: string;
+  objective: string;
+  assessment: string;
+  plan: string;
+}
+
+interface PriorAuthInput {
+  patientName: string;
+  patientDob: string;
+  visitDate: string;
+  clinicName: string;
+  clinicianName: string;
+  procedureOrMed: string;
+  diagnosisCode: string | null;
+  insurerName: string | null;
   subjective: string;
   objective: string;
   assessment: string;
@@ -135,6 +169,50 @@ export class AiService {
           {
             role: 'user',
             content: [{ text: `Please draft a referral letter to ${input.specialty} based on this clinical note:\n\n${noteContent}` }],
+          },
+        ],
+      }),
+    );
+
+    const content = response.output?.message?.content ?? [];
+    const textBlock = content.find((b): b is { text: string } => typeof (b as any).text === 'string');
+    if (!textBlock) throw new Error('No text content in Bedrock response');
+
+    return textBlock.text;
+  }
+
+  async generatePriorAuth(input: PriorAuthInput): Promise<string> {
+    const noteContent = [
+      `Patient: ${input.patientName}`,
+      `DOB: ${input.patientDob}`,
+      `Visit Date: ${input.visitDate}`,
+      `Clinic: ${input.clinicName}`,
+      `Clinician: ${input.clinicianName}`,
+      '',
+      `Requested Service: ${input.procedureOrMed}`,
+      input.diagnosisCode ? `Diagnosis Code: ${input.diagnosisCode}` : '',
+      input.insurerName ? `Insurance: ${input.insurerName}` : '',
+      '',
+      'CLINICAL NOTE:',
+      '',
+      `Subjective: ${input.subjective || 'Not documented'}`,
+      '',
+      `Objective: ${input.objective || 'Not documented'}`,
+      '',
+      `Assessment: ${input.assessment || 'Not documented'}`,
+      '',
+      `Plan: ${input.plan || 'Not documented'}`,
+    ].filter(Boolean).join('\n');
+
+    const response = await this.bedrock.send(
+      new ConverseCommand({
+        modelId: process.env.BEDROCK_MODEL_ID || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
+        system: [{ text: PRIOR_AUTH_SYSTEM_PROMPT }],
+        inferenceConfig: { maxTokens: 2000 },
+        messages: [
+          {
+            role: 'user',
+            content: [{ text: `Please write a prior authorization clinical rationale for the following:\n\n${noteContent}` }],
           },
         ],
       }),

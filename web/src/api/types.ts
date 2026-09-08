@@ -82,6 +82,17 @@ export interface ReferralLetter {
   updatedAt: string;
 }
 
+export interface PriorAuth {
+  id: string;
+  noteId: string;
+  procedureOrMed: string;
+  diagnosisCode: string | null;
+  insurerName: string | null;
+  clinicalRationale: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EncounterDetail extends Encounter {
   patient: Patient;
   transcript: Transcript | null;

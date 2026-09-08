@@ -27,6 +27,7 @@ describe('NotesService', () => {
       encounter: { update: jest.fn(), findUniqueOrThrow: jest.fn() },
       audioRecording: { findUnique: jest.fn(), update: jest.fn() },
       referralLetter: { create: jest.fn(), findMany: jest.fn() },
+      priorAuth: { create: jest.fn(), findMany: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
     usersService = { findByCognitoSub: jest.fn().mockResolvedValue(actor) };
@@ -36,6 +37,7 @@ describe('NotesService', () => {
     aiService = {
       generateAfterVisitSummary: jest.fn().mockResolvedValue('Sample AVS content'),
       generateReferralLetter: jest.fn().mockResolvedValue('Dear Cardiology Colleagues,\n\nReferral letter content...'),
+      generatePriorAuth: jest.fn().mockResolvedValue('PATIENT INFORMATION\nJane Doe, DOB January 1, 1980\n\nREQUESTED SERVICE\nMRI Brain...'),
     };
     service = new NotesService(prisma, usersService, encountersService, aiService);
   });
@@ -587,6 +589,155 @@ describe('NotesService', () => {
       prisma.referralLetter.findMany.mockResolvedValue([]);
 
       const result = await service.getReferralLetters('enc-1', 'sub-1');
+
+      expect(result).toEqual([]);
+    });
+  });
+
+  describe('generatePriorAuth', () => {
+    it('checks clinic ownership before generating prior auth', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Headaches for 3 months',
+        objective: 'Neurological exam normal',
+        assessment: 'Chronic headache, rule out structural cause',
+        plan: 'MRI brain requested',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'Jane Doe', dateOfBirth: new Date('1980-01-01') },
+        clinician: { name: 'Dr. Smith', clinic: { name: 'Test Clinic' } },
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'pa-1', procedureOrMed: 'MRI Brain', clinicalRationale: 'Prior auth content...' },
+      ]);
+
+      await service.generatePriorAuth('enc-1', 'sub-1', {
+        procedureOrMed: 'MRI Brain',
+        diagnosisCode: 'G43.909',
+        insurerName: 'Blue Cross',
+      });
+
+      expect(encountersService.assertClinicOwnsEncounter).toHaveBeenCalledWith('enc-1', 'clinic-a');
+    });
+
+    it('rejects prior auth generation for unsigned notes', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'DRAFT',
+      });
+
+      await expect(
+        service.generatePriorAuth('enc-1', 'sub-1', {
+          procedureOrMed: 'MRI Brain',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('calls the AI service and saves the prior auth', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Chronic headaches, worsening',
+        objective: 'Neuro exam normal, no focal deficits',
+        assessment: 'Chronic migraine, refractory',
+        plan: 'MRI brain to rule out structural pathology',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'Jane Doe', dateOfBirth: new Date('1980-01-01') },
+        clinician: { name: 'Dr. Smith', clinic: { name: 'Test Clinic' } },
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'pa-1', procedureOrMed: 'MRI Brain', clinicalRationale: 'Prior auth content...' },
+      ]);
+
+      await service.generatePriorAuth('enc-1', 'sub-1', {
+        procedureOrMed: 'MRI Brain',
+        diagnosisCode: 'G43.909',
+        insurerName: 'Aetna',
+      });
+
+      expect(aiService.generatePriorAuth).toHaveBeenCalledWith({
+        patientName: 'Jane Doe',
+        patientDob: expect.any(String),
+        visitDate: expect.any(String),
+        clinicName: 'Test Clinic',
+        clinicianName: 'Dr. Smith',
+        procedureOrMed: 'MRI Brain',
+        diagnosisCode: 'G43.909',
+        insurerName: 'Aetna',
+        subjective: 'Chronic headaches, worsening',
+        objective: 'Neuro exam normal, no focal deficits',
+        assessment: 'Chronic migraine, refractory',
+        plan: 'MRI brain to rule out structural pathology',
+      });
+    });
+
+    it('handles optional fields correctly', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Knee pain',
+        objective: 'Swelling noted',
+        assessment: 'Knee effusion',
+        plan: 'MRI knee',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'John Smith', dateOfBirth: new Date('1975-06-15') },
+        clinician: { name: 'Dr. Jones', clinic: { name: 'Primary Care' } },
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'pa-1', procedureOrMed: 'MRI Knee', clinicalRationale: 'Prior auth content...' },
+      ]);
+
+      await service.generatePriorAuth('enc-1', 'sub-1', {
+        procedureOrMed: 'MRI Knee',
+      });
+
+      expect(aiService.generatePriorAuth).toHaveBeenCalledWith(
+        expect.objectContaining({
+          procedureOrMed: 'MRI Knee',
+          diagnosisCode: null,
+          insurerName: null,
+        }),
+      );
+    });
+  });
+
+  describe('getPriorAuths', () => {
+    it('returns all prior auths for the note', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+      });
+      prisma.priorAuth.findMany.mockResolvedValue([
+        { id: 'pa-1', procedureOrMed: 'MRI Brain', clinicalRationale: 'Rationale 1' },
+        { id: 'pa-2', procedureOrMed: 'CT Chest', clinicalRationale: 'Rationale 2' },
+      ]);
+
+      const result = await service.getPriorAuths('enc-1', 'sub-1');
+
+      expect(result).toHaveLength(2);
+      expect(prisma.priorAuth.findMany).toHaveBeenCalledWith({
+        where: { noteId: 'note-1' },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    it('returns empty array if no prior auths exist', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+      });
+      prisma.priorAuth.findMany.mockResolvedValue([]);
+
+      const result = await service.getPriorAuths('enc-1', 'sub-1');
 
       expect(result).toEqual([]);
     });

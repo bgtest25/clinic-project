@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { buildNotePdf } from './note-pdf';
 import { NotesService } from './notes.service';
+import { CreatePriorAuthDto } from './dto/create-prior-auth.dto';
 import { CreateReferralLetterDto } from './dto/create-referral-letter.dto';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
@@ -68,5 +69,19 @@ export class NotesController {
   @Get('referrals')
   getReferralLetters(@Param('encounterId') encounterId: string, @Req() req: any) {
     return this.notesService.getReferralLetters(encounterId, req.user.sub);
+  }
+
+  @Post('prior-auths')
+  generatePriorAuth(
+    @Param('encounterId') encounterId: string,
+    @Body() dto: CreatePriorAuthDto,
+    @Req() req: any,
+  ) {
+    return this.notesService.generatePriorAuth(encounterId, req.user.sub, dto);
+  }
+
+  @Get('prior-auths')
+  getPriorAuths(@Param('encounterId') encounterId: string, @Req() req: any) {
+    return this.notesService.getPriorAuths(encounterId, req.user.sub);
   }
 }
