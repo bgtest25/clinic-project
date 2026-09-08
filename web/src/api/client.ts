@@ -48,3 +48,23 @@ export async function apiDownload(path: string, token: string, filename: string)
   link.remove();
   URL.revokeObjectURL(url);
 }
+
+export async function apiOpenPdf(path: string, token: string): Promise<void> {
+  const res = await fetch(`${API_URL}${path}`, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new ApiError(body || res.statusText, res.status);
+  }
+
+  const blob = await res.blob();
+  const url = URL.createObjectURL(blob);
+  const printWindow = window.open(url, '_blank');
+  if (printWindow) {
+    printWindow.onload = () => {
+      printWindow.print();
+    };
+  }
+}

@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { apiDownload, apiFetch } from '../api/client';
+import { apiDownload, apiFetch, apiOpenPdf } from '../api/client';
 import type { Clinic, ClinicalNote, DiarizedSegment, Patient, PriorAuth, ReferralLetter } from '../api/types';
 import { CheckIcon, PrintIcon, StarIcon, DocumentIcon, DownloadIcon } from '../icons';
 import { CodePicker } from '../components/CodePicker';
@@ -236,31 +236,13 @@ export function NoteReview({
     }
   }
 
-  function handlePrintAvs() {
+  async function handlePrintAvs() {
     if (!note?.afterVisitSummary) return;
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Patient Visit Summary</title>
-          <style>
-            body { font-family: system-ui, sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-            h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-            .meta { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
-            .content { white-space: pre-wrap; }
-          </style>
-        </head>
-        <body>
-          <h1>Visit Summary</h1>
-          <div class="meta">${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}</div>
-          <div class="content">${note.afterVisitSummary}</div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+    try {
+      await apiOpenPdf(`/encounters/${encounterId}/note/avs/pdf`, token);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open PDF for printing');
+    }
   }
 
   async function handleGenerateReferral() {
@@ -310,60 +292,20 @@ export function NoteReview({
     }
   }
 
-  function handlePrintPriorAuth(pa: PriorAuth) {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Prior Authorization - ${pa.procedureOrMed}</title>
-          <style>
-            body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-            h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-            .meta { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
-            .content { white-space: pre-wrap; }
-          </style>
-        </head>
-        <body>
-          <h1>Prior Authorization Request</h1>
-          <div class="meta">
-            ${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}
-            ${pa.diagnosisCode ? ` &middot; ${pa.diagnosisCode}` : ''}
-            ${pa.insurerName ? ` &middot; ${pa.insurerName}` : ''}
-          </div>
-          <div class="content">${pa.clinicalRationale}</div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+  async function handlePrintPriorAuth(pa: PriorAuth) {
+    try {
+      await apiOpenPdf(`/encounters/${encounterId}/note/prior-auths/${pa.id}/pdf`, token);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open PDF for printing');
+    }
   }
 
-  function handlePrintReferral(letter: ReferralLetter) {
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) return;
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Referral Letter - ${letter.specialty}</title>
-          <style>
-            body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-            h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
-            .meta { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
-            .content { white-space: pre-wrap; }
-          </style>
-        </head>
-        <body>
-          <h1>Referral to ${letter.specialty}</h1>
-          <div class="meta">${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}</div>
-          <div class="content">${letter.letterContent}</div>
-        </body>
-      </html>
-    `);
-    printWindow.document.close();
-    printWindow.print();
+  async function handlePrintReferral(letter: ReferralLetter) {
+    try {
+      await apiOpenPdf(`/encounters/${encounterId}/note/referrals/${letter.id}/pdf`, token);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Failed to open PDF for printing');
+    }
   }
 
   async function handleDownloadAvsPdf() {
