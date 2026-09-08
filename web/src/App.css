@@ -1300,66 +1300,164 @@
   margin-bottom: 0.15rem;
 }
 
+/* ---------- speaker assignment legend (redesigned) ---------- */
+
 .transcript-speaker-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem;
-  margin-bottom: 0.5rem;
+  padding: 1rem;
+  margin-bottom: 1rem;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
 }
 
-.transcript-speaker-legend-row {
-  display: flex;
-  flex-direction: column;
-  gap: 0.35rem;
+.transcript-speaker-legend-title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0 0 0.25rem;
 }
 
-.transcript-speaker-legend-current {
+.transcript-speaker-legend-subtitle {
   font-size: 0.8rem;
+  color: var(--color-text-muted);
+  margin: 0 0 1rem;
+}
+
+.transcript-speaker-legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 0.75rem;
+}
+
+.transcript-speaker-card {
+  padding: 0.75rem;
+  background: var(--color-surface-muted);
+  border: 2px solid var(--color-border);
+  border-radius: var(--radius-md);
+  transition: border-color 0.15s;
+}
+
+.transcript-speaker-card.assigned {
+  border-color: var(--color-success);
+  background: var(--color-success-soft);
+}
+
+.transcript-speaker-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.transcript-speaker-card-label {
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--color-text);
 }
 
-.transcript-speaker-legend-actions {
+.transcript-speaker-card-check {
+  color: var(--color-success);
+  font-weight: 700;
+}
+
+.transcript-speaker-suggestion {
   display: flex;
   align-items: center;
+  gap: 0.5rem;
+  padding: 0.4rem 0.6rem;
+  margin-bottom: 0.5rem;
+  background: var(--color-primary-soft);
+  border-radius: var(--radius-sm);
+  font-size: 0.75rem;
+  color: var(--color-primary);
+}
+
+.transcript-speaker-chips {
+  display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
 }
 
-.transcript-speaker-legend-suggestion {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 0.5rem;
-  padding: 0.4rem 0.6rem;
-  background: var(--color-primary-soft);
-  border-radius: var(--radius-sm);
+.speaker-chip {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s;
 }
 
-.transcript-speaker-legend-suggestion-text {
-  font-size: 0.8rem;
-  font-weight: 600;
+.speaker-chip:hover {
+  border-color: var(--color-primary);
   color: var(--color-primary);
 }
 
-/* flex: 1 1 auto with a min-width, not a fixed width — a fixed width on a
-   flex child ignores the row's actual available space and can overflow the
-   transcript pane instead of wrapping onto its own line (the exact bug
-   class found and fixed in the 2026-08-21 iPad/phone audit's
-   .filter-search case). */
-.transcript-speaker-legend-custom {
+.speaker-chip.selected {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.speaker-chip:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.speaker-chip-input {
   flex: 1 1 auto;
-  min-width: 8rem;
-  font-size: 0.8rem;
-  padding: 0.3rem 0.55rem;
+  min-width: 5rem;
+  max-width: 8rem;
+  padding: 0.35rem 0.6rem;
+  font-size: 0.75rem;
   border: 1px solid var(--color-border);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-muted);
+  border-radius: var(--radius-full);
+  background: var(--color-surface);
   color: var(--color-text);
+}
+
+.speaker-chip-input:focus {
+  border-color: var(--color-primary);
+  outline: none;
+}
+
+.btn-xs {
+  padding: 0.2rem 0.5rem;
+  font-size: 0.7rem;
+}
+
+/* ---------- transcript turns ---------- */
+
+.transcript-turns {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.transcript-turn {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.transcript-turn-text {
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: var(--color-text);
+}
+
+.transcript-speaker-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--color-text-muted);
+}
+
+.transcript-speaker-label.assigned {
+  color: var(--color-primary);
 }
 
 .note-form {

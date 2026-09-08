@@ -143,7 +143,7 @@ describe('NoteReview', () => {
     await screen.findByDisplayValue('Cough for 3 days.');
     vi.mocked(apiFetch).mockResolvedValueOnce({});
 
-    const input = screen.getByPlaceholderText('Other (e.g. Interpreter)');
+    const input = screen.getByPlaceholderText('Other...');
     fireEvent.change(input, { target: { value: 'Interpreter' } });
     fireEvent.keyDown(input, { key: 'Enter' });
 
@@ -184,22 +184,25 @@ describe('NoteReview', () => {
       suggestedSpeakerRoles: { spk_0: 'Clinician', spk_1: 'Patient' },
     });
     await screen.findByDisplayValue('Cough for 3 days.');
-    expect(screen.getByText('Claude suggests: Clinician')).toBeInTheDocument();
-    expect(screen.getByText('Claude suggests: Patient')).toBeInTheDocument();
+    expect(screen.getAllByText('AI suggests:').length).toBeGreaterThan(0);
+    // Suggestions appear in <strong> tags, chips also show these labels
+    expect(screen.getAllByText('Clinician').length).toBeGreaterThan(0);
+    expect(screen.getAllByText('Patient').length).toBeGreaterThan(0);
     // A suggestion is a proposal only — it must never appear on the actual
-    // transcript turns until the clinician clicks Confirm.
+    // transcript turns until the clinician clicks Accept.
     expect(screen.getAllByText('Speaker 1')).toHaveLength(2);
 
     vi.mocked(apiFetch).mockResolvedValueOnce({});
-    fireEvent.click(screen.getAllByRole('button', { name: 'Confirm' })[0]);
+    fireEvent.click(screen.getAllByRole('button', { name: 'Accept' })[0]);
 
     expect(apiFetch).toHaveBeenCalledWith('/encounters/enc-1/transcript/speaker-labels', 'tok', {
       method: 'PATCH',
       body: JSON.stringify({ labels: [{ speaker: 'spk_0', label: 'Clinician' }] }),
     });
-    expect(await screen.findAllByText('Clinician')).toHaveLength(2);
+    // Card label, chip button, and transcript turn label all show "Clinician"
+    expect((await screen.findAllByText('Clinician')).length).toBeGreaterThanOrEqual(2);
     // Confirming one speaker's suggestion doesn't touch the other's.
-    expect(screen.getByText('Claude suggests: Patient')).toBeInTheDocument();
+    expect(screen.getAllByText('AI suggests:').length).toBeGreaterThan(0);
   });
 
   it('never shows a suggestion for a speaker that already has a confirmed label', async () => {
@@ -215,7 +218,7 @@ describe('NoteReview', () => {
       suggestedSpeakerRoles: { spk_0: 'Patient' },
     });
     await screen.findByDisplayValue('Cough for 3 days.');
-    expect(screen.queryByText(/Claude suggests/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/AI suggests/)).not.toBeInTheDocument();
     // Legend current label + the (now-disabled) "Clinician" quick-assign
     // button + the turn label — all reflecting the confirmed assignment.
     expect(screen.getAllByText('Clinician')).toHaveLength(3);

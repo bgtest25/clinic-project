@@ -471,80 +471,93 @@ export function NoteReview({
           {hasSpeakerView && transcriptView === 'speaker' ? (
             <div className="transcript-speaker-view">
               <div className="transcript-speaker-legend">
-                {speakerOrder.map(([rawKey, num]) => {
-                  const current = speakerDisplayLabel(rawKey, num);
-                  const saving = savingSpeaker === rawKey;
-                  const isPreset = current === 'Clinician' || (!!patient?.name && current === patient.name);
-                  const suggestion = !speakerLabelsState[rawKey] ? suggestedSpeakerRoles?.[rawKey] : undefined;
-                  return (
-                    <div key={rawKey} className="transcript-speaker-legend-row">
-                      <span className="transcript-speaker-legend-current">{current}</span>
-                      {suggestion && (
-                        <div className="transcript-speaker-legend-suggestion">
-                          <span className="transcript-speaker-legend-suggestion-text">
-                            Claude suggests: {suggestion}
+                <p className="transcript-speaker-legend-title">Who's speaking?</p>
+                <p className="transcript-speaker-legend-subtitle">
+                  Click to assign each voice in the recording.
+                </p>
+                <div className="transcript-speaker-legend-grid">
+                  {speakerOrder.map(([rawKey, num]) => {
+                    const current = speakerDisplayLabel(rawKey, num);
+                    const saving = savingSpeaker === rawKey;
+                    const isAssigned = !!speakerLabelsState[rawKey];
+                    const suggestion = !speakerLabelsState[rawKey] ? suggestedSpeakerRoles?.[rawKey] : undefined;
+                    return (
+                      <div key={rawKey} className={`transcript-speaker-card ${isAssigned ? 'assigned' : ''}`}>
+                        <div className="transcript-speaker-card-header">
+                          <span className="transcript-speaker-card-label">
+                            {isAssigned ? current : `Speaker ${num}`}
                           </span>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary"
-                            disabled={saving}
-                            onClick={() => assignSpeakerLabel(rawKey, suggestion)}
-                          >
-                            Confirm
-                          </button>
+                          {isAssigned && <span className="transcript-speaker-card-check">✓</span>}
                         </div>
-                      )}
-                      <div className="transcript-speaker-legend-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          disabled={saving || current === 'Clinician'}
-                          onClick={() => assignSpeakerLabel(rawKey, 'Clinician')}
-                        >
-                          Clinician
-                        </button>
-                        {patient?.name && (
+                        {suggestion && !isAssigned && (
+                          <div className="transcript-speaker-suggestion">
+                            <span>AI suggests: <strong>{suggestion}</strong></span>
+                            <button
+                              type="button"
+                              className="btn btn-xs btn-primary"
+                              disabled={saving}
+                              onClick={() => assignSpeakerLabel(rawKey, suggestion)}
+                            >
+                              Accept
+                            </button>
+                          </div>
+                        )}
+                        <div className="transcript-speaker-chips">
                           <button
                             type="button"
-                            className="btn btn-sm btn-ghost"
-                            disabled={saving || current === patient.name}
-                            onClick={() => assignSpeakerLabel(rawKey, patient.name!)}
+                            className={`speaker-chip ${current === 'Clinician' ? 'selected' : ''}`}
+                            disabled={saving}
+                            onClick={() => assignSpeakerLabel(rawKey, 'Clinician')}
                           >
-                            {patient.name}
+                            Clinician
                           </button>
-                        )}
-                        <input
-                          key={`${rawKey}-${current}`}
-                          type="text"
-                          className="transcript-speaker-legend-custom"
-                          placeholder="Other (e.g. Interpreter)"
-                          defaultValue={isPreset ? '' : speakerLabelsState[rawKey] ?? ''}
-                          disabled={saving}
-                          maxLength={100}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return;
-                            const value = e.currentTarget.value.trim();
-                            if (value) assignSpeakerLabel(rawKey, value);
-                          }}
-                          onBlur={(e) => {
-                            const value = e.currentTarget.value.trim();
-                            if (value && value !== speakerLabelsState[rawKey]) assignSpeakerLabel(rawKey, value);
-                          }}
-                        />
+                          {patient?.name && (
+                            <button
+                              type="button"
+                              className={`speaker-chip ${current === patient.name ? 'selected' : ''}`}
+                              disabled={saving}
+                              onClick={() => assignSpeakerLabel(rawKey, patient.name!)}
+                            >
+                              {patient.name}
+                            </button>
+                          )}
+                          <input
+                            key={`${rawKey}-${current}`}
+                            type="text"
+                            className="speaker-chip-input"
+                            placeholder="Other..."
+                            defaultValue={current !== 'Clinician' && current !== patient?.name && isAssigned ? current : ''}
+                            disabled={saving}
+                            maxLength={100}
+                            onKeyDown={(e) => {
+                              if (e.key !== 'Enter') return;
+                              const value = e.currentTarget.value.trim();
+                              if (value) assignSpeakerLabel(rawKey, value);
+                            }}
+                            onBlur={(e) => {
+                              const value = e.currentTarget.value.trim();
+                              if (value && value !== speakerLabelsState[rawKey]) assignSpeakerLabel(rawKey, value);
+                            }}
+                          />
+                        </div>
                       </div>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="transcript-turns">
+                {diarizedSegments!.map((segment, i) => {
+                  const num = speakerOrder.find(([key]) => key === segment.speaker)?.[1] ?? 0;
+                  const label = speakerDisplayLabel(segment.speaker, num);
+                  const isAssigned = !!speakerLabelsState[segment.speaker];
+                  return (
+                    <div key={i} className={`transcript-turn ${isAssigned ? 'assigned' : ''}`}>
+                      <span className={`transcript-speaker-label ${isAssigned ? 'assigned' : ''}`}>{label}</span>
+                      <span className="transcript-turn-text">{segment.text}</span>
                     </div>
                   );
                 })}
               </div>
-              {diarizedSegments!.map((segment, i) => {
-                const num = speakerOrder.find(([key]) => key === segment.speaker)?.[1] ?? 0;
-                return (
-                  <p key={i} className="transcript-turn">
-                    <span className="transcript-speaker-label">{speakerDisplayLabel(segment.speaker, num)}</span>
-                    {segment.text}
-                  </p>
-                );
-              })}
             </div>
           ) : (
             <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>
