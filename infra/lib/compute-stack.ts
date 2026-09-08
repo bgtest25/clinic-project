@@ -8,6 +8,7 @@ import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns';
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import * as iam from 'aws-cdk-lib/aws-iam';
 import * as kms from 'aws-cdk-lib/aws-kms';
+import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as logs from 'aws-cdk-lib/aws-logs';
 import * as route53 from 'aws-cdk-lib/aws-route53';
 import * as s3 from 'aws-cdk-lib/aws-s3';
@@ -26,6 +27,7 @@ export interface ClinicComputeStackProps extends cdk.StackProps {
   mediaBucket: s3.Bucket;
   mediaBucketKey: kms.Key;
   pipelineStateMachine: sfn.StateMachine;
+  processTranscriptFn: lambda.IFunction;
   hostedZone: route53.IHostedZone;
 }
 
@@ -47,6 +49,7 @@ export class ClinicComputeStack extends cdk.Stack {
       mediaBucket,
       mediaBucketKey,
       pipelineStateMachine,
+      processTranscriptFn,
       hostedZone,
     } = props;
 
@@ -91,6 +94,7 @@ export class ClinicComputeStack extends cdk.Stack {
           COGNITO_CLIENT_ID: userPoolClient.userPoolClientId,
           MEDIA_BUCKET_NAME: mediaBucket.bucketName,
           PIPELINE_STATE_MACHINE_ARN: pipelineStateMachine.stateMachineArn,
+          PROCESS_TRANSCRIPT_FUNCTION_NAME: processTranscriptFn.functionName,
           BEDROCK_MODEL_ID: this.node.tryGetContext('bedrockModelId') || 'us.anthropic.claude-sonnet-4-5-20250929-v1:0',
         },
         secrets: {
@@ -162,6 +166,18 @@ export class ClinicComputeStack extends cdk.Stack {
         ],
       }),
     );
+
+    // For TranscriptionStreamService — real-time streaming transcription during recording
+    this.taskDefinition.taskRole.addToPrincipalPolicy(
+      new iam.PolicyStatement({
+        actions: ['transcribe:StartMedicalStreamTranscription'],
+        resources: ['*'],
+      }),
+    );
+
+    // For TranscriptionController.completeStream() — invoke Lambda directly to process
+    // the streamed transcript (skips batch transcription, goes straight to AI drafting)
+    processTranscriptFn.grantInvoke(this.taskDefinition.taskRole);
 
     this.service.targetGroup.configureHealthCheck({
       path: '/health',

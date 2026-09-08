@@ -75,6 +75,7 @@ const compute = new ClinicComputeStack(app, 'ClinicComputeStack', {
   mediaBucket: storage.mediaBucket,
   mediaBucketKey: storage.mediaBucketKey,
   pipelineStateMachine: aiPipeline.stateMachine,
+  processTranscriptFn: aiPipeline.processTranscriptFn,
   hostedZone: dns.hostedZone,
 });
 
