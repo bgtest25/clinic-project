@@ -5,6 +5,7 @@ import type { Clinic, DiarizedSegment, EncounterDetail, Patient } from '../api/t
 import { MicIcon, PauseIcon, ResumeIcon, StopIcon } from '../icons';
 import { LevelMeter } from '../components/LevelMeter';
 import { withRetry } from '../utils/retry';
+import { AudioStreamer } from '../utils/audioStreamer';
 import { NoteReview } from './NoteReview';
 
 type RecordingState = 'loading' | 'idle' | 'recording' | 'uploading' | 'processing' | 'review' | 'error';
@@ -52,6 +53,9 @@ export function Recording({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
+  const audioStreamerRef = useRef<AudioStreamer | null>(null);
+  const [useStreaming, setUseStreaming] = useState(true);
+  const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
 
   function applyEncounterDetail(latest: EncounterDetail) {
     setEncounterStatus(latest.status);
@@ -116,6 +120,15 @@ export function Recording({
     return () => clearInterval(interval);
   }, [state, isPaused]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (audioStreamerRef.current) {
+        audioStreamerRef.current.disconnect();
+      }
+    };
+  }, []);
+
   async function handleConsent() {
     setError(null);
     try {
@@ -128,6 +141,41 @@ export function Recording({
 
   async function startRecording() {
     setError(null);
+    setStreamingStatus(null);
+
+    if (useStreaming) {
+      // Real-time streaming mode
+      try {
+        setStreamingStatus('Connecting...');
+        const freshToken = await getFreshToken();
+        const streamer = new AudioStreamer();
+        audioStreamerRef.current = streamer;
+
+        await streamer.connect(freshToken);
+        setStreamingStatus('Starting stream...');
+        await streamer.startStreaming(encounterId, freshToken);
+
+        const stream = await streamer.captureAudio();
+        streamRef.current = stream;
+
+        setStreamingStatus(null);
+        setElapsedSeconds(0);
+        setIsPaused(false);
+        setState('recording');
+      } catch (err) {
+        console.error('Streaming failed, falling back to batch mode:', err);
+        setStreamingStatus(null);
+        audioStreamerRef.current?.disconnect();
+        audioStreamerRef.current = null;
+        // Fall back to batch mode
+        await startBatchRecording();
+      }
+    } else {
+      await startBatchRecording();
+    }
+  }
+
+  async function startBatchRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
@@ -150,11 +198,46 @@ export function Recording({
     }
   }
 
-  function stopRecording() {
-    mediaRecorderRef.current?.stop();
+  async function stopRecording() {
+    if (audioStreamerRef.current) {
+      // Streaming mode - stop and get transcript
+      setState('uploading');
+      setUploadStatus('Finalizing transcript...');
+      try {
+        const result = await audioStreamerRef.current.stopStreaming();
+        audioStreamerRef.current.disconnect();
+        audioStreamerRef.current = null;
+        streamRef.current = null;
+
+        // Send the streamed transcript to the server
+        setUploadStatus('Starting AI processing...');
+        const freshToken = await getFreshToken();
+        await apiFetch(`/encounters/${encounterId}/transcription/complete-stream`, freshToken, {
+          method: 'POST',
+          body: JSON.stringify({
+            transcript: result.transcript,
+            segments: result.segments,
+          }),
+        });
+
+        setUploadStatus(null);
+        setState('processing');
+        setEncounterStatus('DRAFTING');
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to process transcript');
+        setState('error');
+        setUploadStatus(null);
+      }
+    } else {
+      // Batch mode - stop MediaRecorder which triggers upload
+      mediaRecorderRef.current?.stop();
+    }
   }
 
   function togglePause() {
+    // Pause not supported in streaming mode
+    if (audioStreamerRef.current) return;
+
     const recorder = mediaRecorderRef.current;
     if (!recorder) return;
     if (isPaused) {
@@ -267,10 +350,20 @@ export function Recording({
           </div>
         )}
 
+        {streamingStatus && (
+          <div className="processing-state">
+            <span className="spinner" />
+            {streamingStatus}
+          </div>
+        )}
+
         {state === 'recording' && (
           <div className="record-stage">
             <span className="record-elapsed">{formatElapsed(elapsedSeconds)}</span>
             {streamRef.current && <LevelMeter stream={streamRef.current} active={!isPaused} />}
+            {audioStreamerRef.current && (
+              <p className="streaming-indicator">Transcribing in real-time</p>
+            )}
             <div className="record-controls">
               <button
                 className="record-button is-recording"
@@ -279,15 +372,17 @@ export function Recording({
               >
                 <StopIcon />
               </button>
-              <button
-                className="btn btn-secondary record-pause-button"
-                onClick={togglePause}
-                type="button"
-                aria-label={isPaused ? 'Resume recording' : 'Pause recording'}
-              >
-                {isPaused ? <ResumeIcon /> : <PauseIcon />}
-                {isPaused ? 'Resume' : 'Pause'}
-              </button>
+              {!audioStreamerRef.current && (
+                <button
+                  className="btn btn-secondary record-pause-button"
+                  onClick={togglePause}
+                  type="button"
+                  aria-label={isPaused ? 'Resume recording' : 'Pause recording'}
+                >
+                  {isPaused ? <ResumeIcon /> : <PauseIcon />}
+                  {isPaused ? 'Resume' : 'Pause'}
+                </button>
+              )}
             </div>
             <p className="record-caption">
               {isPaused ? 'Paused. Tap resume to continue.' : 'Recording. Tap stop when finished.'}
