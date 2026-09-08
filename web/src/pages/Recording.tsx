@@ -54,7 +54,7 @@ export function Recording({
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const audioStreamerRef = useRef<AudioStreamer | null>(null);
-  const [useStreaming, setUseStreaming] = useState(true);
+  const [useStreaming] = useState(true);
   const [streamingStatus, setStreamingStatus] = useState<string | null>(null);
 
   function applyEncounterDetail(latest: EncounterDetail) {
