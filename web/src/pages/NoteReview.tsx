@@ -617,41 +617,40 @@ export function NoteReview({
       </div>
 
       {note.status === 'SIGNED' && (
-        <div className="card avs-card">
-          <h2>
-            <DocumentIcon /> Patient Summary
-          </h2>
-          {note.afterVisitSummary ? (
-            <>
-              <div className="avs-content">{note.afterVisitSummary}</div>
-              <div className="avs-actions">
-                <button className="btn btn-secondary" onClick={handleDownloadAvsPdf}>
-                  <DownloadIcon /> Download PDF
+        <div className="post-sign-grid">
+          <div className="card avs-card">
+            <h2>
+              <DocumentIcon /> Patient Summary
+            </h2>
+            {note.afterVisitSummary ? (
+              <>
+                <div className="avs-content">{note.afterVisitSummary}</div>
+                <div className="avs-actions">
+                  <button className="btn btn-secondary" onClick={handleDownloadAvsPdf}>
+                    <DownloadIcon /> Download PDF
+                  </button>
+                  <button className="btn btn-ghost" onClick={handlePrintAvs}>
+                    <PrintIcon /> Print
+                  </button>
+                  <button className="btn btn-ghost" onClick={handleGenerateAvs} disabled={avsGenerating}>
+                    {avsGenerating ? 'Regenerating…' : 'Regenerate'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="avs-description">
+                  Generate a plain-language summary of this visit for the patient to take home.
+                </p>
+                {avsError && <p className="error">{avsError}</p>}
+                <button className="btn btn-primary" onClick={handleGenerateAvs} disabled={avsGenerating}>
+                  {avsGenerating ? 'Generating…' : 'Generate Patient Summary'}
                 </button>
-                <button className="btn btn-ghost" onClick={handlePrintAvs}>
-                  <PrintIcon /> Print
-                </button>
-                <button className="btn btn-ghost" onClick={handleGenerateAvs} disabled={avsGenerating}>
-                  {avsGenerating ? 'Regenerating…' : 'Regenerate'}
-                </button>
-              </div>
-            </>
-          ) : (
-            <>
-              <p className="avs-description">
-                Generate a plain-language summary of this visit for the patient to take home.
-              </p>
-              {avsError && <p className="error">{avsError}</p>}
-              <button className="btn btn-primary" onClick={handleGenerateAvs} disabled={avsGenerating}>
-                {avsGenerating ? 'Generating…' : 'Generate Patient Summary'}
-              </button>
-            </>
-          )}
-        </div>
-      )}
+              </>
+            )}
+          </div>
 
-      {note.status === 'SIGNED' && (
-        <div className="card referral-card">
+          <div className="card referral-card">
           <h2>
             <DocumentIcon /> Referral Letters
           </h2>
@@ -745,13 +744,11 @@ export function NoteReview({
             </div>
           )}
         </div>
-      )}
 
-      {note.status === 'SIGNED' && (
-        <div className="card prior-auth-card">
-          <h2>
-            <DocumentIcon /> Prior Authorizations
-          </h2>
+          <div className="card prior-auth-card">
+            <h2>
+              <DocumentIcon /> Prior Authorizations
+            </h2>
           <div className="prior-auth-form">
             <label className="field">
               Procedure / Medication
@@ -845,7 +842,8 @@ export function NoteReview({
                 </div>
               ))}
             </div>
-          )}
+            )}
+          </div>
         </div>
       )}
 
