@@ -79,14 +79,17 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
 
   const isAdminOrOwner = me.role === 'OWNER' || me.role === 'ADMIN';
 
-  const loadStatus = useCallback(async () => {
+  const loadStatus = useCallback(async (autoNavigate = true) => {
     try {
       const st = await apiFetch<OnboardingStatus>('/onboarding/status', token);
       setStatus(st);
-      if (st.nextStep) {
-        setCurrentStep(st.nextStep);
-      } else if (st.user.onboardingComplete) {
-        onComplete();
+      if (autoNavigate) {
+        if (st.nextStep && st.nextStep !== 'complete') {
+          setCurrentStep(st.nextStep);
+        } else if (st.user.onboardingComplete) {
+          // Only auto-exit on initial load, not after completing steps
+          onComplete();
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load onboarding status');
@@ -190,7 +193,7 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
                 clinic={clinic}
                 isAdminOrOwner={isAdminOrOwner}
                 onComplete={() => {
-                  loadStatus();
+                  loadStatus(false);
                   goToStep('clinic_profile');
                 }}
                 onSkip={() => goToStep('clinic_profile')}
@@ -206,7 +209,7 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
                 clinic={clinic}
                 isAdminOrOwner={isAdminOrOwner}
                 onComplete={() => {
-                  loadStatus();
+                  loadStatus(false);
                   goToStep('user_profile');
                 }}
                 onSkip={() => goToStep('user_profile')}
@@ -221,7 +224,7 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
                 token={token}
                 me={me}
                 onComplete={() => {
-                  loadStatus();
+                  loadStatus(false);
                   goToStep('signature');
                 }}
                 busy={busy}
@@ -235,7 +238,7 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
                 token={token}
                 me={me}
                 onComplete={() => {
-                  loadStatus();
+                  loadStatus(false);
                   goToStep('hipaa_training');
                 }}
                 busy={busy}
@@ -248,7 +251,7 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
               <HipaaTrainingStep
                 token={token}
                 onComplete={() => {
-                  loadStatus();
+                  // Don't call loadStatus() here - it would auto-exit before showing welcome page
                   goToStep('complete');
                 }}
                 busy={busy}
