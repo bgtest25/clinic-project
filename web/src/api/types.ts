@@ -11,7 +11,7 @@ export interface Me {
   individualNpi?: string;
   signatureImageUrl?: string;
   signatureType?: 'typed' | 'drawn' | 'uploaded';
-  onboardingComplete: boolean;
+  onboardingComplete?: boolean;
   hipaaTrainingCompletedAt?: string;
 }
 

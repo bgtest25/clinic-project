@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import { apiFetch } from '../api/client';
 import type { Clinic, Me, NpiVerificationResult, OnboardingStatus } from '../api/types';
 import { BrandMark } from '../icons';
@@ -45,11 +45,7 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
 
   const isAdminOrOwner = me.role === 'OWNER' || me.role === 'ADMIN';
 
-  useEffect(() => {
-    loadStatus();
-  }, [token]);
-
-  async function loadStatus() {
+  const loadStatus = useCallback(async () => {
     try {
       const st = await apiFetch<OnboardingStatus>('/onboarding/status', token);
       setStatus(st);
@@ -61,7 +57,11 @@ export function Onboarding({ token, me, clinic, onComplete }: OnboardingProps) {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load onboarding status');
     }
-  }
+  }, [token, onComplete]);
+
+  useEffect(() => {
+    loadStatus();
+  }, [loadStatus]);
 
   function goToStep(step: Step) {
     setError(null);
