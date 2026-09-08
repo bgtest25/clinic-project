@@ -267,14 +267,15 @@ export class OnboardingService {
     });
     if (!user) throw new NotFoundException('User not found');
 
-    // Check all requirements for a clinician to be fully onboarded
     const issues: string[] = [];
 
+    // Everyone needs HIPAA training
     if (!user.hipaaTrainingCompletedAt) {
       issues.push('HIPAA training not completed');
     }
-    if (user.role === 'CLINICIAN' || user.role === 'OWNER') {
-      if (!user.credentials) issues.push('Credentials not set');
+
+    // Clinicians and Owners need credentials and signature for signing documents
+    if (user.role === 'CLINICIAN' || user.role === 'OWNER' || user.role === 'ADMIN') {
       if (!user.signatureImageUrl) issues.push('Digital signature not uploaded');
     }
 
@@ -303,29 +304,58 @@ export class OnboardingService {
     const clinic = user.clinic;
     const latestBaa = clinic.baaSignatures[0];
     const latestTraining = user.hipaaTrainingRecords[0];
+    const isAdminOrOwner = user.role === 'OWNER' || user.role === 'ADMIN';
+
+    const baaSigned = !!latestBaa;
+    const profileComplete = !!(
+      clinic.name &&
+      clinic.addressStreet &&
+      clinic.addressCity &&
+      clinic.addressState &&
+      clinic.addressZip
+    );
+    const userProfileComplete = !!(user.name && user.credentials);
+    const hasSignature = !!user.signatureImageUrl;
+    const hipaaTrainingComplete = !!user.hipaaTrainingCompletedAt;
+
+    // Determine next step
+    let nextStep: 'baa' | 'clinic_profile' | 'user_profile' | 'signature' | 'hipaa_training' | 'complete' | null = null;
+
+    if (user.onboardingComplete) {
+      nextStep = null;
+    } else if (isAdminOrOwner && !baaSigned) {
+      nextStep = 'baa';
+    } else if (isAdminOrOwner && !profileComplete) {
+      nextStep = 'clinic_profile';
+    } else if (!userProfileComplete) {
+      nextStep = 'user_profile';
+    } else if (!hasSignature) {
+      nextStep = 'signature';
+    } else if (!hipaaTrainingComplete) {
+      nextStep = 'hipaa_training';
+    } else {
+      nextStep = 'complete';
+    }
 
     return {
+      clinicId: clinic.id,
+      userId: user.id,
       clinic: {
         status: clinic.status,
-        baaSigned: !!latestBaa,
+        baaSigned,
         baaSignedAt: latestBaa?.signedAt,
-        profileComplete: !!(
-          clinic.name &&
-          clinic.addressStreet &&
-          clinic.addressCity &&
-          clinic.addressState &&
-          clinic.addressZip
-        ),
-        hasLogo: !!clinic.logoUrl,
+        profileComplete,
+        logoUploaded: !!clinic.logoUrl,
       },
       user: {
-        onboardingComplete: user.onboardingComplete,
-        hipaaTrainingComplete: !!user.hipaaTrainingCompletedAt,
+        role: user.role,
+        profileComplete: userProfileComplete,
+        signatureUploaded: hasSignature,
+        hipaaTrainingComplete,
         hipaaTrainingExpiresAt: latestTraining?.expiresAt,
-        hasCredentials: !!user.credentials,
-        hasSignature: !!user.signatureImageUrl,
-        hasNpi: !!user.individualNpi,
+        onboardingComplete: user.onboardingComplete,
       },
+      nextStep,
     };
   }
 

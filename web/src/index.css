@@ -12,8 +12,18 @@
 
   --color-primary: #0f766e;
   --color-primary-hover: #0b5c56;
+  --color-primary-dark: #0b5c56;
   --color-primary-soft: #ccfbf1;
+  --color-primary-bg: rgba(15, 118, 110, 0.08);
   --color-on-primary: #ffffff;
+  --primary-rgb: 15, 118, 110;
+  --error-rgb: 220, 38, 38;
+
+  --color-bg-secondary: #f1f5f9;
+  --color-error: #dc2626;
+  --color-error-bg: #fee2e2;
+  --color-success-bg: #dcfce7;
+  --color-warning-bg: #fef3c7;
 
   --color-danger: #dc2626;
   --color-danger-soft: #fee2e2;
@@ -64,8 +74,18 @@
 
     --color-primary: #2dd4bf;
     --color-primary-hover: #5eead4;
+    --color-primary-dark: #14b8a6;
     --color-primary-soft: rgba(45, 212, 191, 0.16);
+    --color-primary-bg: rgba(45, 212, 191, 0.12);
     --color-on-primary: #042a25;
+    --primary-rgb: 45, 212, 191;
+    --error-rgb: 220, 38, 38;
+
+    --color-bg-secondary: #1a2436;
+    --color-error: #ef4444;
+    --color-error-bg: rgba(220, 38, 38, 0.16);
+    --color-success-bg: rgba(22, 163, 74, 0.16);
+    --color-warning-bg: rgba(217, 119, 6, 0.16);
 
     --color-danger-soft: rgba(220, 38, 38, 0.16);
     --color-danger-text: #fca5a5;
@@ -95,8 +115,18 @@
 
   --color-primary: #2dd4bf;
   --color-primary-hover: #5eead4;
+  --color-primary-dark: #14b8a6;
   --color-primary-soft: rgba(45, 212, 191, 0.16);
+  --color-primary-bg: rgba(45, 212, 191, 0.12);
   --color-on-primary: #042a25;
+  --primary-rgb: 45, 212, 191;
+  --error-rgb: 220, 38, 38;
+
+  --color-bg-secondary: #1a2436;
+  --color-error: #ef4444;
+  --color-error-bg: rgba(220, 38, 38, 0.16);
+  --color-success-bg: rgba(22, 163, 74, 0.16);
+  --color-warning-bg: rgba(217, 119, 6, 0.16);
 
   --color-danger-soft: rgba(220, 38, 38, 0.16);
   --color-danger-text: #fca5a5;
