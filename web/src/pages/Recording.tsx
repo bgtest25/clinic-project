@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { apiFetch } from '../api/client';
+import { useAuth } from '../auth/AuthContext';
 import type { Clinic, DiarizedSegment, EncounterDetail, Patient } from '../api/types';
 import { MicIcon, PauseIcon, ResumeIcon, StopIcon } from '../icons';
 import { LevelMeter } from '../components/LevelMeter';
@@ -15,7 +16,7 @@ function formatElapsed(seconds: number): string {
 }
 
 export function Recording({
-  token,
+  token: initialToken,
   encounterId,
   clinic,
   onBack,
@@ -25,6 +26,15 @@ export function Recording({
   clinic: Clinic | null;
   onBack: () => void;
 }) {
+  const { token: currentToken, refreshToken } = useAuth();
+  // Use the freshest token available, falling back to the prop for initial render
+  const token = currentToken ?? initialToken;
+
+  // Get a guaranteed-fresh token for critical operations (upload, polling)
+  async function getFreshToken(): Promise<string> {
+    const fresh = await refreshToken();
+    return fresh ?? token;
+  }
   const [consentGiven, setConsentGiven] = useState(false);
   const [state, setState] = useState<RecordingState>('loading');
   const [error, setError] = useState<string | null>(null);
@@ -85,7 +95,9 @@ export function Recording({
 
     const interval = setInterval(async () => {
       try {
-        const latest = await apiFetch<EncounterDetail>(`/encounters/${encounterId}`, token);
+        // Use fresh token for polling - processing can take several minutes
+        const freshToken = await getFreshToken();
+        const latest = await apiFetch<EncounterDetail>(`/encounters/${encounterId}`, freshToken);
         if (latest.status !== 'TRANSCRIBING' && latest.status !== 'DRAFTING') {
           applyEncounterDetail(latest);
         }
@@ -95,7 +107,8 @@ export function Recording({
     }, 4000);
 
     return () => clearInterval(interval);
-  }, [state, encounterId, token]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state, encounterId]);
 
   useEffect(() => {
     if (state !== 'recording' || isPaused) return;
@@ -157,9 +170,12 @@ export function Recording({
     setState('uploading');
     setUploadStatus(null);
     try {
+      // Refresh token before upload - critical to prevent 401 after long recordings
+      const freshToken = await getFreshToken();
+
       const { uploadUrl } = await withRetry(
         () =>
-          apiFetch<{ uploadUrl: string; s3Key: string }>(`/encounters/${encounterId}/recording/start-upload`, token, {
+          apiFetch<{ uploadUrl: string; s3Key: string }>(`/encounters/${encounterId}/recording/start-upload`, freshToken, {
             method: 'POST',
           }),
         { onRetry: (attempt, total) => setUploadStatus(`Retrying upload request (${attempt}/${total})…`) },
@@ -178,7 +194,7 @@ export function Recording({
       );
 
       await withRetry(
-        () => apiFetch(`/encounters/${encounterId}/recording/complete`, token, { method: 'POST' }),
+        () => apiFetch(`/encounters/${encounterId}/recording/complete`, freshToken, { method: 'POST' }),
         { onRetry: (attempt, total) => setUploadStatus(`Retrying (${attempt}/${total})…`) },
       );
 
