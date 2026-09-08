@@ -443,51 +443,178 @@ export function NoteReview({
         </div>
       )}
 
-      {note.status === 'SIGNED' &&
-        (note.satisfactionRating ? (
-          <div className="card feedback-card feedback-submitted">
-            <div className="star-row" aria-hidden="true">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <StarIcon key={n} filled={n <= note.satisfactionRating!} />
-              ))}
-            </div>
-            <p className="status-line">Thanks for your feedback on this draft.</p>
-          </div>
-        ) : (
-          <div className="card feedback-card">
-            <h2>How was this draft?</h2>
-            <div className="star-row">
-              {[1, 2, 3, 4, 5].map((n) => (
+      <div className="review-columns">
+        <div className="transcript-pane">
+          <div className="transcript-pane-header">
+            <h2>Transcript</h2>
+            {hasSpeakerView && (
+              <div className="transcript-view-toggle" role="group" aria-label="Transcript view">
                 <button
-                  key={n}
                   type="button"
-                  className="star-button"
-                  aria-label={`${n} star${n > 1 ? 's' : ''}`}
-                  onClick={() => setFeedbackRating(n)}
+                  className={`btn btn-sm ${transcriptView === 'speaker' ? 'btn-secondary' : 'btn-ghost'}`}
+                  aria-pressed={transcriptView === 'speaker'}
+                  onClick={() => setTranscriptView('speaker')}
                 >
-                  <StarIcon filled={n <= feedbackRating} />
+                  Speaker view
                 </button>
-              ))}
+                <button
+                  type="button"
+                  className={`btn btn-sm ${transcriptView === 'raw' ? 'btn-secondary' : 'btn-ghost'}`}
+                  aria-pressed={transcriptView === 'raw'}
+                  onClick={() => setTranscriptView('raw')}
+                >
+                  Raw text
+                </button>
+              </div>
+            )}
+          </div>
+          {hasSpeakerView && transcriptView === 'speaker' ? (
+            <div className="transcript-speaker-view">
+              <div className="transcript-speaker-legend">
+                {speakerOrder.map(([rawKey, num]) => {
+                  const current = speakerDisplayLabel(rawKey, num);
+                  const saving = savingSpeaker === rawKey;
+                  const isPreset = current === 'Clinician' || (!!patient?.name && current === patient.name);
+                  const suggestion = !speakerLabelsState[rawKey] ? suggestedSpeakerRoles?.[rawKey] : undefined;
+                  return (
+                    <div key={rawKey} className="transcript-speaker-legend-row">
+                      <span className="transcript-speaker-legend-current">{current}</span>
+                      {suggestion && (
+                        <div className="transcript-speaker-legend-suggestion">
+                          <span className="transcript-speaker-legend-suggestion-text">
+                            Claude suggests: {suggestion}
+                          </span>
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-primary"
+                            disabled={saving}
+                            onClick={() => assignSpeakerLabel(rawKey, suggestion)}
+                          >
+                            Confirm
+                          </button>
+                        </div>
+                      )}
+                      <div className="transcript-speaker-legend-actions">
+                        <button
+                          type="button"
+                          className="btn btn-sm btn-ghost"
+                          disabled={saving || current === 'Clinician'}
+                          onClick={() => assignSpeakerLabel(rawKey, 'Clinician')}
+                        >
+                          Clinician
+                        </button>
+                        {patient?.name && (
+                          <button
+                            type="button"
+                            className="btn btn-sm btn-ghost"
+                            disabled={saving || current === patient.name}
+                            onClick={() => assignSpeakerLabel(rawKey, patient.name!)}
+                          >
+                            {patient.name}
+                          </button>
+                        )}
+                        <input
+                          key={`${rawKey}-${current}`}
+                          type="text"
+                          className="transcript-speaker-legend-custom"
+                          placeholder="Other (e.g. Interpreter)"
+                          defaultValue={isPreset ? '' : speakerLabelsState[rawKey] ?? ''}
+                          disabled={saving}
+                          maxLength={100}
+                          onKeyDown={(e) => {
+                            if (e.key !== 'Enter') return;
+                            const value = e.currentTarget.value.trim();
+                            if (value) assignSpeakerLabel(rawKey, value);
+                          }}
+                          onBlur={(e) => {
+                            const value = e.currentTarget.value.trim();
+                            if (value && value !== speakerLabelsState[rawKey]) assignSpeakerLabel(rawKey, value);
+                          }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {diarizedSegments!.map((segment, i) => {
+                const num = speakerOrder.find(([key]) => key === segment.speaker)?.[1] ?? 0;
+                return (
+                  <p key={i} className="transcript-turn">
+                    <span className="transcript-speaker-label">{speakerDisplayLabel(segment.speaker, num)}</span>
+                    {segment.text}
+                  </p>
+                );
+              })}
             </div>
-            <label className="field">
-              Comment (optional)
+          ) : (
+            <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>
+          )}
+        </div>
+
+        <div className="card note-form">
+          {NOTE_FIELDS.map((field) => (
+            <label key={field} className="field">
+              <span className="note-section-label-row">
+                <span className="note-section-label">{field}</span>
+                {!locked && (
+                  <TemplateMenu
+                    field={field as TemplateField}
+                    currentText={form[field]}
+                    onInsert={(phrase) =>
+                      setForm({
+                        ...form,
+                        [field]: form[field] ? `${form[field]}\n${phrase}` : phrase,
+                      })
+                    }
+                  />
+                )}
+              </span>
               <textarea
-                value={feedbackComment}
-                onChange={(e) => setFeedbackComment(e.target.value)}
-                rows={2}
-                placeholder="Anything that made this draft better or worse?"
+                value={form[field]}
+                disabled={locked}
+                rows={4}
+                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
               />
             </label>
-            {feedbackError && <p className="error">{feedbackError}</p>}
-            <button
-              className="btn btn-secondary"
-              onClick={handleSubmitFeedback}
-              disabled={feedbackBusy || !feedbackRating}
-            >
-              {feedbackBusy ? 'Submitting…' : 'Submit feedback'}
+          ))}
+          <div className="field">
+            <span className="note-section-label">Suggested codes</span>
+            <CodePicker
+              value={form.suggestedCodes}
+              disabled={locked}
+              onChange={(codes) => setForm({ ...form, suggestedCodes: codes })}
+            />
+          </div>
+
+          {error && <p className="error">{error}</p>}
+
+          <div className="review-actions">
+            {locked ? (
+              <button className="btn btn-secondary" onClick={() => setEditing(true)}>
+                Edit (creates an amendment)
+              </button>
+            ) : (
+              <>
+                <button className="btn btn-secondary" onClick={handleSave} disabled={busy}>
+                  {busy ? 'Saving…' : 'Save draft'}
+                </button>
+                <button className="btn btn-primary" onClick={handleSign} disabled={busy}>
+                  {busy ? 'Signing…' : 'Sign note'}
+                </button>
+              </>
+            )}
+            <button className="btn btn-ghost" onClick={handleCopy} type="button">
+              {copied ? 'Copied!' : 'Copy note'}
+            </button>
+            <button className="btn btn-ghost" onClick={handleDownloadPdf} type="button">
+              Download PDF
+            </button>
+            <button className="btn btn-ghost" onClick={handlePrint} type="button">
+              <PrintIcon /> Print
             </button>
           </div>
-        ))}
+        </div>
+      </div>
 
       {note.status === 'SIGNED' && (
         <div className="card avs-card">
@@ -722,189 +849,51 @@ export function NoteReview({
         </div>
       )}
 
-      <div className="review-columns">
-        <div className="transcript-pane">
-          <div className="transcript-pane-header">
-            <h2>Transcript</h2>
-            {hasSpeakerView && (
-              <div className="transcript-view-toggle" role="group" aria-label="Transcript view">
-                <button
-                  type="button"
-                  className={`btn btn-sm ${transcriptView === 'speaker' ? 'btn-secondary' : 'btn-ghost'}`}
-                  aria-pressed={transcriptView === 'speaker'}
-                  onClick={() => setTranscriptView('speaker')}
-                >
-                  Speaker view
-                </button>
-                <button
-                  type="button"
-                  className={`btn btn-sm ${transcriptView === 'raw' ? 'btn-secondary' : 'btn-ghost'}`}
-                  aria-pressed={transcriptView === 'raw'}
-                  onClick={() => setTranscriptView('raw')}
-                >
-                  Raw text
-                </button>
-              </div>
-            )}
-          </div>
-          {hasSpeakerView && transcriptView === 'speaker' ? (
-            <div className="transcript-speaker-view">
-              {/* Diarization is best-effort, not verified per-turn, and the
-                  same speaker can jump labels mid-conversation on real
-                  recordings — labels default to generic ("Speaker 1/2")
-                  rather than guessing Clinician/Patient automatically, since
-                  a wrong role label here would be taken as fact rather than
-                  the estimate it is. Claude may propose a role below (from
-                  the same call that drafted this note) when it's confident,
-                  but that's only ever a suggestion — it never overwrites the
-                  generic label until you click Confirm. You were in the
-                  room, though — assign who's who below and it's saved with
-                  this visit. */}
-              <div className="transcript-speaker-legend">
-                {speakerOrder.map(([rawKey, num]) => {
-                  const current = speakerDisplayLabel(rawKey, num);
-                  const saving = savingSpeaker === rawKey;
-                  const isPreset = current === 'Clinician' || (!!patient?.name && current === patient.name);
-                  const suggestion = !speakerLabelsState[rawKey] ? suggestedSpeakerRoles?.[rawKey] : undefined;
-                  return (
-                    <div key={rawKey} className="transcript-speaker-legend-row">
-                      <span className="transcript-speaker-legend-current">{current}</span>
-                      {suggestion && (
-                        <div className="transcript-speaker-legend-suggestion">
-                          <span className="transcript-speaker-legend-suggestion-text">
-                            Claude suggests: {suggestion}
-                          </span>
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-primary"
-                            disabled={saving}
-                            onClick={() => assignSpeakerLabel(rawKey, suggestion)}
-                          >
-                            Confirm
-                          </button>
-                        </div>
-                      )}
-                      <div className="transcript-speaker-legend-actions">
-                        <button
-                          type="button"
-                          className="btn btn-sm btn-ghost"
-                          disabled={saving || current === 'Clinician'}
-                          onClick={() => assignSpeakerLabel(rawKey, 'Clinician')}
-                        >
-                          Clinician
-                        </button>
-                        {patient?.name && (
-                          <button
-                            type="button"
-                            className="btn btn-sm btn-ghost"
-                            disabled={saving || current === patient.name}
-                            onClick={() => assignSpeakerLabel(rawKey, patient.name!)}
-                          >
-                            {patient.name}
-                          </button>
-                        )}
-                        <input
-                          key={`${rawKey}-${current}`}
-                          type="text"
-                          className="transcript-speaker-legend-custom"
-                          placeholder="Other (e.g. Interpreter)"
-                          defaultValue={isPreset ? '' : speakerLabelsState[rawKey] ?? ''}
-                          disabled={saving}
-                          maxLength={100}
-                          onKeyDown={(e) => {
-                            if (e.key !== 'Enter') return;
-                            const value = e.currentTarget.value.trim();
-                            if (value) assignSpeakerLabel(rawKey, value);
-                          }}
-                          onBlur={(e) => {
-                            const value = e.currentTarget.value.trim();
-                            if (value && value !== speakerLabelsState[rawKey]) assignSpeakerLabel(rawKey, value);
-                          }}
-                        />
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-              {diarizedSegments!.map((segment, i) => {
-                const num = speakerOrder.find(([key]) => key === segment.speaker)?.[1] ?? 0;
-                return (
-                  <p key={i} className="transcript-turn">
-                    <span className="transcript-speaker-label">{speakerDisplayLabel(segment.speaker, num)}</span>
-                    {segment.text}
-                  </p>
-                );
-              })}
+      {note.status === 'SIGNED' &&
+        (note.satisfactionRating ? (
+          <div className="card feedback-card feedback-submitted">
+            <div className="star-row" aria-hidden="true">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <StarIcon key={n} filled={n <= note.satisfactionRating!} />
+              ))}
             </div>
-          ) : (
-            <p className="transcript-text">{transcript ?? 'No transcript available.'}</p>
-          )}
-        </div>
-
-        <div className="card note-form">
-          {NOTE_FIELDS.map((field) => (
-            <label key={field} className="field">
-              <span className="note-section-label-row">
-                <span className="note-section-label">{field}</span>
-                {!locked && (
-                  <TemplateMenu
-                    field={field as TemplateField}
-                    currentText={form[field]}
-                    onInsert={(phrase) =>
-                      setForm({
-                        ...form,
-                        [field]: form[field] ? `${form[field]}\n${phrase}` : phrase,
-                      })
-                    }
-                  />
-                )}
-              </span>
+            <p className="status-line">Thanks for your feedback on this draft.</p>
+          </div>
+        ) : (
+          <div className="card feedback-card">
+            <h2>How was this draft?</h2>
+            <div className="star-row">
+              {[1, 2, 3, 4, 5].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  className="star-button"
+                  aria-label={`${n} star${n > 1 ? 's' : ''}`}
+                  onClick={() => setFeedbackRating(n)}
+                >
+                  <StarIcon filled={n <= feedbackRating} />
+                </button>
+              ))}
+            </div>
+            <label className="field">
+              Comment (optional)
               <textarea
-                value={form[field]}
-                disabled={locked}
-                rows={4}
-                onChange={(e) => setForm({ ...form, [field]: e.target.value })}
+                value={feedbackComment}
+                onChange={(e) => setFeedbackComment(e.target.value)}
+                rows={2}
+                placeholder="Anything that made this draft better or worse?"
               />
             </label>
-          ))}
-          <div className="field">
-            <span className="note-section-label">Suggested codes</span>
-            <CodePicker
-              value={form.suggestedCodes}
-              disabled={locked}
-              onChange={(codes) => setForm({ ...form, suggestedCodes: codes })}
-            />
-          </div>
-
-          {error && <p className="error">{error}</p>}
-
-          <div className="review-actions">
-            {locked ? (
-              <button className="btn btn-secondary" onClick={() => setEditing(true)}>
-                Edit (creates an amendment)
-              </button>
-            ) : (
-              <>
-                <button className="btn btn-secondary" onClick={handleSave} disabled={busy}>
-                  {busy ? 'Saving…' : 'Save draft'}
-                </button>
-                <button className="btn btn-primary" onClick={handleSign} disabled={busy}>
-                  {busy ? 'Signing…' : 'Sign note'}
-                </button>
-              </>
-            )}
-            <button className="btn btn-ghost" onClick={handleCopy} type="button">
-              {copied ? 'Copied!' : 'Copy note'}
-            </button>
-            <button className="btn btn-ghost" onClick={handleDownloadPdf} type="button">
-              Download PDF
-            </button>
-            <button className="btn btn-ghost" onClick={handlePrint} type="button">
-              <PrintIcon /> Print
+            {feedbackError && <p className="error">{feedbackError}</p>}
+            <button
+              className="btn btn-secondary"
+              onClick={handleSubmitFeedback}
+              disabled={feedbackBusy || !feedbackRating}
+            >
+              {feedbackBusy ? 'Submitting…' : 'Submit feedback'}
             </button>
           </div>
-        </div>
-      </div>
+        ))}
     </div>
   );
 }
