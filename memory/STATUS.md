@@ -1,8 +1,32 @@
 # Havenote — Project Status
 
-**Last updated:** 2026-09-08 (Full day session: onboarding UI redesign with signature canvas, bug
-fixes for signature upload and welcome page, comprehensive text overflow audit and fixes across all
-pages. Everything deployed and verified live on app.havenote.health.)
+**Last updated:** 2026-09-08 (Added self-service forgot password flow and smart invite/reset
+labeling. Both deployed and verified live on app.havenote.health.)
+
+## 🟢 Self-service forgot password + smart invite labeling (2026-09-08)
+
+Two UX improvements for account management:
+
+**Self-service forgot password** (`web/src/pages/Login.tsx`, `web/src/auth/cognito.ts`):
+- "Forgot password?" link on login page
+- Clinicians enter email, receive verification code via Cognito
+- Set new password with code, then sign in normally with MFA
+- Reduces admin burden for simple password resets
+- 8 new tests covering full flow
+
+**Smart invite/reset labeling** (`web/src/pages/Users.tsx`, new migration):
+- New `initialSetupCompletedAt` field tracks when user completed first login
+- Users page shows "Resend Invite" for pending users (never logged in)
+- Shows "Reset MFA" for active users (already completed setup)
+- `PATCH /users/me/complete-initial-setup` called on every login (idempotent)
+- 4 new tests for labeling logic
+
+**Recovery scenarios now covered**:
+- Clinician never got invite → Admin clicks "Resend Invite"
+- Clinician forgot password → Self-service reset via email
+- Clinician lost authenticator → Admin clicks "Reset MFA"
+
+---
 
 ## 🟢 Text overflow audit and fixes — site-wide (2026-09-08)
 
