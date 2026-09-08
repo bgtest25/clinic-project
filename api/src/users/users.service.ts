@@ -40,6 +40,17 @@ export class UsersService {
     return user;
   }
 
+  // Called after a user completes first-time login (sets password + MFA).
+  // Idempotent: safe to call multiple times, only sets the timestamp once.
+  async completeInitialSetup(cognitoSub: string) {
+    const user = await this.findByCognitoSub(cognitoSub);
+    if (user.initialSetupCompletedAt) return user;
+    return this.prisma.user.update({
+      where: { id: user.id },
+      data: { initialSetupCompletedAt: new Date() },
+    });
+  }
+
   // Admin-only clinic roster (enforced by the controller's @Roles('admin')).
   async findAll(cognitoSub: string) {
     const actor = await this.findByCognitoSub(cognitoSub);

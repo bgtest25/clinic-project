@@ -24,6 +24,11 @@ export class UsersController {
     return this.usersService.findByCognitoSub(req.user.sub);
   }
 
+  @Patch('me/complete-initial-setup')
+  completeInitialSetup(@Req() req: any) {
+    return this.usersService.completeInitialSetup(req.user.sub);
+  }
+
   @Get()
   @Roles('admin')
   findAll(@Req() req: any) {

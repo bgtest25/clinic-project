@@ -146,6 +146,11 @@ model User {
   hipaaTrainingCompletedAt DateTime?
   confidentialitySignedAt  DateTime?
 
+  // Tracks when a user completed their first login (set password + MFA).
+  // Null means they were invited but never logged in — used to show
+  // "Resend Invite" instead of "Reset MFA" in the admin UI.
+  initialSetupCompletedAt DateTime?
+
   // Offboarding: null while active. The row itself is never deleted — that
   // would orphan ClinicalNote.signedById / AuditLog.actorId and corrupt the
   // legal/audit record — so deactivation is a flag, not a removal.

@@ -27,6 +27,19 @@ const activeUser: User = {
   clinicId: 'clinic-a',
   deactivatedAt: null,
   deactivatedById: null,
+  initialSetupCompletedAt: '2026-07-01T00:00:00.000Z',
+};
+
+const pendingUser: User = {
+  id: 'user-4',
+  cognitoSub: 'sub-4',
+  email: 'dave@x.test',
+  name: 'Dave',
+  role: 'CLINICIAN',
+  clinicId: 'clinic-a',
+  deactivatedAt: null,
+  deactivatedById: null,
+  initialSetupCompletedAt: null,
 };
 
 const inactiveUser: User = {
@@ -36,6 +49,7 @@ const inactiveUser: User = {
   email: 'carol@x.test',
   deactivatedAt: '2026-07-01T00:00:00.000Z',
   deactivatedById: 'user-1',
+  initialSetupCompletedAt: '2026-06-15T00:00:00.000Z',
 };
 
 describe('Users', () => {
@@ -140,5 +154,29 @@ describe('Users', () => {
     fireEvent.click(screen.getByText('Reset MFA', { selector: 'button.btn-danger' }));
 
     expect(await screen.findByText('Cannot reset your own MFA — ask another admin')).toBeInTheDocument();
+  });
+
+  it('shows Resend Invite for a user who never completed initial setup', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([pendingUser]);
+    renderUsers({ token: 'tok', me, onBack: vi.fn() });
+
+    await screen.findByText('Dave');
+    expect(screen.getByText('Resend Invite')).toBeInTheDocument();
+    expect(screen.queryByText('Reset MFA')).not.toBeInTheDocument();
+  });
+
+  it('resends invite through the confirm flow and shows a toast', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce([pendingUser]);
+    renderUsers({ token: 'tok', me, onBack: vi.fn() });
+    await screen.findByText('Dave');
+
+    vi.mocked(apiFetch).mockResolvedValueOnce({ ...pendingUser, cognitoSub: 'new-sub' });
+    fireEvent.click(screen.getByText('Resend Invite'));
+    fireEvent.click(screen.getByText('Resend Invite', { selector: 'button.btn-danger' }));
+
+    expect(apiFetch).toHaveBeenLastCalledWith('/users/user-4/reset-mfa', 'tok', { method: 'PATCH' });
+    expect(
+      await screen.findByText("Invite resent to Dave — they'll get a new temporary password by email."),
+    ).toBeInTheDocument();
   });
 });

@@ -331,4 +331,30 @@ describe('UsersService', () => {
       });
     });
   });
+
+  describe('completeInitialSetup', () => {
+    it('sets initialSetupCompletedAt if not already set', async () => {
+      const user = { id: 'user-1', clinicId: 'clinic-a', initialSetupCompletedAt: null };
+      prisma.user.findUniqueOrThrow.mockResolvedValue(user);
+      prisma.user.update.mockResolvedValue({ ...user, initialSetupCompletedAt: new Date() });
+
+      await service.completeInitialSetup('sub-1');
+
+      expect(prisma.user.update).toHaveBeenCalledWith({
+        where: { id: 'user-1' },
+        data: { initialSetupCompletedAt: expect.any(Date) },
+      });
+    });
+
+    it('is idempotent: returns user unchanged if already completed', async () => {
+      const completed = new Date('2026-07-01');
+      const user = { id: 'user-1', clinicId: 'clinic-a', initialSetupCompletedAt: completed };
+      prisma.user.findUniqueOrThrow.mockResolvedValue(user);
+
+      const result = await service.completeInitialSetup('sub-1');
+
+      expect(prisma.user.update).not.toHaveBeenCalled();
+      expect(result).toBe(user);
+    });
+  });
 });

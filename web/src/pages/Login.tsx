@@ -2,16 +2,27 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { CognitoUser } from 'amazon-cognito-identity-js';
 import { useNavigate } from 'react-router-dom';
 import QRCode from 'qrcode';
-import { confirmMfaSetup, login, submitMfaCode, submitNewPassword, type LoginResult } from '../auth/cognito';
+import {
+  confirmForgotPassword,
+  confirmMfaSetup,
+  forgotPassword,
+  login,
+  submitMfaCode,
+  submitNewPassword,
+  type LoginResult,
+} from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
 import { BrandMark } from '../icons';
 import { ThemeToggle } from '../components/ThemeToggle';
+import { apiFetch } from '../api/client';
 
 type Stage =
   | { step: 'credentials' }
   | { step: 'newPassword'; user: CognitoUser }
   | { step: 'mfa'; user: CognitoUser }
-  | { step: 'mfaSetup'; user: CognitoUser; secretCode: string };
+  | { step: 'mfaSetup'; user: CognitoUser; secretCode: string }
+  | { step: 'forgotPassword' }
+  | { step: 'forgotPasswordConfirm'; email: string };
 
 export function Login() {
   const { setToken } = useAuth();
@@ -25,6 +36,8 @@ export function Login() {
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [resetSuccess, setResetSuccess] = useState(false);
 
   useEffect(() => {
     if (stage.step !== 'mfaSetup') {
@@ -47,7 +60,13 @@ export function Login() {
   // session (e.g. an admin who just invited someone) last left it on, so a
   // different user logging in in the same tab lands on a stale admin page
   // instead of the dashboard.
-  function completeLogin(token: string) {
+  async function completeLogin(token: string) {
+    // Mark initial setup complete (idempotent, safe to call every login)
+    try {
+      await apiFetch('/users/me/complete-initial-setup', token, { method: 'PATCH' });
+    } catch {
+      // Non-fatal: the main login succeeded, this is just housekeeping
+    }
     setToken(token);
     navigate('/', { replace: true });
   }
@@ -116,6 +135,150 @@ export function Login() {
     } finally {
       setBusy(false);
     }
+  }
+
+  async function handleForgotPassword(e: FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setBusy(true);
+    try {
+      await forgotPassword(forgotEmail);
+      setStage({ step: 'forgotPasswordConfirm', email: forgotEmail });
+      setCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to send reset code');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleConfirmForgotPassword(e: FormEvent) {
+    e.preventDefault();
+    if (stage.step !== 'forgotPasswordConfirm') return;
+    setError(null);
+    if (newPassword !== confirmNewPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setBusy(true);
+    try {
+      await confirmForgotPassword(stage.email, code, newPassword);
+      setResetSuccess(true);
+      setStage({ step: 'credentials' });
+      setUsername(stage.email);
+      setPassword('');
+      setCode('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to reset password');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (stage.step === 'forgotPassword') {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card card">
+          <span className="brand">
+            <BrandMark />
+            Havenote
+          </span>
+          <h1>Reset your password</h1>
+          <p className="auth-subtitle">Enter your email and we'll send you a verification code.</p>
+          <form onSubmit={handleForgotPassword} className="form-stack">
+            <label className="field">
+              Email
+              <input
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                type="email"
+                autoComplete="username"
+                autoFocus
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+              {busy ? 'Sending…' : 'Send reset code'}
+            </button>
+          </form>
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              setStage({ step: 'credentials' });
+              setError(null);
+            }}
+          >
+            Back to sign in
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (stage.step === 'forgotPasswordConfirm') {
+    return (
+      <div className="auth-shell">
+        <div className="auth-card card">
+          <span className="brand">
+            <BrandMark />
+            Havenote
+          </span>
+          <h1>Enter verification code</h1>
+          <p className="auth-subtitle">
+            We sent a code to {stage.email}. Enter it below with your new password.
+          </p>
+          <form onSubmit={handleConfirmForgotPassword} className="form-stack">
+            <label className="field">
+              Verification code
+              <input
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                placeholder="123456"
+                inputMode="numeric"
+                autoFocus
+              />
+            </label>
+            <label className="field">
+              New password
+              <input
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+              />
+            </label>
+            <label className="field">
+              Confirm new password
+              <input
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                type="password"
+                autoComplete="new-password"
+              />
+            </label>
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+              {busy ? 'Resetting…' : 'Reset password'}
+            </button>
+          </form>
+          <button
+            type="button"
+            className="link-button"
+            onClick={() => {
+              setStage({ step: 'forgotPassword' });
+              setError(null);
+            }}
+          >
+            Back
+          </button>
+        </div>
+      </div>
+    );
   }
 
   if (stage.step === 'newPassword') {
@@ -257,11 +420,24 @@ export function Login() {
               autoComplete="current-password"
             />
           </label>
+          {resetSuccess && <p className="success">Password reset successfully. Sign in with your new password.</p>}
           {error && <p className="error">{error}</p>}
           <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
             {busy ? 'Signing in…' : 'Sign in'}
           </button>
         </form>
+        <button
+          type="button"
+          className="link-button"
+          onClick={() => {
+            setStage({ step: 'forgotPassword' });
+            setForgotEmail(username);
+            setError(null);
+            setResetSuccess(false);
+          }}
+        >
+          Forgot password?
+        </button>
       </div>
     </div>
   );

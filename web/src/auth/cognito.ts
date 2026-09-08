@@ -117,3 +117,32 @@ export function logout() {
     onFailure: () => {},
   });
 }
+
+// Self-service password reset: sends a verification code to the user's email.
+// After receiving the code, call confirmForgotPassword to complete the reset.
+export function forgotPassword(email: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const user = new CognitoUser({ Username: email, Pool: userPool });
+    user.forgotPassword({
+      onSuccess: () => resolve(),
+      onFailure: (err) => reject(err),
+      inputVerificationCode: () => resolve(),
+    });
+  });
+}
+
+// Completes a self-service password reset with the emailed verification code.
+// After success the user must still log in normally (including MFA if enabled).
+export function confirmForgotPassword(
+  email: string,
+  code: string,
+  newPassword: string,
+): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const user = new CognitoUser({ Username: email, Pool: userPool });
+    user.confirmPassword(code, newPassword, {
+      onSuccess: () => resolve(),
+      onFailure: (err) => reject(err),
+    });
+  });
+}

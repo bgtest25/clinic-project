@@ -32,15 +32,20 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
     }
   }
 
-  async function handleResetMfa(user: User) {
+  async function handleResendOrReset(user: User) {
+    const isResend = !user.initialSetupCompletedAt;
     setActionError(null);
     setBusyId(user.id);
     try {
       const updated = await apiFetch<User>(`/users/${user.id}/reset-mfa`, token, { method: 'PATCH' });
       setUsers((prev) => prev?.map((u) => (u.id === updated.id ? updated : u)) ?? prev);
-      showToast(`MFA reset for ${user.name} — they'll get a new temporary password by email.`);
+      showToast(
+        isResend
+          ? `Invite resent to ${user.name} — they'll get a new temporary password by email.`
+          : `MFA reset for ${user.name} — they'll get a new temporary password by email.`,
+      );
     } catch (err) {
-      setActionError(err instanceof Error ? err.message : 'Failed to reset MFA');
+      setActionError(err instanceof Error ? err.message : isResend ? 'Failed to resend invite' : 'Failed to reset MFA');
     } finally {
       setBusyId(null);
     }
@@ -55,9 +60,9 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
         <div>
           <h1>Manage users</h1>
           <p>
-            Deactivate or reactivate clinicians and admins in your clinic. Resetting MFA also
-            issues a new temporary password by email — there's no way to clear just the
-            authenticator enrollment on its own.
+            Deactivate or reactivate clinicians and admins in your clinic. For users who never
+            completed their invite, use Resend Invite. For users locked out of their authenticator
+            app, use Reset MFA (this also issues a new temporary password).
           </p>
         </div>
       </div>
@@ -111,11 +116,11 @@ export function Users({ token, me, onBack }: { token: string; me: Me; onBack: ()
                         />
                         {!u.deactivatedAt && (
                           <ConfirmButton
-                            label="Reset MFA"
-                            confirmLabel="Reset MFA"
+                            label={u.initialSetupCompletedAt ? 'Reset MFA' : 'Resend Invite'}
+                            confirmLabel={u.initialSetupCompletedAt ? 'Reset MFA' : 'Resend Invite'}
                             className="btn btn-secondary btn-sm"
                             busy={busyId === u.id}
-                            onConfirm={() => handleResetMfa(u)}
+                            onConfirm={() => handleResendOrReset(u)}
                           />
                         )}
                       </>

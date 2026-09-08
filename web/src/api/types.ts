@@ -128,6 +128,7 @@ export interface MetricsSummary {
 export interface User extends Me {
   deactivatedAt: string | null;
   deactivatedById: string | null;
+  initialSetupCompletedAt: string | null;
 }
 
 export interface DataRequest {
