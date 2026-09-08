@@ -105,7 +105,7 @@ describe('NoteReview', () => {
     });
     // The turn label updates immediately, everywhere that speaker appears.
     expect(await screen.findAllByText('Clinician')).toHaveLength(2);
-    expect(screen.queryByText('Speaker 1')).not.toBeInTheDocument();
+    expect(screen.queryAllByText('Speaker 1')).toHaveLength(0);
   });
 
   it("offers a quick-assign button for the patient's real name when a patient is given", async () => {
