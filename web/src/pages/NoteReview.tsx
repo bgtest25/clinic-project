@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { apiDownload, apiFetch } from '../api/client';
-import type { Clinic, ClinicalNote, DiarizedSegment, Patient } from '../api/types';
+import type { Clinic, ClinicalNote, DiarizedSegment, Patient, ReferralLetter } from '../api/types';
 import { CheckIcon, PrintIcon, StarIcon, DocumentIcon } from '../icons';
 import { CodePicker } from '../components/CodePicker';
 import { TemplateMenu } from '../components/TemplateMenu';
@@ -86,6 +86,12 @@ export function NoteReview({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [avsGenerating, setAvsGenerating] = useState(false);
   const [avsError, setAvsError] = useState<string | null>(null);
+  const [referralLetters, setReferralLetters] = useState<ReferralLetter[]>([]);
+  const [referralSpecialty, setReferralSpecialty] = useState('');
+  const [referralReason, setReferralReason] = useState('');
+  const [referralGenerating, setReferralGenerating] = useState(false);
+  const [referralError, setReferralError] = useState<string | null>(null);
+  const [expandedReferral, setExpandedReferral] = useState<string | null>(null);
 
   useEffect(() => {
     apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token)
@@ -93,6 +99,11 @@ export function NoteReview({
         setNote(n);
         setForm(toForm(n));
         setEditing(n.status !== 'SIGNED');
+        if (n.status === 'SIGNED') {
+          apiFetch<ReferralLetter[]>(`/encounters/${encounterId}/note/referrals`, token)
+            .then(setReferralLetters)
+            .catch(() => {});
+        }
       })
       .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load the note'));
   }, [encounterId, token]);
@@ -235,6 +246,53 @@ export function NoteReview({
           <h1>Visit Summary</h1>
           <div class="meta">${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}</div>
           <div class="content">${note.afterVisitSummary}</div>
+        </body>
+      </html>
+    `);
+    printWindow.document.close();
+    printWindow.print();
+  }
+
+  async function handleGenerateReferral() {
+    if (!referralSpecialty.trim() || !referralReason.trim()) return;
+    setReferralGenerating(true);
+    setReferralError(null);
+    try {
+      const letter = await apiFetch<ReferralLetter>(`/encounters/${encounterId}/note/referrals`, token, {
+        method: 'POST',
+        body: JSON.stringify({ specialty: referralSpecialty.trim(), reason: referralReason.trim() }),
+      });
+      setReferralLetters((prev) => [letter, ...prev]);
+      setReferralSpecialty('');
+      setReferralReason('');
+      setExpandedReferral(letter.id);
+      showToast('Referral letter generated.');
+    } catch (err) {
+      setReferralError(err instanceof Error ? err.message : 'Failed to generate referral letter');
+    } finally {
+      setReferralGenerating(false);
+    }
+  }
+
+  function handlePrintReferral(letter: ReferralLetter) {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) return;
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Referral Letter - ${letter.specialty}</title>
+          <style>
+            body { font-family: system-ui, sans-serif; max-width: 700px; margin: 40px auto; padding: 20px; line-height: 1.6; }
+            h1 { font-size: 1.4rem; margin-bottom: 0.5rem; }
+            .meta { color: #666; margin-bottom: 1.5rem; font-size: 0.9rem; }
+            .content { white-space: pre-wrap; }
+          </style>
+        </head>
+        <body>
+          <h1>Referral to ${letter.specialty}</h1>
+          <div class="meta">${patient?.name || 'Patient'} &middot; ${visitDate ? new Date(visitDate).toLocaleDateString() : ''}</div>
+          <div class="content">${letter.letterContent}</div>
         </body>
       </html>
     `);
@@ -418,6 +476,100 @@ export function NoteReview({
                 {avsGenerating ? 'Generating…' : 'Generate Patient Summary'}
               </button>
             </>
+          )}
+        </div>
+      )}
+
+      {note.status === 'SIGNED' && (
+        <div className="card referral-card">
+          <h2>
+            <DocumentIcon /> Referral Letters
+          </h2>
+          <div className="referral-form">
+            <label className="field">
+              Specialty
+              <select
+                value={referralSpecialty}
+                onChange={(e) => setReferralSpecialty(e.target.value)}
+                disabled={referralGenerating}
+              >
+                <option value="">Select specialty...</option>
+                <option value="Cardiology">Cardiology</option>
+                <option value="Dermatology">Dermatology</option>
+                <option value="Endocrinology">Endocrinology</option>
+                <option value="Gastroenterology">Gastroenterology</option>
+                <option value="Hematology">Hematology</option>
+                <option value="Nephrology">Nephrology</option>
+                <option value="Neurology">Neurology</option>
+                <option value="Oncology">Oncology</option>
+                <option value="Ophthalmology">Ophthalmology</option>
+                <option value="Orthopedics">Orthopedics</option>
+                <option value="Otolaryngology (ENT)">Otolaryngology (ENT)</option>
+                <option value="Psychiatry">Psychiatry</option>
+                <option value="Pulmonology">Pulmonology</option>
+                <option value="Rheumatology">Rheumatology</option>
+                <option value="Urology">Urology</option>
+              </select>
+            </label>
+            <label className="field">
+              Reason for referral
+              <textarea
+                value={referralReason}
+                onChange={(e) => setReferralReason(e.target.value)}
+                rows={2}
+                placeholder="e.g., Elevated BP despite lifestyle modifications, requesting evaluation for secondary causes"
+                disabled={referralGenerating}
+              />
+            </label>
+            {referralError && <p className="error">{referralError}</p>}
+            <button
+              className="btn btn-primary"
+              onClick={handleGenerateReferral}
+              disabled={referralGenerating || !referralSpecialty.trim() || !referralReason.trim()}
+            >
+              {referralGenerating ? 'Generating…' : 'Generate Referral Letter'}
+            </button>
+          </div>
+          {referralLetters.length > 0 && (
+            <div className="referral-list">
+              <h3>Generated Letters</h3>
+              {referralLetters.map((letter) => (
+                <div key={letter.id} className="referral-item">
+                  <button
+                    type="button"
+                    className="referral-item-header"
+                    onClick={() => setExpandedReferral(expandedReferral === letter.id ? null : letter.id)}
+                  >
+                    <span className="referral-item-specialty">{letter.specialty}</span>
+                    <span className="referral-item-date">
+                      {new Date(letter.createdAt).toLocaleDateString()}
+                    </span>
+                  </button>
+                  {expandedReferral === letter.id && (
+                    <div className="referral-item-content">
+                      <div className="referral-item-reason">
+                        <strong>Reason:</strong> {letter.reason}
+                      </div>
+                      <div className="referral-item-letter">{letter.letterContent}</div>
+                      <div className="referral-item-actions">
+                        <button className="btn btn-secondary" onClick={() => handlePrintReferral(letter)}>
+                          <PrintIcon /> Print
+                        </button>
+                        <button
+                          className="btn btn-ghost"
+                          onClick={() => {
+                            navigator.clipboard.writeText(letter.letterContent);
+                            showToast('Letter copied to clipboard.');
+                          }}
+                        >
+                          Copy
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

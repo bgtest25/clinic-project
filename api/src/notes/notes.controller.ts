@@ -3,6 +3,7 @@ import type { Response } from 'express';
 import { CognitoAuthGuard } from '../auth/cognito-auth.guard';
 import { buildNotePdf } from './note-pdf';
 import { NotesService } from './notes.service';
+import { CreateReferralLetterDto } from './dto/create-referral-letter.dto';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 
@@ -53,5 +54,19 @@ export class NotesController {
   @Get('avs')
   getAfterVisitSummary(@Param('encounterId') encounterId: string, @Req() req: any) {
     return this.notesService.getAfterVisitSummary(encounterId, req.user.sub);
+  }
+
+  @Post('referrals')
+  generateReferralLetter(
+    @Param('encounterId') encounterId: string,
+    @Body() dto: CreateReferralLetterDto,
+    @Req() req: any,
+  ) {
+    return this.notesService.generateReferralLetter(encounterId, req.user.sub, dto);
+  }
+
+  @Get('referrals')
+  getReferralLetters(@Param('encounterId') encounterId: string, @Req() req: any) {
+    return this.notesService.getReferralLetters(encounterId, req.user.sub);
   }
 }

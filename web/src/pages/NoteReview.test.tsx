@@ -393,4 +393,67 @@ describe('NoteReview', () => {
     expect(screen.getByText('Print for patient')).toBeInTheDocument();
     expect(screen.getByText('Regenerate')).toBeInTheDocument();
   });
+
+  it('shows the referral letter form for signed notes', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(signedNote);
+    vi.mocked(apiFetch).mockResolvedValueOnce([]);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+
+    expect(await screen.findByText('Referral Letters')).toBeInTheDocument();
+    expect(screen.getByText('Select specialty...')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText(/Elevated BP/)).toBeInTheDocument();
+  });
+
+  it('generates a referral letter when the form is submitted', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(signedNote);
+    vi.mocked(apiFetch).mockResolvedValueOnce([]);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+
+    await screen.findByText('Referral Letters');
+
+    const letter = {
+      id: 'ref-1',
+      noteId: 'note-1',
+      specialty: 'Pulmonology',
+      reason: 'Chronic cough evaluation',
+      letterContent: 'Dear Pulmonology Colleagues,\n\nReferral content here.',
+      createdAt: '2026-09-07T00:00:00.000Z',
+      updatedAt: '2026-09-07T00:00:00.000Z',
+    };
+    vi.mocked(apiFetch).mockResolvedValueOnce(letter);
+
+    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Pulmonology' } });
+    fireEvent.change(screen.getByPlaceholderText(/Elevated BP/), {
+      target: { value: 'Chronic cough evaluation' },
+    });
+    fireEvent.click(screen.getByText('Generate Referral Letter'));
+
+    expect(await screen.findByText('Generated Letters')).toBeInTheDocument();
+    expect(apiFetch).toHaveBeenLastCalledWith('/encounters/enc-1/note/referrals', 'tok', {
+      method: 'POST',
+      body: JSON.stringify({
+        specialty: 'Pulmonology',
+        reason: 'Chronic cough evaluation',
+      }),
+    });
+  });
+
+  it('loads and displays existing referral letters', async () => {
+    vi.mocked(apiFetch).mockResolvedValueOnce(signedNote);
+    vi.mocked(apiFetch).mockResolvedValueOnce([
+      {
+        id: 'ref-1',
+        noteId: 'note-1',
+        specialty: 'Nephrology',
+        reason: 'CKD evaluation',
+        letterContent: 'Dear Nephrology Colleagues...',
+        createdAt: '2026-09-07T00:00:00.000Z',
+        updatedAt: '2026-09-07T00:00:00.000Z',
+      },
+    ]);
+    renderNoteReview({ token: 'tok', encounterId: 'enc-1', transcript: null });
+
+    expect(await screen.findByText('Generated Letters')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Nephrology/ })).toBeInTheDocument();
+  });
 });

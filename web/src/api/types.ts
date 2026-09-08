@@ -72,6 +72,16 @@ export interface ClinicalNote {
   updatedAt: string;
 }
 
+export interface ReferralLetter {
+  id: string;
+  noteId: string;
+  specialty: string;
+  reason: string;
+  letterContent: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface EncounterDetail extends Encounter {
   patient: Patient;
   transcript: Transcript | null;

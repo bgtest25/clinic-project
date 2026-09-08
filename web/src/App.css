@@ -1421,6 +1421,118 @@
   gap: 0.5rem;
 }
 
+/* ---------- referral letters ---------- */
+
+.referral-card {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+  max-width: 700px;
+}
+
+.referral-card h2 {
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.referral-card h2 svg {
+  width: 18px;
+  height: 18px;
+  color: var(--color-primary);
+}
+
+.referral-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.referral-form select {
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text);
+  font-size: 0.9rem;
+}
+
+.referral-list {
+  margin-top: 0.5rem;
+}
+
+.referral-list h3 {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+  margin-bottom: 0.75rem;
+}
+
+.referral-item {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 0.5rem;
+  overflow: hidden;
+}
+
+.referral-item-header {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-muted);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  text-align: left;
+}
+
+.referral-item-header:hover {
+  background: var(--color-border);
+}
+
+.referral-item-specialty {
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.referral-item-date {
+  font-size: 0.8rem;
+  color: var(--color-text-secondary);
+}
+
+.referral-item-content {
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.referral-item-reason {
+  font-size: 0.85rem;
+  color: var(--color-text-secondary);
+}
+
+.referral-item-letter {
+  white-space: pre-wrap;
+  font-size: 0.9rem;
+  line-height: 1.65;
+  color: var(--color-text);
+  background: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.referral-item-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
 .review-header {
   display: flex;
   align-items: center;

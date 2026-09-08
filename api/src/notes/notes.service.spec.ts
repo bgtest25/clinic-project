@@ -26,6 +26,7 @@ describe('NotesService', () => {
       auditLog: { create: jest.fn(), createMany: jest.fn() },
       encounter: { update: jest.fn(), findUniqueOrThrow: jest.fn() },
       audioRecording: { findUnique: jest.fn(), update: jest.fn() },
+      referralLetter: { create: jest.fn(), findMany: jest.fn() },
       $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
     };
     usersService = { findByCognitoSub: jest.fn().mockResolvedValue(actor) };
@@ -34,6 +35,7 @@ describe('NotesService', () => {
     };
     aiService = {
       generateAfterVisitSummary: jest.fn().mockResolvedValue('Sample AVS content'),
+      generateReferralLetter: jest.fn().mockResolvedValue('Dear Cardiology Colleagues,\n\nReferral letter content...'),
     };
     service = new NotesService(prisma, usersService, encountersService, aiService);
   });
@@ -472,6 +474,121 @@ describe('NotesService', () => {
       const result = await service.getAfterVisitSummary('enc-1', 'sub-1');
 
       expect(result).toEqual({ afterVisitSummary: null });
+    });
+  });
+
+  describe('generateReferralLetter', () => {
+    it('checks clinic ownership before generating referral', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Chest pain',
+        objective: 'BP elevated',
+        assessment: 'Hypertension',
+        plan: 'Refer to cardiology',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'Jane Doe', dateOfBirth: new Date('1980-01-01') },
+        clinician: { name: 'Dr. Smith', clinic: { name: 'Test Clinic' } },
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'ref-1', specialty: 'Cardiology', letterContent: 'Dear Cardiology Colleagues...' },
+      ]);
+
+      await service.generateReferralLetter('enc-1', 'sub-1', {
+        specialty: 'Cardiology',
+        reason: 'Elevated BP, rule out secondary causes',
+      });
+
+      expect(encountersService.assertClinicOwnsEncounter).toHaveBeenCalledWith('enc-1', 'clinic-a');
+    });
+
+    it('rejects referral generation for unsigned notes', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'DRAFT',
+      });
+
+      await expect(
+        service.generateReferralLetter('enc-1', 'sub-1', {
+          specialty: 'Cardiology',
+          reason: 'Evaluation needed',
+        }),
+      ).rejects.toThrow(ForbiddenException);
+    });
+
+    it('calls the AI service and saves the letter', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+        subjective: 'Chest pain for 2 weeks',
+        objective: 'BP 150/95',
+        assessment: 'Hypertension, uncontrolled',
+        plan: 'Refer to cardiology',
+      });
+      prisma.encounter.findUniqueOrThrow.mockResolvedValue({
+        id: 'enc-1',
+        visitDate: new Date('2026-09-07'),
+        patient: { name: 'Jane Doe', dateOfBirth: new Date('1980-01-01') },
+        clinician: { name: 'Dr. Smith', clinic: { name: 'Test Clinic' } },
+      });
+      prisma.$transaction.mockResolvedValue([
+        { id: 'ref-1', specialty: 'Cardiology', letterContent: 'Dear Cardiology Colleagues...' },
+      ]);
+
+      await service.generateReferralLetter('enc-1', 'sub-1', {
+        specialty: 'Cardiology',
+        reason: 'Elevated BP despite lifestyle modifications',
+      });
+
+      expect(aiService.generateReferralLetter).toHaveBeenCalledWith({
+        patientName: 'Jane Doe',
+        patientDob: expect.any(String),
+        visitDate: expect.any(String),
+        clinicName: 'Test Clinic',
+        clinicianName: 'Dr. Smith',
+        specialty: 'Cardiology',
+        reason: 'Elevated BP despite lifestyle modifications',
+        subjective: 'Chest pain for 2 weeks',
+        objective: 'BP 150/95',
+        assessment: 'Hypertension, uncontrolled',
+        plan: 'Refer to cardiology',
+      });
+    });
+  });
+
+  describe('getReferralLetters', () => {
+    it('returns all referral letters for the note', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+      });
+      prisma.referralLetter.findMany.mockResolvedValue([
+        { id: 'ref-1', specialty: 'Cardiology', reason: 'HTN', letterContent: 'Letter 1' },
+        { id: 'ref-2', specialty: 'Nephrology', reason: 'CKD', letterContent: 'Letter 2' },
+      ]);
+
+      const result = await service.getReferralLetters('enc-1', 'sub-1');
+
+      expect(result).toHaveLength(2);
+      expect(prisma.referralLetter.findMany).toHaveBeenCalledWith({
+        where: { noteId: 'note-1' },
+        orderBy: { createdAt: 'desc' },
+      });
+    });
+
+    it('returns empty array if no letters exist', async () => {
+      prisma.clinicalNote.findFirst.mockResolvedValue({
+        id: 'note-1',
+        status: 'SIGNED',
+      });
+      prisma.referralLetter.findMany.mockResolvedValue([]);
+
+      const result = await service.getReferralLetters('enc-1', 'sub-1');
+
+      expect(result).toEqual([]);
     });
   });
 });

@@ -5,6 +5,7 @@ import { AiService } from '../ai/ai.service';
 import { EncountersService } from '../encounters/encounters.service';
 import { PrismaService } from '../prisma/prisma.service';
 import { UsersService } from '../users/users.service';
+import { CreateReferralLetterDto } from './dto/create-referral-letter.dto';
 import { SubmitFeedbackDto } from './dto/submit-feedback.dto';
 import { UpdateClinicalNoteDto } from './dto/update-clinical-note.dto';
 
@@ -198,6 +199,70 @@ export class NotesService {
   async getAfterVisitSummary(encounterId: string, cognitoSub: string) {
     const note = await this.findLatest(encounterId, cognitoSub);
     return { afterVisitSummary: note.afterVisitSummary };
+  }
+
+  async generateReferralLetter(encounterId: string, cognitoSub: string, dto: CreateReferralLetterDto) {
+    const latest = await this.findLatest(encounterId, cognitoSub);
+    if (latest.status !== 'SIGNED') {
+      throw new ForbiddenException('Referral letters can only be generated for a signed note');
+    }
+
+    const actor = await this.usersService.findByCognitoSub(cognitoSub);
+    const encounter = await this.prisma.encounter.findUniqueOrThrow({
+      where: { id: encounterId },
+      include: { patient: true, clinician: { include: { clinic: true } } },
+    });
+
+    const letterContent = await this.aiService.generateReferralLetter({
+      patientName: encounter.patient.name,
+      patientDob: encounter.patient.dateOfBirth.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      visitDate: encounter.visitDate.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+      }),
+      clinicName: encounter.clinician.clinic.name,
+      clinicianName: encounter.clinician.name,
+      specialty: dto.specialty,
+      reason: dto.reason,
+      subjective: latest.subjective ?? '',
+      objective: latest.objective ?? '',
+      assessment: latest.assessment ?? '',
+      plan: latest.plan ?? '',
+    });
+
+    const [letter] = await this.prisma.$transaction([
+      this.prisma.referralLetter.create({
+        data: {
+          noteId: latest.id,
+          specialty: dto.specialty,
+          reason: dto.reason,
+          letterContent,
+        },
+      }),
+      this.prisma.auditLog.create({
+        data: {
+          encounterId,
+          actorId: actor.id,
+          action: 'note.referral_generated',
+          newValue: dto.specialty,
+        },
+      }),
+    ]);
+
+    return letter;
+  }
+
+  async getReferralLetters(encounterId: string, cognitoSub: string) {
+    const note = await this.findLatest(encounterId, cognitoSub);
+    return this.prisma.referralLetter.findMany({
+      where: { noteId: note.id },
+      orderBy: { createdAt: 'desc' },
+    });
   }
 
   // actorId here is the signing clinician — the purge is a direct, synchronous
