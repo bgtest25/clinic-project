@@ -67,8 +67,8 @@ export class TranscriptionStreamService {
         MediaSampleRateHertz: 16000,
         Specialty: 'PRIMARYCARE',
         Type: 'CONVERSATION',
-        EnableChannelIdentification: false,
-        NumberOfChannels: 1,
+        // Speaker diarization requires either channel identification OR ShowSpeakerLabel
+        // For single-channel audio (microphone), use ShowSpeakerLabel without channel ID
         ShowSpeakerLabel: true,
         AudioStream: this.audioGenerator(audioStream),
       });
