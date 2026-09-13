@@ -12,7 +12,7 @@ import {
   type LoginResult,
 } from '../auth/cognito';
 import { useAuth } from '../auth/AuthContext';
-import { BrandMark } from '../icons';
+import { BrandMark, ShieldCheckIcon, LockIcon } from '../icons';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { apiFetch } from '../api/client';
 
@@ -438,6 +438,14 @@ export function Login() {
         >
           Forgot password?
         </button>
+        <div className="auth-trust-badges">
+          <span className="auth-trust-badge">
+            <ShieldCheckIcon /> HIPAA Compliant
+          </span>
+          <span className="auth-trust-badge">
+            <LockIcon /> 256-bit Encryption
+          </span>
+        </div>
       </div>
     </div>
   );
