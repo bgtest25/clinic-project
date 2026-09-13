@@ -10,6 +10,7 @@ import type {
 } from '../api/types';
 import { ConfirmButton } from '../components/ConfirmButton';
 import { CheckIcon } from '../icons';
+import { addRecentPatient } from '../utils/recentPatients';
 
 export function PatientDetail({
   token,
@@ -48,6 +49,7 @@ export function PatientDetail({
         setPatient(p);
         setNameField(p.name);
         setDobField(p.dateOfBirth.slice(0, 10));
+        addRecentPatient(p);
       })
       .catch((err) => setPatientError(err instanceof Error ? err.message : 'Failed to load patient'));
   }, [patientId, token]);

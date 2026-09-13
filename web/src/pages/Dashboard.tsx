@@ -4,6 +4,7 @@ import type { EncounterListItem, Me } from '../api/types';
 import { EmptyIcon } from '../icons';
 import { rowActivation } from '../utils/a11y';
 import { SkeletonTable } from '../components/Skeleton';
+import { getLoadError } from '../utils/errorMessages';
 
 const POLL_MS = 15000;
 const PAGE_SIZE = 20;
@@ -88,7 +89,7 @@ export function Dashboard({
         });
         setError(null);
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load your visits'));
+      .catch((err) => setError(getLoadError(err, 'your visits')));
   }
 
   useEffect(() => {
@@ -231,7 +232,7 @@ export function Dashboard({
                   {pageItems.map((encounter) => (
                     <tr
                       key={encounter.id}
-                      className="encounter-row"
+                      className={`encounter-row status-${encounter.status.toLowerCase()}`}
                       {...rowActivation(() => onSelect(encounter.id))}
                     >
                       <td className="patient-name">{encounter.patient.name}</td>

@@ -5,6 +5,7 @@ import type { Patient } from '../api/types';
 import { EmptyIcon } from '../icons';
 import { rowActivation } from '../utils/a11y';
 import { SkeletonTable } from '../components/Skeleton';
+import { getLoadError } from '../utils/errorMessages';
 
 export function Patients({
   token,
@@ -23,7 +24,7 @@ export function Patients({
   useEffect(() => {
     apiFetch<Patient[]>('/patients', token)
       .then(setPatients)
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load patients'));
+      .catch((err) => setError(getLoadError(err, 'patients')));
   }, [token]);
 
   const filtered = useMemo(() => {
