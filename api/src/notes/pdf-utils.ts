@@ -170,3 +170,17 @@ export function addConfidentialityFooter(doc: PDFKit.PDFDocument, text = 'CONFID
     width: doc.page.width - 108,
   });
 }
+
+export function sanitizeTextForPdf(text: string): string {
+  return text
+    .replace(/[‘’]/g, "'")
+    .replace(/[“”]/g, '"')
+    .replace(/—/g, '-')
+    .replace(/–/g, '-')
+    .replace(/•/g, '-')
+    .replace(/…/g, '...')
+    .replace(/[✓✔✕✖✗✘]/g, '*')
+    .replace(/[\u{1F300}-\u{1F9FF}]/gu, '')
+    .replace(/[\u{2600}-\u{26FF}]/gu, '')
+    .replace(/[\u{2700}-\u{27BF}]/gu, '');
+}

@@ -11,6 +11,7 @@ import {
   drawHorizontalRule,
   drawBox,
   addConfidentialityFooter,
+  sanitizeTextForPdf,
 } from './pdf-utils';
 
 interface ReferralData {
@@ -149,8 +150,9 @@ export async function buildReferralPdf(data: ReferralData): Promise<PDFKit.PDFDo
     .font('Helvetica').fillColor(COLORS.text).text(data.reason);
   doc.moveDown(1);
 
-  // Letter body
-  const lines = data.letterContent.split('\n');
+  // Letter body - sanitize for PDF rendering
+  const sanitizedContent = sanitizeTextForPdf(data.letterContent);
+  const lines = sanitizedContent.split('\n');
   for (const line of lines) {
     const trimmed = line.trim();
     if (!trimmed) {
@@ -197,7 +199,7 @@ export async function buildReferralPdf(data: ReferralData): Promise<PDFKit.PDFDo
   doc.fillColor(COLORS.text).font('Helvetica').text(clinic?.name || data.clinicName);
 
   // Footer
-  addConfidentialityFooter(doc, `CONFIDENTIAL MEDICAL REFERRAL — ${data.specialty}`);
+  addConfidentialityFooter(doc, `CONFIDENTIAL MEDICAL REFERRAL - ${data.specialty}`);
 
   return doc;
 }

@@ -10,6 +10,7 @@ import {
   fetchImage,
   drawBox,
   addConfidentialityFooter,
+  sanitizeTextForPdf,
 } from './pdf-utils';
 
 interface PriorAuthData {
@@ -119,8 +120,9 @@ export async function buildPriorAuthPdf(data: PriorAuthData): Promise<PDFKit.PDF
     .text('CLINICAL RATIONALE FOR MEDICAL NECESSITY');
   doc.moveDown(0.5);
 
-  // Parse and render the clinical rationale sections
-  const sections = parseRationale(data.clinicalRationale);
+  // Parse and render the clinical rationale sections - sanitize for PDF
+  const sanitizedRationale = sanitizeTextForPdf(data.clinicalRationale);
+  const sections = parseRationale(sanitizedRationale);
   for (const section of sections) {
     doc.moveDown(0.5);
     doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.brand).text(section.title);
@@ -188,7 +190,7 @@ export async function buildPriorAuthPdf(data: PriorAuthData): Promise<PDFKit.PDF
     doc.text(`Organization NPI: ${clinicNpi}`, { align: 'center' });
   }
 
-  addConfidentialityFooter(doc, 'PRIOR AUTHORIZATION REQUEST — CONFIDENTIAL');
+  addConfidentialityFooter(doc, 'PRIOR AUTHORIZATION REQUEST - CONFIDENTIAL');
 
   return doc;
 }
