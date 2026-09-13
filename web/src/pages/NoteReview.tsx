@@ -1,12 +1,23 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { apiDownload, apiFetch, apiOpenPdf } from '../api/client';
 import type { Clinic, ClinicalNote, DiarizedSegment, Patient, PriorAuth, ReferralLetter } from '../api/types';
 import { CheckIcon, PrintIcon, StarIcon, DocumentIcon, DownloadIcon } from '../icons';
+import { CareGapAlerts } from '../components/CareGapAlerts';
+import { ClinicalQA } from '../components/ClinicalQA';
 import { CodePicker } from '../components/CodePicker';
+import { CptCodeSuggestions } from '../components/CptCodeSuggestions';
+import { EmLevelSuggestion } from '../components/EmLevelSuggestion';
+import { OrderSuggestions } from '../components/OrderSuggestions';
+import { PatientInstructions } from '../components/PatientInstructions';
 import { TemplateMenu } from '../components/TemplateMenu';
+import { VisitTemplateSelector } from '../components/VisitTemplateSelector';
 import { Skeleton } from '../components/Skeleton';
 import { useToast } from '../components/Toast';
+import { ConfirmModal } from '../components/ConfirmModal';
+import { getUserFriendlyError, getLoadError, getSaveError } from '../utils/errorMessages';
 import type { TemplateField } from '../utils/templates';
+import { LANGUAGES, type SupportedLanguage } from '../utils/translations';
+import type { VisitTemplate } from '../utils/visitTemplates';
 
 type FormState = {
   subjective: string;
@@ -86,6 +97,7 @@ export function NoteReview({
   const [feedbackError, setFeedbackError] = useState<string | null>(null);
   const [avsGenerating, setAvsGenerating] = useState(false);
   const [avsError, setAvsError] = useState<string | null>(null);
+  const [avsLanguage, setAvsLanguage] = useState<SupportedLanguage>('en');
   const [referralLetters, setReferralLetters] = useState<ReferralLetter[]>([]);
   const [referralSpecialty, setReferralSpecialty] = useState('');
   const [referralReason, setReferralReason] = useState('');
@@ -99,6 +111,13 @@ export function NoteReview({
   const [priorAuthGenerating, setPriorAuthGenerating] = useState(false);
   const [priorAuthError, setPriorAuthError] = useState<string | null>(null);
   const [expandedPriorAuth, setExpandedPriorAuth] = useState<string | null>(null);
+  const [showSignConfirm, setShowSignConfirm] = useState(false);
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+
+  // Ref to store save function for keyboard shortcut access
+  const saveRef = useRef<(() => void) | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSavedFormRef = useRef<string | null>(null);
 
   useEffect(() => {
     apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token)
@@ -115,7 +134,7 @@ export function NoteReview({
             .catch(() => {});
         }
       })
-      .catch((err) => setError(err instanceof Error ? err.message : 'Failed to load the note'));
+      .catch((err) => setError(getLoadError(err, 'the note')));
   }, [encounterId, token]);
 
   // Raw diarization speaker keys ("spk_0"), in first-appearance order —
@@ -164,7 +183,7 @@ export function NoteReview({
       setForm(toForm(updated));
       showToast('Draft saved.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save the note');
+      setError(getSaveError(err, 'the note'));
     } finally {
       setBusy(false);
     }
@@ -172,6 +191,7 @@ export function NoteReview({
 
   async function handleSign() {
     if (!form) return;
+    setShowSignConfirm(false);
     setBusy(true);
     setError(null);
     try {
@@ -187,18 +207,94 @@ export function NoteReview({
       setEditing(false);
       showToast('Note signed.');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to sign the note');
+      setError(getUserFriendlyError(err, 'Failed to sign the note. Please try again.'));
     } finally {
       setBusy(false);
     }
   }
+
+  // Update ref for keyboard shortcut access
+  saveRef.current = handleSave;
+
+  // Keyboard shortcuts: Cmd+S = save, Cmd+Enter = sign
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (!editing || busy) return;
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        saveRef.current?.();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+        e.preventDefault();
+        if (note?.status !== 'SIGNED') {
+          setShowSignConfirm(true);
+        }
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [editing, busy, note?.status]);
+
+  // Auto-save: debounce 2s after form changes, only when editing
+  useEffect(() => {
+    if (!editing || !form || busy || note?.status === 'SIGNED') return;
+
+    const formJson = JSON.stringify(form);
+    if (formJson === lastSavedFormRef.current) return;
+
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+
+    autoSaveTimerRef.current = setTimeout(async () => {
+      setAutoSaveStatus('saving');
+      try {
+        await apiFetch<ClinicalNote>(`/encounters/${encounterId}/note`, token, {
+          method: 'PATCH',
+          body: formJson,
+        });
+        lastSavedFormRef.current = formJson;
+        setAutoSaveStatus('saved');
+        setTimeout(() => setAutoSaveStatus('idle'), 2000);
+      } catch {
+        setAutoSaveStatus('error');
+      }
+    }, 2000);
+
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [form, editing, busy, note?.status, encounterId, token]);
+
+  // Initialize lastSavedFormRef when note loads
+  useEffect(() => {
+    if (form && !lastSavedFormRef.current) {
+      lastSavedFormRef.current = JSON.stringify(form);
+    }
+  }, [form]);
+
+  // Warn on unsaved changes when navigating away
+  useEffect(() => {
+    function handleBeforeUnload(e: BeforeUnloadEvent) {
+      if (!editing || !form) return;
+      const hasUnsavedChanges = JSON.stringify(form) !== lastSavedFormRef.current;
+      if (hasUnsavedChanges) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [editing, form]);
 
   async function handleDownloadPdf() {
     setError(null);
     try {
       await apiDownload(`/encounters/${encounterId}/note/pdf`, token, `visit-note-${encounterId}.pdf`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to download the PDF');
+      setError(getUserFriendlyError(err, 'Failed to download the PDF. Please try again.'));
     }
   }
 
@@ -220,15 +316,17 @@ export function NoteReview({
     }
   }
 
-  async function handleGenerateAvs() {
+  async function handleGenerateAvs(language: SupportedLanguage = 'en') {
     setAvsGenerating(true);
     setAvsError(null);
     try {
       const updated = await apiFetch<ClinicalNote>(`/encounters/${encounterId}/note/avs`, token, {
         method: 'POST',
+        body: JSON.stringify({ language }),
       });
       setNote(updated);
-      showToast('Patient summary generated.');
+      const langName = language === 'es' ? 'Spanish' : 'English';
+      showToast(`Patient summary generated in ${langName}.`);
     } catch (err) {
       setAvsError(err instanceof Error ? err.message : 'Failed to generate patient summary');
     } finally {
@@ -386,6 +484,17 @@ export function NoteReview({
   const isMock = NOTE_FIELDS.some((field) => form[field].includes(MOCK_MARKER));
   const locked = note.status === 'SIGNED' && !editing;
 
+  function applyVisitTemplate(template: VisitTemplate) {
+    setForm({
+      subjective: template.subjective,
+      objective: template.objective,
+      assessment: template.assessment,
+      plan: template.plan,
+      suggestedCodes: form?.suggestedCodes ?? '',
+    });
+    showToast(`Applied "${template.name}" template`);
+  }
+
   return (
     <div className="page page-wide">
       <div className="print-header">
@@ -427,6 +536,13 @@ export function NoteReview({
             {note.version > 1 ? ` · v${note.version}` : ''}
           </span>
         </h1>
+        {editing && autoSaveStatus !== 'idle' && (
+          <span className={`auto-save-indicator ${autoSaveStatus === 'saving' ? 'is-saving' : ''} ${autoSaveStatus === 'saved' ? 'is-saved' : ''} ${autoSaveStatus === 'error' ? 'is-error' : ''}`}>
+            {autoSaveStatus === 'saving' && 'Saving...'}
+            {autoSaveStatus === 'saved' && 'Saved'}
+            {autoSaveStatus === 'error' && 'Save failed'}
+          </span>
+        )}
       </div>
 
       {isMock && (
@@ -565,6 +681,34 @@ export function NoteReview({
         </div>
 
         <div className="card note-form">
+          {!locked && patient && (
+            <CareGapAlerts
+              patient={patient}
+              onAddress={(gapId) => {
+                const gap = gapId.replace(/-/g, ' ');
+                const current = form?.plan ?? '';
+                setForm({
+                  ...form!,
+                  plan: current ? `${current}\n- Order ${gap}` : `- Order ${gap}`,
+                });
+              }}
+            />
+          )}
+          {!locked && (
+            <div className="note-form-toolbar">
+              <VisitTemplateSelector onApply={applyVisitTemplate} disabled={locked} />
+              <ClinicalQA
+                token={token}
+                encounterId={encounterId}
+                noteContext={form ? {
+                  subjective: form.subjective,
+                  objective: form.objective,
+                  assessment: form.assessment,
+                  plan: form.plan,
+                } : undefined}
+              />
+            </div>
+          )}
           {NOTE_FIELDS.map((field) => (
             <label key={field} className="field">
               <span className="note-section-label-row">
@@ -588,6 +732,9 @@ export function NoteReview({
                 rows={4}
                 onChange={(e) => setForm({ ...form, [field]: e.target.value })}
               />
+              {!locked && (
+                <span className="char-count">{form[field].length} characters</span>
+              )}
             </label>
           ))}
           <div className="field">
@@ -597,7 +744,56 @@ export function NoteReview({
               disabled={locked}
               onChange={(codes) => setForm({ ...form, suggestedCodes: codes })}
             />
+            {!locked && form.plan && (
+              <CptCodeSuggestions
+                plan={form.plan}
+                onAddCode={(code, desc) => {
+                  const current = form.suggestedCodes.trim();
+                  const newCode = `${code} - ${desc}`;
+                  setForm({
+                    ...form,
+                    suggestedCodes: current ? `${current}\n${newCode}` : newCode,
+                  });
+                }}
+              />
+            )}
           </div>
+
+          {!locked && (
+            <EmLevelSuggestion
+              subjective={form.subjective}
+              objective={form.objective}
+              assessment={form.assessment}
+              plan={form.plan}
+              onSelectCode={(code) => {
+                const current = form.suggestedCodes.trim();
+                const newCodes = current ? `${current}, ${code}` : code;
+                setForm({ ...form, suggestedCodes: newCodes });
+              }}
+            />
+          )}
+
+          {!locked && (form.assessment || form.plan) && (
+            <OrderSuggestions
+              assessment={form.assessment}
+              plan={form.plan}
+              onAddOrder={(order) => {
+                const current = form.plan.trim();
+                setForm({ ...form, plan: current ? `${current}\n${order}` : order });
+              }}
+            />
+          )}
+
+          {!locked && (form.assessment || form.plan) && (
+            <PatientInstructions
+              assessment={form.assessment}
+              plan={form.plan}
+              onCopy={(instructions) => {
+                navigator.clipboard.writeText(instructions);
+                showToast('Instructions copied to clipboard');
+              }}
+            />
+          )}
 
           {error && <p className="error">{error}</p>}
 
@@ -610,9 +806,11 @@ export function NoteReview({
               <>
                 <button className="btn btn-secondary" onClick={handleSave} disabled={busy}>
                   {busy ? 'Saving…' : 'Save draft'}
+                  <kbd className="kbd">⌘S</kbd>
                 </button>
-                <button className="btn btn-primary" onClick={handleSign} disabled={busy}>
+                <button className="btn btn-primary" onClick={() => setShowSignConfirm(true)} disabled={busy}>
                   {busy ? 'Signing…' : 'Sign note'}
+                  <kbd className="kbd">⌘↵</kbd>
                 </button>
               </>
             )}
@@ -645,9 +843,27 @@ export function NoteReview({
                   <button className="btn btn-ghost" onClick={handlePrintAvs}>
                     <PrintIcon /> Print
                   </button>
-                  <button className="btn btn-ghost" onClick={handleGenerateAvs} disabled={avsGenerating}>
-                    {avsGenerating ? 'Regenerating…' : 'Regenerate'}
-                  </button>
+                  <div className="avs-regenerate-group">
+                    <select
+                      className="avs-language-select"
+                      value={avsLanguage}
+                      onChange={(e) => setAvsLanguage(e.target.value as SupportedLanguage)}
+                      disabled={avsGenerating}
+                    >
+                      {LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.nativeName}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn btn-ghost"
+                      onClick={() => handleGenerateAvs(avsLanguage)}
+                      disabled={avsGenerating}
+                    >
+                      {avsGenerating ? 'Regenerating…' : 'Regenerate'}
+                    </button>
+                  </div>
                 </div>
               </>
             ) : (
@@ -655,8 +871,29 @@ export function NoteReview({
                 <p className="avs-description">
                   Generate a plain-language summary of this visit for the patient to take home.
                 </p>
+                <div className="avs-generate-group">
+                  <label className="avs-language-label">
+                    Language:
+                    <select
+                      className="avs-language-select"
+                      value={avsLanguage}
+                      onChange={(e) => setAvsLanguage(e.target.value as SupportedLanguage)}
+                      disabled={avsGenerating}
+                    >
+                      {LANGUAGES.map((lang) => (
+                        <option key={lang.code} value={lang.code}>
+                          {lang.nativeName}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                </div>
                 {avsError && <p className="error">{avsError}</p>}
-                <button className="btn btn-primary" onClick={handleGenerateAvs} disabled={avsGenerating}>
+                <button
+                  className="btn btn-primary"
+                  onClick={() => handleGenerateAvs(avsLanguage)}
+                  disabled={avsGenerating}
+                >
                   {avsGenerating ? 'Generating…' : 'Generate Patient Summary'}
                 </button>
               </>
@@ -905,6 +1142,17 @@ export function NoteReview({
             </button>
           </div>
         ))}
+
+      {showSignConfirm && (
+        <ConfirmModal
+          title="Sign this note?"
+          message="Once signed, this note becomes part of the patient's official medical record and cannot be edited. Make sure all information is accurate before signing."
+          confirmLabel="Sign note"
+          cancelLabel="Keep editing"
+          onConfirm={handleSign}
+          onCancel={() => setShowSignConfirm(false)}
+        />
+      )}
     </div>
   );
 }

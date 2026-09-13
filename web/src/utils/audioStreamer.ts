@@ -2,15 +2,25 @@ import { io, Socket } from 'socket.io-client';
 
 const API_URL = import.meta.env.VITE_API_URL;
 
+export interface TranscriptSegment {
+  speaker: string;
+  text: string;
+  startTime: string;
+  endTime: string;
+}
+
 export interface StreamingTranscript {
   transcript: string;
-  segments: Array<{
-    speaker: string;
-    text: string;
-    startTime: string;
-    endTime: string;
-  }>;
+  segments: TranscriptSegment[];
 }
+
+export interface LiveTranscriptUpdate {
+  partial: string;
+  isFinal: boolean;
+  speaker?: string;
+}
+
+export type LiveTranscriptCallback = (update: LiveTranscriptUpdate) => void;
 
 export class AudioStreamer {
   private socket: Socket | null = null;
@@ -18,6 +28,16 @@ export class AudioStreamer {
   private mediaStream: MediaStream | null = null;
   private processor: ScriptProcessorNode | null = null;
   private source: MediaStreamAudioSourceNode | null = null;
+  private liveTranscriptCallbacks: Set<LiveTranscriptCallback> = new Set();
+
+  onLiveTranscript(callback: LiveTranscriptCallback): () => void {
+    this.liveTranscriptCallbacks.add(callback);
+    return () => this.liveTranscriptCallbacks.delete(callback);
+  }
+
+  private emitLiveTranscript(update: LiveTranscriptUpdate): void {
+    this.liveTranscriptCallbacks.forEach((cb) => cb(update));
+  }
 
   async connect(token: string): Promise<void> {
     return new Promise((resolve, reject) => {
@@ -32,6 +52,14 @@ export class AudioStreamer {
       this.socket.on('connect', () => resolve());
       this.socket.on('connect_error', (err) => reject(err));
       this.socket.on('error', (data) => console.error('Socket error:', data));
+
+      this.socket.on('transcript-partial', (data: { partial: string; speaker?: string }) => {
+        this.emitLiveTranscript({ partial: data.partial, isFinal: false, speaker: data.speaker });
+      });
+
+      this.socket.on('transcript-final', (data: { text: string; speaker?: string }) => {
+        this.emitLiveTranscript({ partial: data.text, isFinal: true, speaker: data.speaker });
+      });
     });
   }
 

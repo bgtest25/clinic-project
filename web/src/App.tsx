@@ -19,6 +19,8 @@ import { Patients } from './pages/Patients';
 import { Recording } from './pages/Recording';
 import { Users } from './pages/Users';
 import { IdleWarningModal } from './components/IdleWarningModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
+import { RecentPatientsDropdown } from './components/RecentPatientsDropdown';
 import { ToastProvider } from './components/Toast';
 
 const IDLE_WARNING_MS = 13 * 60 * 1000;
@@ -124,6 +126,7 @@ function AuthenticatedApp({ token }: { token: string }) {
   return (
     <div>
       {idle.warning && <IdleWarningModal secondsLeft={idle.secondsLeft} onStay={idle.reset} onSignOut={logout} />}
+      <OfflineIndicator />
       <header className="topbar">
         <span className="brand">
           <BrandMark />
@@ -131,6 +134,10 @@ function AuthenticatedApp({ token }: { token: string }) {
         </span>
         <TopbarSearch />
         <div className="topbar-user">
+          <RecentPatientsDropdown
+            onSelectPatient={(id) => navigate(`/patients/${id}`)}
+            onStartVisit={(id) => navigate(`/new?patientId=${id}`)}
+          />
           <span>
             <strong>{me.name}</strong>
             {clinic && <span className="topbar-clinic"> · {clinic.name}</span>}
