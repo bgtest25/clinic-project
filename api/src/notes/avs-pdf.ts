@@ -1,25 +1,18 @@
 import PDFDocument from 'pdfkit';
-
-interface ClinicInfo {
-  name: string;
-  addressStreet?: string;
-  addressCity?: string;
-  addressState?: string;
-  addressZip?: string;
-  phone?: string;
-  fax?: string;
-  npi?: string;
-  logoUrl?: string;
-}
-
-interface ClinicianInfo {
-  name: string;
-  credentials?: string;
-  title?: string;
-  specialty?: string;
-  individualNpi?: string;
-  signatureImageUrl?: string;
-}
+import {
+  COLORS,
+  type ClinicInfo,
+  type ClinicianInfo,
+  formatPhone,
+  formatAddress,
+  formatContactLine,
+  formatProviderName,
+  generateQRCode,
+  fetchImage,
+  drawHorizontalRule,
+  drawBox,
+  estimateTextHeight,
+} from './pdf-utils';
 
 interface AvsData {
   patientName: string;
@@ -30,95 +23,171 @@ interface AvsData {
   summary: string;
   clinic?: ClinicInfo;
   clinician?: ClinicianInfo;
+  patientPortalUrl?: string;
 }
 
-const BRAND_COLOR = '#0f766e';
-const TEXT_COLOR = '#0f172a';
-const MUTED_COLOR = '#64748b';
-const ALERT_BG = '#fef3c7';
-const ALERT_BORDER = '#f59e0b';
+const SECTION_ICONS: Record<string, string> = {
+  'WHAT WE TALKED ABOUT': '📋',
+  'WHAT WE FOUND': '🩺',
+  'YOUR DIAGNOSIS': '💊',
+  'YOUR TREATMENT PLAN': '✅',
+  'WHEN TO CALL US': '⚠️',
+  'FOLLOW-UP': '📅',
+  'YOUR VISIT SUMMARY': '📄',
+};
 
-export function buildAvsPdf(data: AvsData): PDFKit.PDFDocument {
-  const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 54, right: 54 } });
+export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
+  const doc = new PDFDocument({
+    size: 'LETTER',
+    margins: { top: 50, bottom: 60, left: 54, right: 54 },
+    bufferPages: true,
+  });
+
   const clinic = data.clinic;
   const clinician = data.clinician;
+  const pageWidth = doc.page.width;
+  const contentWidth = pageWidth - 108;
 
-  // Professional header with clinic branding
-  doc.fontSize(22).font('Helvetica-Bold').fillColor(BRAND_COLOR).text(clinic?.name || data.clinicName, { align: 'center' });
+  // Fetch logo and QR code in parallel
+  const [logoBuffer, qrBuffer] = await Promise.all([
+    clinic?.logoUrl ? fetchImage(clinic.logoUrl) : Promise.resolve(null),
+    data.patientPortalUrl ? generateQRCode(data.patientPortalUrl, 60) : Promise.resolve(null),
+  ]);
 
-  // Clinic address and contact info
-  if (clinic?.addressStreet) {
-    const addressLine = [clinic.addressStreet, clinic.addressCity, clinic.addressState, clinic.addressZip].filter(Boolean).join(', ');
-    doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(addressLine, { align: 'center' });
+  // Header with clinic branding
+  let headerY = 50;
+
+  if (logoBuffer) {
+    try {
+      doc.image(logoBuffer, 54, headerY, { width: 50, height: 50 });
+      doc.fontSize(20).font('Helvetica-Bold').fillColor(COLORS.brand)
+        .text(clinic?.name || data.clinicName, 114, headerY + 10);
+      if (clinic?.addressStreet) {
+        doc.fontSize(9).font('Helvetica').fillColor(COLORS.muted)
+          .text(formatAddress(clinic), 114, headerY + 32);
+      }
+      headerY += 60;
+    } catch {
+      // If logo fails to render, fall back to text-only header
+      doc.fontSize(22).font('Helvetica-Bold').fillColor(COLORS.brand)
+        .text(clinic?.name || data.clinicName, { align: 'center' });
+      headerY = doc.y + 5;
+    }
+  } else {
+    doc.fontSize(22).font('Helvetica-Bold').fillColor(COLORS.brand)
+      .text(clinic?.name || data.clinicName, { align: 'center' });
+    headerY = doc.y + 5;
+  }
+
+  // Clinic contact info
+  if (clinic?.addressStreet && !logoBuffer) {
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted)
+      .text(formatAddress(clinic), { align: 'center' });
   }
   if (clinic?.phone || clinic?.fax) {
-    const contactLine = [clinic.phone ? `Tel: ${formatPhone(clinic.phone)}` : '', clinic.fax ? `Fax: ${formatPhone(clinic.fax)}` : ''].filter(Boolean).join('  |  ');
-    doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(contactLine, { align: 'center' });
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted)
+      .text(formatContactLine(clinic), { align: 'center' });
   }
   doc.moveDown(0.3);
-  doc.fontSize(14).font('Helvetica-Bold').fillColor(BRAND_COLOR).text('AFTER-VISIT SUMMARY', { align: 'center' });
-  doc.moveDown(0.5);
 
-  // Horizontal rule
-  doc.moveTo(54, doc.y).lineTo(558, doc.y).strokeColor(BRAND_COLOR).lineWidth(2).stroke();
+  // Title
+  doc.fontSize(16).font('Helvetica-Bold').fillColor(COLORS.brand)
+    .text('AFTER-VISIT SUMMARY', { align: 'center' });
+  doc.moveDown(0.4);
+
+  // Decorative line
+  drawHorizontalRule(doc, doc.y, COLORS.brand, 2);
   doc.moveDown(0.75);
 
   // Patient info box
   const boxTop = doc.y;
-  doc.rect(54, boxTop, 504, 60).fillColor('#f8fafc').fill();
-  doc.fillColor(TEXT_COLOR);
-  doc.y = boxTop + 12;
+  const boxHeight = 70;
+  drawBox(doc, 54, boxTop, contentWidth, boxHeight, { fill: COLORS.surface, stroke: COLORS.border });
+
+  doc.y = boxTop + 14;
   doc.x = 70;
-  doc.fontSize(11).font('Helvetica-Bold').text('Patient: ', { continued: true }).font('Helvetica').text(data.patientName);
+  doc.fontSize(11).font('Helvetica-Bold').fillColor(COLORS.text)
+    .text('Patient: ', { continued: true }).font('Helvetica').text(data.patientName);
   doc.x = 70;
   doc.font('Helvetica-Bold').text('Date of Birth: ', { continued: true }).font('Helvetica').text(data.patientDob);
-  doc.x = 300;
-  doc.y = boxTop + 12;
+
+  doc.y = boxTop + 14;
+  doc.x = 320;
   doc.font('Helvetica-Bold').text('Visit Date: ', { continued: true }).font('Helvetica').text(data.visitDate);
-  const providerDisplay = clinician
-    ? `${clinician.name}${clinician.credentials ? `, ${clinician.credentials}` : ''}`
-    : data.clinicianName;
-  doc.x = 300;
+  doc.x = 320;
+  const providerDisplay = formatProviderName(clinician || { name: data.clinicianName });
   doc.font('Helvetica-Bold').text('Provider: ', { continued: true }).font('Helvetica').text(providerDisplay);
   if (clinician?.specialty) {
-    doc.x = 300;
-    doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(clinician.specialty);
-    doc.fillColor(TEXT_COLOR);
+    doc.x = 320;
+    doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted).text(clinician.specialty);
   }
-  doc.x = 54;
-  doc.y = boxTop + 72;
 
-  // Parse the summary into sections
+  // QR code in top right of patient box
+  if (qrBuffer) {
+    try {
+      doc.image(qrBuffer, pageWidth - 54 - 60, boxTop + 5, { width: 50 });
+    } catch {
+      // Silently fail if QR code can't be rendered
+    }
+  }
+
+  doc.x = 54;
+  doc.y = boxTop + boxHeight + 15;
+  doc.fillColor(COLORS.text);
+
+  // Parse and render sections
   const sections = parseSummary(data.summary);
 
   for (const section of sections) {
+    const icon = SECTION_ICONS[section.title] || '•';
+
     if (section.title === 'WHEN TO CALL US') {
-      // Alert box for "When to call us"
+      // Alert box for critical warnings
       doc.moveDown(0.5);
       const alertTop = doc.y;
-      const alertHeight = estimateTextHeight(doc, section.content, 480) + 40;
-      doc.rect(54, alertTop, 504, alertHeight).fillColor(ALERT_BG).fill();
-      doc.rect(54, alertTop, 4, alertHeight).fillColor(ALERT_BORDER).fill();
+      const alertHeight = estimateTextHeight(doc, section.content, contentWidth - 30) + 50;
+
+      drawBox(doc, 54, alertTop, contentWidth, alertHeight, { fill: COLORS.warningBg });
+      drawBox(doc, 54, alertTop, 4, alertHeight, { fill: COLORS.warning });
+
       doc.y = alertTop + 12;
       doc.x = 70;
-      doc.fontSize(12).font('Helvetica-Bold').fillColor('#92400e').text(section.title);
+      doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.warningText)
+        .text(`${icon} ${section.title}`);
       doc.x = 70;
-      doc.fontSize(11).font('Helvetica').fillColor(TEXT_COLOR).text(section.content, { width: 480 });
+      doc.moveDown(0.3);
+      doc.fontSize(11).font('Helvetica').fillColor(COLORS.text)
+        .text(section.content, { width: contentWidth - 30 });
+
       doc.y = alertTop + alertHeight + 12;
       doc.x = 54;
     } else {
       doc.moveDown(0.75);
-      doc.fontSize(12).font('Helvetica-Bold').fillColor(BRAND_COLOR).text(section.title);
+      doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.brand)
+        .text(`${icon} ${section.title}`);
       doc.moveDown(0.25);
-      doc.fontSize(11).font('Helvetica').fillColor(TEXT_COLOR).text(section.content, { width: 504 });
+
+      // Format content - handle bullet points
+      const lines = section.content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('✓')) {
+          doc.fontSize(11).font('Helvetica').fillColor(COLORS.text)
+            .text(`  ${trimmed}`, { width: contentWidth, indent: 10 });
+        } else if (trimmed) {
+          doc.fontSize(11).font('Helvetica').fillColor(COLORS.text)
+            .text(trimmed, { width: contentWidth });
+        }
+      }
     }
   }
 
   // Footer
-  doc.moveDown(2);
-  doc.moveTo(54, doc.y).lineTo(558, doc.y).strokeColor(BRAND_COLOR).lineWidth(1).stroke();
+  doc.moveDown(1.5);
+  drawHorizontalRule(doc, doc.y, COLORS.border, 1);
   doc.moveDown(0.5);
-  doc.fontSize(9).font('Helvetica').fillColor(MUTED_COLOR).text(
+
+  doc.fontSize(9).font('Helvetica').fillColor(COLORS.muted).text(
     'This summary is for your reference. If you have questions or concerns, please contact your provider.',
     { align: 'center' },
   );
@@ -126,7 +195,7 @@ export function buildAvsPdf(data: AvsData): PDFKit.PDFDocument {
     doc.text(`Questions? Call us at ${formatPhone(clinic.phone)}`, { align: 'center' });
   }
   doc.moveDown(0.5);
-  doc.fontSize(8).fillColor('#94a3b8').text(
+  doc.fontSize(8).fillColor(COLORS.muted).text(
     `${clinic?.name || data.clinicName} | Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`,
     { align: 'center' },
   );
@@ -135,14 +204,6 @@ export function buildAvsPdf(data: AvsData): PDFKit.PDFDocument {
   }
 
   return doc;
-}
-
-function formatPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return phone;
 }
 
 function parseSummary(summary: string): Array<{ title: string; content: string }> {
@@ -171,7 +232,6 @@ function parseSummary(summary: string): Array<{ title: string; content: string }
         sections.push({ title: currentTitle, content: currentContent.join('\n').trim() });
       }
       currentTitle = matchedTitle;
-      // Check if content is on the same line after a colon/dash
       const afterTitle = trimmed.slice(matchedTitle.length).replace(/^[:\-—\s]+/, '').trim();
       currentContent = afterTitle ? [afterTitle] : [];
     } else if (currentTitle && trimmed) {
@@ -183,17 +243,9 @@ function parseSummary(summary: string): Array<{ title: string; content: string }
     sections.push({ title: currentTitle, content: currentContent.join('\n').trim() });
   }
 
-  // If no sections found, treat entire summary as a single block
   if (sections.length === 0 && summary.trim()) {
     sections.push({ title: 'YOUR VISIT SUMMARY', content: summary.trim() });
   }
 
   return sections;
-}
-
-function estimateTextHeight(doc: PDFKit.PDFDocument, text: string, width: number): number {
-  const lineHeight = 14;
-  const avgCharsPerLine = width / 6;
-  const lines = Math.ceil(text.length / avgCharsPerLine);
-  return lines * lineHeight;
 }

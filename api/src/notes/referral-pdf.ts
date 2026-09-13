@@ -1,25 +1,17 @@
 import PDFDocument from 'pdfkit';
-
-interface ClinicInfo {
-  name: string;
-  addressStreet?: string;
-  addressCity?: string;
-  addressState?: string;
-  addressZip?: string;
-  phone?: string;
-  fax?: string;
-  npi?: string;
-  logoUrl?: string;
-}
-
-interface ClinicianInfo {
-  name: string;
-  credentials?: string;
-  title?: string;
-  specialty?: string;
-  individualNpi?: string;
-  signatureImageUrl?: string;
-}
+import {
+  COLORS,
+  type ClinicInfo,
+  type ClinicianInfo,
+  formatPhone,
+  formatAddress,
+  formatContactLine,
+  formatProviderName,
+  fetchImage,
+  drawHorizontalRule,
+  drawBox,
+  addConfidentialityFooter,
+} from './pdf-utils';
 
 interface ReferralData {
   patientName: string;
@@ -37,54 +29,124 @@ interface ReferralData {
   clinician?: ClinicianInfo;
 }
 
-const BRAND_COLOR = '#0f766e';
-const TEXT_COLOR = '#0f172a';
-const MUTED_COLOR = '#64748b';
+export async function buildReferralPdf(data: ReferralData): Promise<PDFKit.PDFDocument> {
+  const doc = new PDFDocument({
+    size: 'LETTER',
+    margins: { top: 50, bottom: 60, left: 72, right: 72 },
+    bufferPages: true,
+  });
 
-export function buildReferralPdf(data: ReferralData): PDFKit.PDFDocument {
-  const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 72, right: 72 } });
   const clinic = data.clinic;
   const clinician = data.clinician;
+  const pageWidth = doc.page.width;
+  const contentWidth = pageWidth - 144;
 
-  // Professional letterhead
-  doc.fontSize(20).font('Helvetica-Bold').fillColor(BRAND_COLOR).text(clinic?.name || data.clinicName);
+  // Fetch logo and signature in parallel
+  const [logoBuffer, signatureBuffer] = await Promise.all([
+    clinic?.logoUrl ? fetchImage(clinic.logoUrl) : Promise.resolve(null),
+    clinician?.signatureImageUrl ? fetchImage(clinician.signatureImageUrl) : Promise.resolve(null),
+  ]);
 
-  // Address line
-  const address = clinic?.addressStreet
-    ? [clinic.addressStreet, clinic.addressCity, clinic.addressState, clinic.addressZip].filter(Boolean).join(', ')
-    : data.clinicAddress;
-  if (address) {
-    doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(address);
-  }
+  // Letterhead
+  let headerY = 50;
 
-  // Contact line
-  const phone = clinic?.phone || data.clinicPhone;
-  if (phone || clinic?.fax) {
-    const contactParts = [phone ? `Tel: ${formatPhone(phone)}` : '', clinic?.fax ? `Fax: ${formatPhone(clinic.fax)}` : ''].filter(Boolean);
-    doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(contactParts.join('  |  '));
+  if (logoBuffer) {
+    try {
+      doc.image(logoBuffer, 72, headerY, { width: 45, height: 45 });
+      doc.fontSize(18).font('Helvetica-Bold').fillColor(COLORS.brand)
+        .text(clinic?.name || data.clinicName, 127, headerY + 5);
+
+      const address = formatAddress(clinic || {} as ClinicInfo) || data.clinicAddress;
+      if (address) {
+        doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted)
+          .text(address, 127, headerY + 25);
+      }
+      const contact = formatContactLine(clinic || {} as ClinicInfo);
+      if (contact) {
+        doc.fontSize(10).text(contact, 127, headerY + 38);
+      }
+      headerY += 55;
+    } catch {
+      // Fall back to text-only
+      doc.fontSize(20).font('Helvetica-Bold').fillColor(COLORS.brand)
+        .text(clinic?.name || data.clinicName);
+      headerY = doc.y;
+    }
+  } else {
+    doc.fontSize(20).font('Helvetica-Bold').fillColor(COLORS.brand)
+      .text(clinic?.name || data.clinicName);
+
+    const address = formatAddress(clinic || {} as ClinicInfo) || data.clinicAddress;
+    if (address) {
+      doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted).text(address);
+    }
+
+    const phone = clinic?.phone || data.clinicPhone;
+    if (phone || clinic?.fax) {
+      doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted)
+        .text(formatContactLine(clinic || {} as ClinicInfo));
+    }
+    headerY = doc.y;
   }
 
   if (clinic?.npi) {
-    doc.fontSize(9).font('Helvetica').fillColor(MUTED_COLOR).text(`NPI: ${clinic.npi}`);
+    doc.fontSize(9).font('Helvetica').fillColor(COLORS.muted).text(`NPI: ${clinic.npi}`);
   }
   doc.moveDown(0.5);
 
-  // Horizontal rule
-  doc.moveTo(72, doc.y).lineTo(540, doc.y).strokeColor(BRAND_COLOR).lineWidth(2).stroke();
-  doc.moveDown(1.5);
+  // Decorative line
+  drawHorizontalRule(doc, doc.y, COLORS.brand, 2, 72, 72);
+  doc.moveDown(1);
+
+  // Confidential header
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.danger)
+    .text('CONFIDENTIAL MEDICAL REFERRAL', { align: 'center' });
+  doc.moveDown(1);
 
   // Date
-  doc.fontSize(11).font('Helvetica').fillColor(TEXT_COLOR).text(new Date().toLocaleDateString('en-US', {
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text).text(new Date().toLocaleDateString('en-US', {
     year: 'numeric',
     month: 'long',
     day: 'numeric',
   }));
-  doc.moveDown(1);
+  doc.moveDown(0.75);
 
-  // RE: Patient info
-  doc.font('Helvetica-Bold').text('RE: ', { continued: true }).font('Helvetica').text(data.patientName);
-  doc.font('Helvetica-Bold').text('DOB: ', { continued: true }).font('Helvetica').text(data.patientDob);
-  doc.font('Helvetica-Bold').text('Visit Date: ', { continued: true }).font('Helvetica').text(data.visitDate);
+  // Patient info box
+  const boxTop = doc.y;
+  const boxHeight = 55;
+  drawBox(doc, 72, boxTop, contentWidth, boxHeight, { fill: COLORS.successBg, stroke: COLORS.border });
+
+  doc.y = boxTop + 12;
+  const colWidth = contentWidth / 3;
+
+  // Patient Name
+  doc.x = 85;
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.muted).text('PATIENT');
+  doc.x = 85;
+  doc.fontSize(11).font('Helvetica-Bold').fillColor(COLORS.text).text(data.patientName);
+
+  // DOB
+  doc.y = boxTop + 12;
+  doc.x = 85 + colWidth;
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.muted).text('DATE OF BIRTH');
+  doc.x = 85 + colWidth;
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text).text(data.patientDob);
+
+  // Visit Date
+  doc.y = boxTop + 12;
+  doc.x = 85 + colWidth * 2;
+  doc.fontSize(9).font('Helvetica-Bold').fillColor(COLORS.muted).text('VISIT DATE');
+  doc.x = 85 + colWidth * 2;
+  doc.fontSize(11).font('Helvetica').fillColor(COLORS.text).text(data.visitDate);
+
+  doc.x = 72;
+  doc.y = boxTop + boxHeight + 15;
+
+  // Referral info
+  doc.fontSize(10).font('Helvetica-Bold').fillColor(COLORS.brand).text('REFERRAL TO: ')
+    .font('Helvetica').fillColor(COLORS.text).text(`${data.specialty}`);
+  doc.font('Helvetica-Bold').fillColor(COLORS.brand).text('REASON: ')
+    .font('Helvetica').fillColor(COLORS.text).text(data.reason);
   doc.moveDown(1);
 
   // Letter body
@@ -96,44 +158,46 @@ export function buildReferralPdf(data: ReferralData): PDFKit.PDFDocument {
       continue;
     }
 
-    // Check if it's a section header (all caps or ends with colon)
     if (isSectionHeader(trimmed)) {
       doc.moveDown(0.5);
-      doc.font('Helvetica-Bold').fillColor(BRAND_COLOR).text(trimmed);
-      doc.font('Helvetica').fillColor(TEXT_COLOR);
+      doc.font('Helvetica-Bold').fontSize(11).fillColor(COLORS.brand).text(trimmed);
+      doc.font('Helvetica').fillColor(COLORS.text);
     } else if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.match(/^\d+\./)) {
-      // Bullet or numbered item
-      doc.text(trimmed, { indent: 20 });
+      doc.fontSize(11).text(trimmed, { indent: 20 });
     } else {
-      doc.text(trimmed);
+      doc.fontSize(11).text(trimmed);
     }
   }
 
   // Signature block
-  doc.moveDown(2);
-  doc.text('Thank you for your excellent care of this patient.');
   doc.moveDown(1.5);
-  doc.text('Sincerely,');
+  doc.text('Thank you for your excellent care of this patient.');
   doc.moveDown(1);
+  doc.text('Sincerely,');
+  doc.moveDown(0.75);
 
-  const providerName = clinician?.name || data.clinicianName;
-  const providerCreds = clinician?.credentials || data.clinicianCredentials;
-  doc.font('Helvetica-Bold').text(`${providerName}${providerCreds ? `, ${providerCreds}` : ''}`);
+  // Render signature image if available
+  if (signatureBuffer) {
+    try {
+      doc.image(signatureBuffer, 72, doc.y, { width: 120, height: 40 });
+      doc.moveDown(2.5);
+    } catch {
+      // Fall through to text signature
+    }
+  }
+
+  const providerName = formatProviderName(clinician || { name: data.clinicianName, credentials: data.clinicianCredentials });
+  doc.font('Helvetica-Bold').text(providerName);
   if (clinician?.title) {
     doc.font('Helvetica').text(clinician.title);
   }
   if (clinician?.individualNpi) {
-    doc.font('Helvetica').fillColor(MUTED_COLOR).text(`NPI: ${clinician.individualNpi}`);
+    doc.font('Helvetica').fillColor(COLORS.muted).text(`NPI: ${clinician.individualNpi}`);
   }
-  doc.fillColor(TEXT_COLOR).font('Helvetica').text(clinic?.name || data.clinicName);
+  doc.fillColor(COLORS.text).font('Helvetica').text(clinic?.name || data.clinicName);
 
   // Footer
-  const footerY = 720;
-  doc.y = footerY;
-  doc.moveTo(72, footerY).lineTo(540, footerY).strokeColor('#e2e8f0').lineWidth(1).stroke();
-  doc.moveDown(0.5);
-  doc.fontSize(9).fillColor(MUTED_COLOR).text('CONFIDENTIAL MEDICAL REFERRAL', { align: 'center' });
-  doc.text(`Referral to ${data.specialty} — ${data.reason}`, { align: 'center' });
+  addConfidentialityFooter(doc, `CONFIDENTIAL MEDICAL REFERRAL — ${data.specialty}`);
 
   return doc;
 }
@@ -148,15 +212,8 @@ function isSectionHeader(text: string): boolean {
     'ALLERGIES',
     'SOCIAL HISTORY',
     'FAMILY HISTORY',
+    'DEAR',
   ];
   const upper = text.toUpperCase().replace(/[:\-—]/g, '').trim();
   return headers.some((h) => upper === h || upper.startsWith(h));
-}
-
-function formatPhone(phone: string): string {
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 10) {
-    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
-  }
-  return phone;
 }

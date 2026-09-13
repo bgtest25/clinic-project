@@ -65,7 +65,7 @@ export class NotesController {
     const data = await this.notesService.getAvsForPdf(encounterId, req.user.sub);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="visit-summary-${encounterId}.pdf"`);
-    const doc = buildAvsPdf(data);
+    const doc = await buildAvsPdf(data);
     doc.pipe(res);
     doc.end();
   }
@@ -94,7 +94,7 @@ export class NotesController {
     const data = await this.notesService.getReferralForPdf(encounterId, letterId, req.user.sub);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="referral-${data.specialty.toLowerCase().replace(/\s+/g, '-')}-${letterId}.pdf"`);
-    const doc = buildReferralPdf(data);
+    const doc = await buildReferralPdf(data);
     doc.pipe(res);
     doc.end();
   }
@@ -123,7 +123,7 @@ export class NotesController {
     const data = await this.notesService.getPriorAuthForPdf(encounterId, priorAuthId, req.user.sub);
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="prior-auth-${priorAuthId}.pdf"`);
-    const doc = buildPriorAuthPdf(data);
+    const doc = await buildPriorAuthPdf(data);
     doc.pipe(res);
     doc.end();
   }
