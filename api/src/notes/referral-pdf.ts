@@ -35,6 +35,11 @@ interface ReferralData {
   clinician?: ClinicianInfo;
 }
 
+export interface ReferralPdfImages {
+  logo?: Buffer | null;
+  signature?: Buffer | null;
+}
+
 const BRAND_COLOR = '#0f766e';
 const TEXT_COLOR = '#0f172a';
 const MUTED_COLOR = '#64748b';
@@ -57,20 +62,41 @@ function formatPhone(phone: string): string {
   return phone;
 }
 
-export function buildReferralPdf(data: ReferralData): PDFKit.PDFDocument {
+export function buildReferralPdf(data: ReferralData, images: ReferralPdfImages = {}): PDFKit.PDFDocument {
   const doc = new PDFDocument({ size: 'LETTER', margins: { top: 50, bottom: 50, left: 72, right: 72 } });
   const clinic = data.clinic;
   const clinician = data.clinician;
 
-  // Professional letterhead
-  doc.fontSize(20).font('Helvetica-Bold').fillColor(BRAND_COLOR).text(clinic?.name || data.clinicName);
+  // Professional letterhead with optional logo
+  if (images.logo) {
+    try {
+      doc.image(images.logo, 72, 50, { width: 45, height: 45 });
+      doc.fontSize(18).font('Helvetica-Bold').fillColor(BRAND_COLOR)
+        .text(clinic?.name || data.clinicName, 127, 55);
 
-  // Address line
-  const address = clinic?.addressStreet
-    ? [clinic.addressStreet, clinic.addressCity, clinic.addressState, clinic.addressZip].filter(Boolean).join(', ')
-    : data.clinicAddress;
-  if (address) {
-    doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(address);
+      const address = clinic?.addressStreet
+        ? [clinic.addressStreet, clinic.addressCity, clinic.addressState, clinic.addressZip].filter(Boolean).join(', ')
+        : data.clinicAddress;
+      if (address) {
+        doc.fontSize(9).font('Helvetica').fillColor(MUTED_COLOR).text(address, 127, 75);
+      }
+      doc.y = 105;
+    } catch {
+      // Fall back to text-only if logo fails
+      doc.fontSize(20).font('Helvetica-Bold').fillColor(BRAND_COLOR).text(clinic?.name || data.clinicName);
+    }
+  } else {
+    doc.fontSize(20).font('Helvetica-Bold').fillColor(BRAND_COLOR).text(clinic?.name || data.clinicName);
+  }
+
+  // Address line (if no logo or logo failed)
+  if (!images.logo) {
+    const address = clinic?.addressStreet
+      ? [clinic.addressStreet, clinic.addressCity, clinic.addressState, clinic.addressZip].filter(Boolean).join(', ')
+      : data.clinicAddress;
+    if (address) {
+      doc.fontSize(10).font('Helvetica').fillColor(MUTED_COLOR).text(address);
+    }
   }
 
   // Contact line
@@ -129,7 +155,17 @@ export function buildReferralPdf(data: ReferralData): PDFKit.PDFDocument {
   doc.text('Thank you for your excellent care of this patient.');
   doc.moveDown(1.5);
   doc.text('Sincerely,');
-  doc.moveDown(1);
+  doc.moveDown(0.75);
+
+  // Render signature image if available
+  if (images.signature) {
+    try {
+      doc.image(images.signature, 72, doc.y, { width: 120, height: 40 });
+      doc.y += 45;
+    } catch {
+      // Fall through to text signature
+    }
+  }
 
   const providerName = clinician?.name || data.clinicianName;
   const providerCreds = clinician?.credentials || data.clinicianCredentials;

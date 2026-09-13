@@ -5,6 +5,7 @@ import { buildAvsPdf } from './avs-pdf';
 import { buildNotePdf } from './note-pdf';
 import { buildPriorAuthPdf } from './prior-auth-pdf';
 import { buildReferralPdf } from './referral-pdf';
+import { fetchImage } from './pdf-utils';
 import { NotesService } from './notes.service';
 import { CreatePriorAuthDto } from './dto/create-prior-auth.dto';
 import { CreateReferralLetterDto } from './dto/create-referral-letter.dto';
@@ -92,9 +93,16 @@ export class NotesController {
     @Req() req: any,
   ) {
     const data = await this.notesService.getReferralForPdf(encounterId, letterId, req.user.sub);
+
+    // Pre-fetch images before synchronous PDF generation
+    const [logo, signature] = await Promise.all([
+      data.clinic?.logoUrl ? fetchImage(data.clinic.logoUrl) : Promise.resolve(null),
+      data.clinician?.signatureImageUrl ? fetchImage(data.clinician.signatureImageUrl) : Promise.resolve(null),
+    ]);
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="referral-${data.specialty.toLowerCase().replace(/\s+/g, '-')}-${letterId}.pdf"`);
-    const doc = buildReferralPdf(data);
+    const doc = buildReferralPdf(data, { logo, signature });
     doc.pipe(res);
     doc.end();
   }
@@ -121,9 +129,15 @@ export class NotesController {
     @Req() req: any,
   ) {
     const data = await this.notesService.getPriorAuthForPdf(encounterId, priorAuthId, req.user.sub);
+
+    // Pre-fetch signature image before synchronous PDF generation
+    const signature = data.clinician?.signatureImageUrl
+      ? await fetchImage(data.clinician.signatureImageUrl)
+      : null;
+
     res.setHeader('Content-Type', 'application/pdf');
     res.setHeader('Content-Disposition', `attachment; filename="prior-auth-${priorAuthId}.pdf"`);
-    const doc = buildPriorAuthPdf(data);
+    const doc = buildPriorAuthPdf(data, { signature });
     doc.pipe(res);
     doc.end();
   }

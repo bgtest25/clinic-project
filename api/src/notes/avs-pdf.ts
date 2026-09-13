@@ -7,7 +7,6 @@ import {
   formatAddress,
   formatContactLine,
   formatProviderName,
-  generateQRCode,
   fetchImage,
   drawHorizontalRule,
   drawBox,
@@ -48,11 +47,8 @@ export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
   const pageWidth = doc.page.width;
   const contentWidth = pageWidth - 108;
 
-  // Fetch logo and QR code in parallel
-  const [logoBuffer, qrBuffer] = await Promise.all([
-    clinic?.logoUrl ? fetchImage(clinic.logoUrl) : Promise.resolve(null),
-    data.patientPortalUrl ? generateQRCode(data.patientPortalUrl, 60) : Promise.resolve(null),
-  ]);
+  // Fetch logo
+  const logoBuffer = clinic?.logoUrl ? await fetchImage(clinic.logoUrl) : null;
 
   // Header with clinic branding
   let headerY = 50;
@@ -122,14 +118,6 @@ export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
     doc.fontSize(10).font('Helvetica').fillColor(COLORS.muted).text(clinician.specialty);
   }
 
-  // QR code in top right of patient box
-  if (qrBuffer) {
-    try {
-      doc.image(qrBuffer, pageWidth - 54 - 60, boxTop + 5, { width: 50 });
-    } catch {
-      // Silently fail if QR code can't be rendered
-    }
-  }
 
   doc.x = 54;
   doc.y = boxTop + boxHeight + 15;

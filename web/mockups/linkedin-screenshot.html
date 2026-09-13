@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Havenote - SOAP Note</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 40px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+    }
+    .container {
+      max-width: 900px;
+      width: 100%;
+    }
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      color: white;
+    }
+    .logo-icon {
+      width: 40px;
+      height: 40px;
+      background: white;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+    }
+    .logo-text {
+      font-size: 24px;
+      font-weight: 700;
+    }
+    .badge {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 500;
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      overflow: hidden;
+    }
+    .card-header {
+      background: #f8f9fc;
+      padding: 20px 28px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .patient-info h2 {
+      font-size: 18px;
+      font-weight: 600;
+      color: #1a1a2e;
+      margin-bottom: 4px;
+    }
+    .patient-info p {
+      font-size: 14px;
+      color: #6b7280;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .status-dot {
+      width: 10px;
+      height: 10px;
+      background: #10b981;
+      border-radius: 50%;
+    }
+    .status-text {
+      font-size: 14px;
+      font-weight: 500;
+      color: #10b981;
+    }
+    .card-body {
+      padding: 28px;
+    }
+    .section {
+      margin-bottom: 24px;
+    }
+    .section:last-child {
+      margin-bottom: 0;
+    }
+    .section-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+    .section-icon {
+      width: 28px;
+      height: 28px;
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+    }
+    .section-icon.s { background: #6366f1; }
+    .section-icon.o { background: #8b5cf6; }
+    .section-icon.a { background: #a855f7; }
+    .section-icon.p { background: #d946ef; }
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .section-content {
+      font-size: 15px;
+      line-height: 1.7;
+      color: #374151;
+      padding-left: 38px;
+    }
+    .section-content p {
+      margin-bottom: 8px;
+    }
+    .section-content p:last-child {
+      margin-bottom: 0;
+    }
+    .vitals-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .vital-item {
+      background: #f3f4f6;
+      padding: 12px;
+      border-radius: 8px;
+      text-align: center;
+    }
+    .vital-label {
+      font-size: 11px;
+      color: #6b7280;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+    .vital-value {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .footer {
+      background: #f8f9fc;
+      padding: 16px 28px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .generated-time {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .ai-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+      color: #6366f1;
+      font-weight: 500;
+    }
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+    .btn {
+      padding: 12px 24px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white;
+    }
+    .btn-secondary {
+      background: white;
+      color: #374151;
+      border: 1px solid #e5e7eb;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <div class="logo">
+        <div class="logo-icon">H</div>
+        <span class="logo-text">Havenote</span>
+      </div>
+      <div class="badge">AI-Generated Note</div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="patient-info">
+          <h2>Sarah Mitchell</h2>
+          <p>Female, 45 years • Visit: September 9, 2026</p>
+        </div>
+        <div class="status">
+          <div class="status-dot"></div>
+          <span class="status-text">Ready for Review</span>
+        </div>
+      </div>
+
+      <div class="card-body">
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon s">S</div>
+            <span class="section-title">Subjective</span>
+          </div>
+          <div class="section-content">
+            <p>Patient presents with persistent fatigue and occasional headaches for the past 3 weeks. Reports difficulty sleeping, averaging 5 hours per night. Denies fever, weight loss, or changes in appetite. Patient mentions increased work stress recently. No history of similar episodes.</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon o">O</div>
+            <span class="section-title">Objective</span>
+          </div>
+          <div class="section-content">
+            <div class="vitals-grid">
+              <div class="vital-item">
+                <div class="vital-label">Blood Pressure</div>
+                <div class="vital-value">128/82</div>
+              </div>
+              <div class="vital-item">
+                <div class="vital-label">Heart Rate</div>
+                <div class="vital-value">76 bpm</div>
+              </div>
+              <div class="vital-item">
+                <div class="vital-label">Temperature</div>
+                <div class="vital-value">98.4°F</div>
+              </div>
+              <div class="vital-item">
+                <div class="vital-label">SpO2</div>
+                <div class="vital-value">98%</div>
+              </div>
+            </div>
+            <p style="margin-top: 16px;">General: Alert, oriented, appears fatigued but in no acute distress. HEENT: Normocephalic, pupils equal and reactive, oropharynx clear. Cardiovascular: Regular rate and rhythm, no murmurs. Lungs: Clear to auscultation bilaterally.</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon a">A</div>
+            <span class="section-title">Assessment</span>
+          </div>
+          <div class="section-content">
+            <p><strong>1. Fatigue, unspecified (R53.83)</strong> - Likely related to poor sleep quality and increased stress.</p>
+            <p><strong>2. Insomnia, unspecified (G47.00)</strong> - New onset, associated with work-related stress.</p>
+            <p><strong>3. Tension-type headache (G44.209)</strong> - Episodic, consistent with stress-related etiology.</p>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="section-header">
+            <div class="section-icon p">P</div>
+            <span class="section-title">Plan</span>
+          </div>
+          <div class="section-content">
+            <p>1. Order CBC and comprehensive metabolic panel to rule out underlying causes.</p>
+            <p>2. Sleep hygiene counseling provided - discussed limiting screen time before bed, consistent sleep schedule.</p>
+            <p>3. Recommend stress management techniques; provided information on mindfulness resources.</p>
+            <p>4. Follow-up in 2 weeks to review lab results and assess symptom improvement.</p>
+            <p>5. Return sooner if symptoms worsen or new symptoms develop.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="ai-badge">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+          </svg>
+          Generated by Havenote AI in 8 seconds
+        </div>
+        <div class="actions">
+          <button class="btn btn-secondary">Edit Note</button>
+          <button class="btn btn-primary">Sign & Complete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

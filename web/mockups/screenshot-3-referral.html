@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Referral Letter</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .document {
+      max-width: 700px;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+      padding: 40px;
+    }
+    .letterhead {
+      margin-bottom: 30px;
+      padding-bottom: 20px;
+      border-bottom: 2px solid #0d7377;
+    }
+    .clinic-name {
+      font-size: 24px;
+      font-weight: 700;
+      color: #0d7377;
+      margin-bottom: 4px;
+    }
+    .clinic-details {
+      font-size: 12px;
+      color: #6b7280;
+      line-height: 1.5;
+    }
+    .clinic-details a {
+      color: #0d7377;
+      text-decoration: none;
+    }
+    .letter-date {
+      font-size: 13px;
+      color: #374151;
+      margin-bottom: 24px;
+    }
+    .patient-ref {
+      margin-bottom: 20px;
+    }
+    .ref-label {
+      font-size: 13px;
+      color: #374151;
+    }
+    .ref-label strong {
+      color: #0d7377;
+    }
+    .salutation {
+      font-size: 14px;
+      color: #374151;
+      margin-bottom: 20px;
+    }
+    .section-label {
+      font-size: 12px;
+      font-weight: 700;
+      color: #0d7377;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      margin-top: 20px;
+    }
+    .section-content {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #374151;
+    }
+    .bullet-list {
+      margin-left: 20px;
+      margin-top: 6px;
+    }
+    .bullet-list li {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+    .letter-body {
+      font-size: 13px;
+      line-height: 1.8;
+      color: #374151;
+    }
+    .letter-body p {
+      margin-bottom: 14px;
+    }
+    .closing {
+      margin-top: 24px;
+      font-size: 13px;
+      color: #374151;
+    }
+    .signature {
+      margin-top: 24px;
+    }
+    .sig-name {
+      font-weight: 600;
+      color: #0d7377;
+      font-size: 14px;
+    }
+    .sig-title {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .sig-npi {
+      font-size: 11px;
+      color: #9ca3af;
+    }
+    .sig-clinic {
+      font-size: 12px;
+      color: #6b7280;
+    }
+    .footer-note {
+      margin-top: 30px;
+      padding-top: 16px;
+      border-top: 1px solid #e5e7eb;
+      text-align: center;
+      font-size: 11px;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .referral-type {
+      margin-top: 8px;
+      font-size: 12px;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <div class="letterhead">
+      <div class="clinic-name">Riverside Family Medicine</div>
+      <div class="clinic-details">
+        245 Medical Plaza Dr, Philadelphia, PA 19103<br>
+        Tel: <a href="#">(215) 555-4200</a> | Fax: (215) 555-4201<br>
+        NPI: 1234567890
+      </div>
+    </div>
+
+    <div class="letter-date">September 9, 2026</div>
+
+    <div class="patient-ref">
+      <div class="ref-label"><strong>RE:</strong> Robert Daniels</div>
+      <div class="ref-label"><strong>DOB:</strong> April 12, 1974</div>
+      <div class="ref-label"><strong>Visit Date:</strong> September 9, 2026</div>
+    </div>
+
+    <div class="salutation">Dear Physical Therapy Colleagues,</div>
+
+    <div class="section-label">Reason for Referral</div>
+    <div class="section-content">
+      Evaluation and treatment of acute lumbar strain with right-sided radicular symptoms. Patient requires core strengthening program, flexibility training, and education on proper body mechanics.
+    </div>
+
+    <div class="section-label">Relevant History</div>
+    <div class="section-content">
+      <ul class="bullet-list">
+        <li>52-year-old male with acute onset lower back pain</li>
+        <li>Onset 3 weeks ago following heavy lifting (helping son move)</li>
+        <li>Right lumbar paraspinal tenderness with reduced ROM</li>
+        <li>Intermittent radiation to right knee, no numbness/weakness</li>
+        <li>Negative straight leg raise bilaterally</li>
+        <li>Currently on naproxen 500mg BID and cyclobenzaprine 10mg QHS PRN</li>
+        <li>Occupation: Office manager (prolonged sitting required)</li>
+      </ul>
+    </div>
+
+    <div class="section-label">Current Medications</div>
+    <div class="section-content">
+      Naproxen 500mg twice daily, Cyclobenzaprine 10mg at bedtime as needed
+    </div>
+
+    <div class="section-label">Treatment Goals</div>
+    <div class="section-content">
+      <ul class="bullet-list">
+        <li>Reduce pain to allow return to full work duties</li>
+        <li>Restore lumbar range of motion</li>
+        <li>Strengthen core musculature to support spine</li>
+        <li>Educate on proper lifting mechanics to prevent recurrence</li>
+      </ul>
+    </div>
+
+    <div class="letter-body" style="margin-top: 20px;">
+      <p>Thank you for seeing this patient.</p>
+    </div>
+
+    <div class="closing">Sincerely,</div>
+
+    <div class="signature">
+      <div class="sig-name">Michael Torres, MD</div>
+      <div class="sig-title">Board Certified - Family Medicine</div>
+      <div class="sig-npi">NPI: 1234567890</div>
+      <div class="sig-clinic">Riverside Family Medicine</div>
+    </div>
+
+    <div class="footer-note">
+      Confidential Medical Referral
+    </div>
+    <div class="referral-type" style="text-align: center;">
+      Referral to Physical Therapy — Lumbar Spine
+    </div>
+  </div>
+</body>
+</html>

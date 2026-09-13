@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prior Authorization Request</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .document {
+      max-width: 700px;
+      margin: 0 auto;
+      background: white;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+    .doc-header {
+      background: #0d7377;
+      color: white;
+      padding: 20px 30px;
+      text-align: center;
+    }
+    .doc-title {
+      font-size: 22px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      margin-bottom: 8px;
+    }
+    .clinic-name {
+      font-size: 14px;
+      font-weight: 600;
+    }
+    .clinic-address {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+    .info-row {
+      display: flex;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .info-box {
+      flex: 1;
+      padding: 16px 24px;
+      border-right: 1px solid #e5e7eb;
+    }
+    .info-box:last-child {
+      border-right: none;
+    }
+    .info-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #0d7377;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .info-value {
+      font-size: 13px;
+      color: #1a1a2e;
+    }
+    .doc-body {
+      padding: 24px 30px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: #0d7377;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      margin-top: 20px;
+    }
+    .section-title:first-child {
+      margin-top: 0;
+    }
+    .section-subtitle {
+      font-size: 11px;
+      font-weight: 600;
+      color: #6b7280;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      margin-top: 14px;
+    }
+    .section-content {
+      font-size: 13px;
+      line-height: 1.7;
+      color: #374151;
+    }
+    .section-content p {
+      margin-bottom: 10px;
+    }
+    .bullet-list {
+      margin-left: 16px;
+      margin-bottom: 10px;
+    }
+    .bullet-list li {
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+    .attestation-box {
+      background: #fef3c7;
+      border-left: 4px solid #f59e0b;
+      padding: 16px 20px;
+      margin-top: 24px;
+    }
+    .attestation-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: #d97706;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+    }
+    .attestation-text {
+      font-size: 12px;
+      color: #92400e;
+      line-height: 1.5;
+    }
+    .doc-footer {
+      padding: 20px 30px;
+      border-top: 1px solid #e5e7eb;
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+    }
+    .provider-sig {
+      font-size: 13px;
+    }
+    .provider-name {
+      color: #0d7377;
+      font-weight: 600;
+    }
+    .provider-title {
+      color: #6b7280;
+      font-size: 12px;
+    }
+    .provider-npi {
+      color: #9ca3af;
+      font-size: 11px;
+    }
+  </style>
+</head>
+<body>
+  <div class="document">
+    <div class="doc-header">
+      <div class="doc-title">PRIOR AUTHORIZATION REQUEST</div>
+      <div class="clinic-name">Riverside Family Medicine</div>
+      <div class="clinic-address">245 Medical Plaza Dr, Philadelphia, PA 19103<br>Tel: (215) 555-4200 | Fax: (215) 555-4201</div>
+    </div>
+
+    <div class="info-row">
+      <div class="info-box">
+        <div class="info-label">Patient Information</div>
+        <div class="info-value">
+          <strong>Name:</strong> Robert Daniels<br>
+          <strong>DOB:</strong> April 12, 1974<br>
+          <strong>Visit Date:</strong> September 9, 2026
+        </div>
+      </div>
+      <div class="info-box">
+        <div class="info-label">Request Information</div>
+        <div class="info-value">
+          <strong>Requested Service:</strong><br>
+          Physical Therapy - Lumbar Spine
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-body">
+      <div class="section-title">Clinical Rationale for Medical Necessity</div>
+
+      <div class="section-subtitle">Summary</div>
+      <div class="section-content">
+        Prior authorization clinical rationale for outpatient physical therapy services.
+      </div>
+
+      <div class="section-subtitle">Requested Service</div>
+      <div class="section-content">
+        Physical therapy evaluation and treatment for lumbar spine, up to 12 visits over 6 weeks.
+      </div>
+
+      <div class="section-subtitle">Clinical Indication</div>
+      <div class="section-content">
+        <p>52-year-old male with acute lumbar strain following heavy lifting 3 weeks ago. Patient presents with right-sided lower back pain with intermittent radiation to the knee. Pain is affecting activities of daily living including work duties as an office manager requiring prolonged sitting. Conservative treatment with NSAIDs has provided only partial relief.</p>
+      </div>
+
+      <div class="section-subtitle">Supporting Evidence</div>
+      <div class="section-content">
+        <ul class="bullet-list">
+          <li>Acute onset following identifiable mechanism (heavy lifting during move)</li>
+          <li>Physical exam demonstrates reduced lumbar range of motion and paraspinal tenderness</li>
+          <li>Negative straight leg raise indicates low risk of significant disc herniation</li>
+          <li>Conservative measures (NSAIDs, activity modification) insufficient for symptom resolution</li>
+          <li>No red flag symptoms - appropriate for outpatient PT intervention</li>
+        </ul>
+      </div>
+
+      <div class="section-subtitle">Treatment History</div>
+      <div class="section-content">
+        <p>Patient has been managing symptoms with OTC ibuprofen for 3 weeks with only partial relief. Now being transitioned to prescription naproxen and cyclobenzaprine. Physical therapy is requested to provide core strengthening, flexibility training, and education on proper body mechanics to prevent recurrence.</p>
+      </div>
+
+      <div class="section-subtitle">Expected Benefit</div>
+      <div class="section-content">
+        <p>Physical therapy is expected to reduce pain, restore functional mobility, and enable return to full work duties without restriction. Early intervention with PT for acute lumbar strain has strong evidence for faster recovery and reduced risk of progression to chronic low back pain.</p>
+      </div>
+
+      <div class="section-subtitle">Urgency</div>
+      <div class="section-content">
+        <p>Routine authorization request. Delay in treatment may result in prolonged pain, muscle deconditioning, and increased risk of developing chronic pain syndrome.</p>
+      </div>
+
+      <div class="attestation-box">
+        <div class="attestation-title">Provider Attestation</div>
+        <div class="attestation-text">
+          I certify that the above information is accurate and that the requested service is medically necessary for this patient.
+        </div>
+      </div>
+    </div>
+
+    <div class="doc-footer">
+      <div class="provider-sig">
+        <div class="provider-name">Michael Torres, MD</div>
+        <div class="provider-title">Family Medicine</div>
+        <div class="provider-npi">NPI: 1234567890</div>
+      </div>
+      <div style="font-size: 11px; color: #9ca3af;">
+        Riverside Family Medicine
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Havenote - Visit Note</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: #f5f7fa;
+      min-height: 100vh;
+    }
+    .header {
+      background: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 14px;
+    }
+    .logo-text {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .search-bar {
+      display: flex;
+      align-items: center;
+      background: #f3f4f6;
+      border-radius: 6px;
+      padding: 6px 12px;
+      gap: 8px;
+      width: 220px;
+    }
+    .search-bar input {
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      color: #6b7280;
+      outline: none;
+      width: 100%;
+    }
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+    .doctor-info {
+      color: #374151;
+    }
+    .doctor-info strong {
+      color: #1a1a2e;
+    }
+    .sign-out {
+      color: #6b7280;
+      text-decoration: none;
+      padding: 6px 12px;
+      border: 1px solid #e5e7eb;
+      border-radius: 6px;
+    }
+    .main {
+      padding: 24px;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .back-link {
+      color: #10b981;
+      font-size: 13px;
+      text-decoration: none;
+      margin-bottom: 16px;
+      display: inline-block;
+    }
+    .page-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .page-title h1 {
+      font-size: 20px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .status-badge {
+      background: #d1fae5;
+      color: #059669;
+      padding: 3px 10px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+    .signed-time {
+      color: #10b981;
+      font-size: 13px;
+      margin-bottom: 20px;
+    }
+    .feedback-box {
+      background: white;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      border: 1px solid #e5e7eb;
+    }
+    .stars {
+      color: #fbbf24;
+      font-size: 16px;
+      margin-bottom: 4px;
+    }
+    .feedback-text {
+      font-size: 13px;
+      color: #6b7280;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 10px;
+      border: 1px solid #e5e7eb;
+    }
+    .card-header {
+      padding: 14px 18px;
+      border-bottom: 1px solid #e5e7eb;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .card-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #1a1a2e;
+    }
+    .view-toggle {
+      display: flex;
+      gap: 6px;
+    }
+    .view-btn {
+      padding: 5px 10px;
+      border-radius: 5px;
+      font-size: 12px;
+      border: 1px solid #e5e7eb;
+      background: white;
+      color: #6b7280;
+      cursor: pointer;
+    }
+    .view-btn.active {
+      background: #f3f4f6;
+      color: #1a1a2e;
+    }
+    .card-body {
+      padding: 18px;
+    }
+    .transcript-entry {
+      margin-bottom: 14px;
+    }
+    .transcript-entry:last-child {
+      margin-bottom: 0;
+    }
+    .speaker-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #9ca3af;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 3px;
+    }
+    .speaker-text {
+      font-size: 13px;
+      line-height: 1.5;
+      color: #374151;
+    }
+    .soap-section {
+      margin-bottom: 16px;
+    }
+    .soap-section:last-child {
+      margin-bottom: 0;
+    }
+    .soap-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #10b981;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .soap-content {
+      background: #f9fafb;
+      border-radius: 6px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.6;
+      color: #374151;
+    }
+    .codes-section {
+      margin-top: 16px;
+    }
+    .codes-label {
+      font-size: 10px;
+      font-weight: 600;
+      color: #f59e0b;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .code-badge {
+      display: inline-block;
+      background: #fef3c7;
+      color: #d97706;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      margin-right: 6px;
+    }
+    .codes-note {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-top: 6px;
+    }
+    .actions {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      flex-wrap: wrap;
+    }
+    .btn {
+      padding: 8px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      border: 1px solid #e5e7eb;
+      background: white;
+      color: #374151;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="logo-icon">H</div>
+      <span class="logo-text">Havenote</span>
+    </div>
+    <div class="search-bar">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <input type="text" placeholder="Search patients...">
+    </div>
+    <div class="header-right">
+      <div class="doctor-info"><strong>Dr. Michael Torres</strong> · Riverside Family Medicine</div>
+      <span style="color:#9ca3af">📞</span>
+      <a href="#" class="sign-out">Sign out</a>
+    </div>
+  </div>
+
+  <div class="main">
+    <a href="#" class="back-link">← Back to visits</a>
+
+    <div class="page-title">
+      <h1>Visit note</h1>
+      <span class="status-badge">SIGNED</span>
+    </div>
+    <div class="signed-time">✓ Signed 9/9/2026, 3:47:00 PM</div>
+
+    <div class="feedback-box">
+      <div class="stars">★★★★★</div>
+      <div class="feedback-text">Thanks for your feedback on this draft.</div>
+    </div>
+
+    <div class="content-grid">
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title">Transcript</span>
+          <div class="view-toggle">
+            <button class="view-btn active">Speaker view</button>
+            <button class="view-btn">Raw text</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 1</div>
+            <div class="speaker-text">Good afternoon, Robert. How's the back doing today?</div>
+          </div>
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 2</div>
+            <div class="speaker-text">Not great, doc. It's been about three weeks now. Started after I helped my son move into his apartment. The pain is mostly in my lower back, right side.</div>
+          </div>
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 1</div>
+            <div class="speaker-text">Does the pain go down your leg at all? Any numbness or tingling?</div>
+          </div>
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 2</div>
+            <div class="speaker-text">Sometimes it shoots down to my knee, but no numbness. It's worse in the morning and when I sit too long.</div>
+          </div>
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 1</div>
+            <div class="speaker-text">Any weakness in your legs? Problems with bladder or bowel control?</div>
+          </div>
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 2</div>
+            <div class="speaker-text">No, nothing like that. Just the pain.</div>
+          </div>
+          <div class="transcript-entry">
+            <div class="speaker-label">Speaker 1</div>
+            <div class="speaker-text">Okay, let me take a look. I'm going to have you bend forward and then back for me.</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-body">
+          <div class="soap-section">
+            <div class="soap-label">Subjective</div>
+            <div class="soap-content">52-year-old male presents with lower back pain x 3 weeks following heavy lifting while helping son move. Pain localized to right lumbar region with occasional radiation to right knee. Worse in morning and with prolonged sitting. Denies numbness, tingling, leg weakness, or bowel/bladder dysfunction. OTC ibuprofen provides partial relief.</div>
+          </div>
+          <div class="soap-section">
+            <div class="soap-label">Objective</div>
+            <div class="soap-content">BP 134/82, HR 76, BMI 28.4. Lumbar spine: tenderness to palpation over right paraspinal muscles L4-S1. Reduced flexion and right lateral bending due to pain. Negative straight leg raise bilaterally. Motor strength 5/5 bilateral lower extremities. Reflexes 2+ and symmetric. Gait steady without antalgic component.</div>
+          </div>
+          <div class="soap-section">
+            <div class="soap-label">Assessment</div>
+            <div class="soap-content">Acute lumbar strain with possible right-sided radiculopathy. Mechanism consistent with muscle injury from heavy lifting. No red flag symptoms present. Low concern for disc herniation given negative SLR and preserved motor function.</div>
+          </div>
+          <div class="soap-section">
+            <div class="soap-label">Plan</div>
+            <div class="soap-content">1. Continue NSAIDs - switch to naproxen 500mg BID with food x 10 days. 2. Muscle relaxant - cyclobenzaprine 10mg at bedtime PRN x 7 days. 3. Physical therapy referral for core strengthening and proper body mechanics. 4. Ice/heat as needed for comfort. 5. Activity modification - avoid heavy lifting x 4 weeks. 6. Return in 3 weeks if not improving, sooner if new neurologic symptoms develop.</div>
+          </div>
+          <div class="codes-section">
+            <div class="codes-label">Suggested Codes</div>
+            <span class="code-badge">M54.5</span>
+            <span class="code-badge">M54.41</span>
+            <div class="codes-note">Curated common-code list for quick entry, not the full ICD-10-CM set. Verify before billing.</div>
+          </div>
+          <div class="actions">
+            <button class="btn">Edit (creates an amendment)</button>
+            <button class="btn">Copy note</button>
+            <button class="btn">Download PDF</button>
+            <button class="btn">Print</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

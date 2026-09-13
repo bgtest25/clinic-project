@@ -37,6 +37,10 @@ interface PriorAuthData {
   clinician?: ClinicianInfo;
 }
 
+export interface PriorAuthPdfImages {
+  signature?: Buffer | null;
+}
+
 const BRAND_COLOR = '#0f766e';
 const TEXT_COLOR = '#0f172a';
 const MUTED_COLOR = '#64748b';
@@ -61,7 +65,7 @@ function formatPhone(phone: string): string {
   return phone;
 }
 
-export function buildPriorAuthPdf(data: PriorAuthData): PDFKit.PDFDocument {
+export function buildPriorAuthPdf(data: PriorAuthData, images: PriorAuthPdfImages = {}): PDFKit.PDFDocument {
   const doc = new PDFDocument({ size: 'LETTER', margins: { top: 40, bottom: 40, left: 54, right: 54 } });
   const clinic = data.clinic;
   const clinician = data.clinician;
@@ -150,8 +154,8 @@ export function buildPriorAuthPdf(data: PriorAuthData): PDFKit.PDFDocument {
   // Attestation box
   doc.moveDown(1);
   const attestY = doc.y;
-  doc.rect(54, attestY, 504, 70).fillColor('#f0fdf4').fill();
-  doc.rect(54, attestY, 504, 70).strokeColor('#22c55e').lineWidth(1).stroke();
+  doc.rect(54, attestY, 504, 80).fillColor('#f0fdf4').fill();
+  doc.rect(54, attestY, 504, 80).strokeColor('#22c55e').lineWidth(1).stroke();
   doc.y = attestY + 10;
   doc.x = 64;
   doc.fontSize(10).font('Helvetica-Bold').fillColor('#166534').text('PROVIDER ATTESTATION');
@@ -162,10 +166,21 @@ export function buildPriorAuthPdf(data: PriorAuthData): PDFKit.PDFDocument {
     { width: 484 },
   );
   doc.moveDown(0.5);
+
+  // Render signature image if available
+  if (images.signature) {
+    try {
+      doc.image(images.signature, 64, doc.y, { width: 100, height: 30 });
+      doc.y += 35;
+    } catch {
+      // Fall through to text
+    }
+  }
+
   doc.x = 64;
   const providerName = clinician?.name || data.clinicianName;
   const providerCreds = clinician?.credentials || data.clinicianCredentials;
-  doc.font('Helvetica-Bold').text(providerName, { continued: true });
+  doc.font('Helvetica-Bold').fillColor(TEXT_COLOR).text(providerName, { continued: true });
   if (providerCreds) {
     doc.font('Helvetica').text(`, ${providerCreds}`, { continued: true });
   }

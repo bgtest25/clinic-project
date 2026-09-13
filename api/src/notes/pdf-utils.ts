@@ -1,4 +1,3 @@
-import QRCode from 'qrcode';
 import https from 'https';
 import http from 'http';
 
@@ -68,14 +67,6 @@ export function formatProviderName(clinician: ClinicianInfo): string {
   return clinician.credentials
     ? `${clinician.name}, ${clinician.credentials}`
     : clinician.name;
-}
-
-export async function generateQRCode(data: string, size = 80): Promise<Buffer> {
-  return QRCode.toBuffer(data, {
-    width: size,
-    margin: 1,
-    color: { dark: COLORS.text, light: '#ffffff' },
-  });
 }
 
 export async function fetchImage(url: string): Promise<Buffer | null> {
