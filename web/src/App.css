@@ -527,6 +527,20 @@
   color: var(--color-success);
 }
 
+.auth-mfa-setup .mfa-qr {
+  margin: 1rem 0;
+}
+
+.auth-mfa-manual {
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  margin: 1rem 0 0.5rem;
+}
+
+.auth-mfa-setup .secret-code {
+  margin-bottom: 1.5rem;
+}
+
 /* ---------- status badges ---------- */
 
 .status-badge {

@@ -183,38 +183,44 @@ export function Login() {
     return (
       <div className="auth-shell">
         <div className="auth-card card">
-          <span className="brand">
-            <BrandMark />
-            Havenote
-          </span>
-          <h1>Reset your password</h1>
-          <p className="auth-subtitle">Enter your email and we'll send you a verification code.</p>
-          <form onSubmit={handleForgotPassword} className="form-stack">
-            <label className="field">
-              Email
-              <input
-                value={forgotEmail}
-                onChange={(e) => setForgotEmail(e.target.value)}
-                type="email"
-                autoComplete="username"
-                autoFocus
-              />
-            </label>
-            {error && <p className="error">{error}</p>}
-            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Sending…' : 'Send reset code'}
+          <div className="auth-header">
+            <span className="brand">
+              <BrandMark />
+              Havenote
+            </span>
+            <p className="auth-tagline">Clinical Documentation Platform</p>
+          </div>
+          <div className="auth-form-section">
+            <h1>Reset your password</h1>
+            <p className="auth-subtitle">Enter your email and we'll send you a verification code.</p>
+            <form onSubmit={handleForgotPassword} className="form-stack">
+              <label className="field">
+                Email address
+                <input
+                  value={forgotEmail}
+                  onChange={(e) => setForgotEmail(e.target.value)}
+                  type="email"
+                  autoComplete="username"
+                  placeholder="you@clinic.com"
+                  autoFocus
+                />
+              </label>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+                {busy ? 'Sending…' : 'Send reset code'}
+              </button>
+            </form>
+            <button
+              type="button"
+              className="link-button auth-forgot-link"
+              onClick={() => {
+                setStage({ step: 'credentials' });
+                setError(null);
+              }}
+            >
+              Back to sign in
             </button>
-          </form>
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              setStage({ step: 'credentials' });
-              setError(null);
-            }}
-          >
-            Back to sign in
-          </button>
+          </div>
         </div>
       </div>
     );
@@ -224,58 +230,65 @@ export function Login() {
     return (
       <div className="auth-shell">
         <div className="auth-card card">
-          <span className="brand">
-            <BrandMark />
-            Havenote
-          </span>
-          <h1>Enter verification code</h1>
-          <p className="auth-subtitle">
-            We sent a code to {stage.email}. Enter it below with your new password.
-          </p>
-          <form onSubmit={handleConfirmForgotPassword} className="form-stack">
-            <label className="field">
-              Verification code
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
-                inputMode="numeric"
-                autoFocus
-              />
-            </label>
-            <label className="field">
-              New password
-              <input
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-              />
-            </label>
-            <label className="field">
-              Confirm new password
-              <input
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-              />
-            </label>
-            {error && <p className="error">{error}</p>}
-            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Resetting…' : 'Reset password'}
+          <div className="auth-header">
+            <span className="brand">
+              <BrandMark />
+              Havenote
+            </span>
+            <p className="auth-tagline">Clinical Documentation Platform</p>
+          </div>
+          <div className="auth-form-section">
+            <h1>Enter verification code</h1>
+            <p className="auth-subtitle">
+              We sent a code to {stage.email}. Enter it below with your new password.
+            </p>
+            <form onSubmit={handleConfirmForgotPassword} className="form-stack">
+              <label className="field">
+                Verification code
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123456"
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </label>
+              <label className="field">
+                New password
+                <input
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                />
+              </label>
+              <label className="field">
+                Confirm new password
+                <input
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                />
+              </label>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+                {busy ? 'Resetting…' : 'Reset password'}
+              </button>
+            </form>
+            <button
+              type="button"
+              className="link-button auth-forgot-link"
+              onClick={() => {
+                setStage({ step: 'forgotPassword' });
+                setError(null);
+              }}
+            >
+              Back
             </button>
-          </form>
-          <button
-            type="button"
-            className="link-button"
-            onClick={() => {
-              setStage({ step: 'forgotPassword' });
-              setError(null);
-            }}
-          >
-            Back
-          </button>
+          </div>
         </div>
       </div>
     );
@@ -285,37 +298,44 @@ export function Login() {
     return (
       <div className="auth-shell">
         <div className="auth-card card">
-          <span className="brand">
-            <BrandMark />
-            Havenote
-          </span>
-          <h1>Set your password</h1>
-          <p className="auth-subtitle">This is your first sign-in. Choose a permanent password.</p>
-          <form onSubmit={handleNewPassword} className="form-stack">
-            <label className="field">
-              New password
-              <input
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-                autoFocus
-              />
-            </label>
-            <label className="field">
-              Confirm new password
-              <input
-                value={confirmNewPassword}
-                onChange={(e) => setConfirmNewPassword(e.target.value)}
-                type="password"
-                autoComplete="new-password"
-              />
-            </label>
-            {error && <p className="error">{error}</p>}
-            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Saving…' : 'Set password'}
-            </button>
-          </form>
+          <div className="auth-header">
+            <span className="brand">
+              <BrandMark />
+              Havenote
+            </span>
+            <p className="auth-tagline">Clinical Documentation Platform</p>
+          </div>
+          <div className="auth-form-section">
+            <h1>Set your password</h1>
+            <p className="auth-subtitle">This is your first sign-in. Choose a permanent password.</p>
+            <form onSubmit={handleNewPassword} className="form-stack">
+              <label className="field">
+                New password
+                <input
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                  autoFocus
+                />
+              </label>
+              <label className="field">
+                Confirm new password
+                <input
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  type="password"
+                  autoComplete="new-password"
+                  placeholder="••••••••"
+                />
+              </label>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+                {busy ? 'Saving…' : 'Set password'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
@@ -325,27 +345,33 @@ export function Login() {
     return (
       <div className="auth-shell">
         <div className="auth-card card">
-          <span className="brand">
-            <BrandMark />
-            Havenote
-          </span>
-          <h1>Enter your authenticator code</h1>
-          <form onSubmit={handleMfaCode} className="form-stack">
-            <label className="field">
-              6-digit code
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="123 456"
-                inputMode="numeric"
-                autoFocus
-              />
-            </label>
-            {error && <p className="error">{error}</p>}
-            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Verifying…' : 'Verify'}
-            </button>
-          </form>
+          <div className="auth-header">
+            <span className="brand">
+              <BrandMark />
+              Havenote
+            </span>
+            <p className="auth-tagline">Clinical Documentation Platform</p>
+          </div>
+          <div className="auth-form-section">
+            <h1>Two-factor authentication</h1>
+            <p className="auth-subtitle">Enter the code from your authenticator app.</p>
+            <form onSubmit={handleMfaCode} className="form-stack">
+              <label className="field">
+                6-digit code
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123 456"
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </label>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+                {busy ? 'Verifying…' : 'Verify'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
@@ -355,34 +381,38 @@ export function Login() {
     return (
       <div className="auth-shell">
         <div className="auth-card card">
-          <span className="brand">
-            <BrandMark />
-            Havenote
-          </span>
-          <h1>Set up your authenticator app</h1>
-          <p className="auth-subtitle">
-            Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password), then enter
-            the code it shows.
-          </p>
-          {qrDataUrl && <img src={qrDataUrl} alt="Authenticator setup QR code" className="mfa-qr" />}
-          <p className="auth-subtitle">Can't scan? Enter this code manually:</p>
-          <code className="secret-code">{stage.secretCode}</code>
-          <form onSubmit={handleMfaSetup} className="form-stack">
-            <label className="field">
-              6-digit code
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="123 456"
-                inputMode="numeric"
-                autoFocus
-              />
-            </label>
-            {error && <p className="error">{error}</p>}
-            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-              {busy ? 'Confirming…' : 'Confirm'}
-            </button>
-          </form>
+          <div className="auth-header">
+            <span className="brand">
+              <BrandMark />
+              Havenote
+            </span>
+            <p className="auth-tagline">Clinical Documentation Platform</p>
+          </div>
+          <div className="auth-form-section auth-mfa-setup">
+            <h1>Set up two-factor authentication</h1>
+            <p className="auth-subtitle">
+              Scan this QR code with an authenticator app (Google Authenticator, Authy, 1Password).
+            </p>
+            {qrDataUrl && <img src={qrDataUrl} alt="Authenticator setup QR code" className="mfa-qr" />}
+            <p className="auth-mfa-manual">Can't scan? Enter this code manually:</p>
+            <code className="secret-code">{stage.secretCode}</code>
+            <form onSubmit={handleMfaSetup} className="form-stack">
+              <label className="field">
+                6-digit code from app
+                <input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  placeholder="123 456"
+                  inputMode="numeric"
+                  autoFocus
+                />
+              </label>
+              {error && <p className="error">{error}</p>}
+              <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+                {busy ? 'Confirming…' : 'Confirm setup'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
     );
