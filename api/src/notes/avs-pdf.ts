@@ -27,13 +27,13 @@ interface AvsData {
 }
 
 const SECTION_ICONS: Record<string, string> = {
-  'WHAT WE TALKED ABOUT': '📋',
-  'WHAT WE FOUND': '🩺',
-  'YOUR DIAGNOSIS': '💊',
-  'YOUR TREATMENT PLAN': '✅',
-  'WHEN TO CALL US': '⚠️',
-  'FOLLOW-UP': '📅',
-  'YOUR VISIT SUMMARY': '📄',
+  'WHAT WE TALKED ABOUT': '',
+  'WHAT WE FOUND': '',
+  'YOUR DIAGNOSIS': '',
+  'YOUR TREATMENT PLAN': '',
+  'WHEN TO CALL US': '',
+  'FOLLOW-UP': '',
+  'YOUR VISIT SUMMARY': '',
 };
 
 export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
@@ -139,8 +139,6 @@ export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
   const sections = parseSummary(data.summary);
 
   for (const section of sections) {
-    const icon = SECTION_ICONS[section.title] || '•';
-
     if (section.title === 'WHEN TO CALL US') {
       // Alert box for critical warnings
       doc.moveDown(0.5);
@@ -153,7 +151,7 @@ export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
       doc.y = alertTop + 12;
       doc.x = 70;
       doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.warningText)
-        .text(`${icon} ${section.title}`);
+        .text(section.title);
       doc.x = 70;
       doc.moveDown(0.3);
       doc.fontSize(11).font('Helvetica').fillColor(COLORS.text)
@@ -164,14 +162,14 @@ export async function buildAvsPdf(data: AvsData): Promise<PDFKit.PDFDocument> {
     } else {
       doc.moveDown(0.75);
       doc.fontSize(12).font('Helvetica-Bold').fillColor(COLORS.brand)
-        .text(`${icon} ${section.title}`);
+        .text(section.title);
       doc.moveDown(0.25);
 
       // Format content - handle bullet points
       const lines = section.content.split('\n');
       for (const line of lines) {
         const trimmed = line.trim();
-        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('✓')) {
+        if (trimmed.startsWith('•') || trimmed.startsWith('-') || trimmed.startsWith('*')) {
           doc.fontSize(11).font('Helvetica').fillColor(COLORS.text)
             .text(`  ${trimmed}`, { width: contentWidth, indent: 10 });
         } else if (trimmed) {
