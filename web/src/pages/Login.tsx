@@ -392,59 +392,66 @@ export function Login() {
     <div className="auth-shell">
       <ThemeToggle className="auth-theme-toggle" />
       <div className="auth-card card">
-        <span className="brand">
-          <BrandMark />
-          Havenote
-        </span>
-        <div>
-          <h1>Sign in</h1>
-          <p className="auth-subtitle">Clinical documentation, from visit to signed note.</p>
+        <div className="auth-header">
+          <span className="brand">
+            <BrandMark />
+            Havenote
+          </span>
+          <p className="auth-tagline">Clinical Documentation Platform</p>
         </div>
-        <form onSubmit={handleCredentials} className="form-stack">
-          <label className="field">
-            Email
-            <input
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              type="email"
-              autoComplete="username"
-              autoFocus
-            />
-          </label>
-          <label className="field">
-            Password
-            <input
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              type="password"
-              autoComplete="current-password"
-            />
-          </label>
-          {resetSuccess && <p className="success">Password reset successfully. Sign in with your new password.</p>}
-          {error && <p className="error">{error}</p>}
-          <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
-            {busy ? 'Signing in…' : 'Sign in'}
+        <div className="auth-form-section">
+          <h1>Welcome back</h1>
+          <p className="auth-subtitle">Sign in to continue to your dashboard</p>
+          <form onSubmit={handleCredentials} className="form-stack">
+            <label className="field">
+              Email address
+              <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                type="email"
+                autoComplete="username"
+                placeholder="you@clinic.com"
+                autoFocus
+              />
+            </label>
+            <label className="field">
+              Password
+              <input
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                type="password"
+                autoComplete="current-password"
+                placeholder="••••••••"
+              />
+            </label>
+            {resetSuccess && <p className="success">Password reset successfully. Sign in with your new password.</p>}
+            {error && <p className="error">{error}</p>}
+            <button type="submit" className="btn btn-primary btn-block" disabled={busy}>
+              {busy ? 'Signing in…' : 'Sign in'}
+            </button>
+          </form>
+          <button
+            type="button"
+            className="link-button auth-forgot-link"
+            onClick={() => {
+              setStage({ step: 'forgotPassword' });
+              setForgotEmail(username);
+              setError(null);
+              setResetSuccess(false);
+            }}
+          >
+            Forgot your password?
           </button>
-        </form>
-        <button
-          type="button"
-          className="link-button"
-          onClick={() => {
-            setStage({ step: 'forgotPassword' });
-            setForgotEmail(username);
-            setError(null);
-            setResetSuccess(false);
-          }}
-        >
-          Forgot password?
-        </button>
-        <div className="auth-trust-badges">
-          <span className="auth-trust-badge">
-            <ShieldCheckIcon /> HIPAA Compliant
-          </span>
-          <span className="auth-trust-badge">
-            <LockIcon /> 256-bit Encryption
-          </span>
+        </div>
+        <div className="auth-footer">
+          <div className="auth-trust-badges">
+            <span className="auth-trust-badge">
+              <ShieldCheckIcon /> HIPAA Compliant
+            </span>
+            <span className="auth-trust-badge">
+              <LockIcon /> 256-bit Encrypted
+            </span>
+          </div>
         </div>
       </div>
     </div>
